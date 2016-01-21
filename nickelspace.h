@@ -112,6 +112,20 @@ constexpr auto addString(const StaticStringList<N...> &l, const StaticString<L> 
 }
 
 
+/*-----------*/
+
+template<int N>
+struct cs_number : public cs_number<N - 1>
+{
+    static constexpr int value = N;
+    static constexpr cs_number<N-1> prev() { return {}; }
+};
+
+template<>
+struct cs_number<0>
+{ static constexpr int value = 0; };
+
+
 
 /*-----------------------------------------------------------------------------------------------*/
 /* The code that generates the QMetaObject                                                          */
@@ -135,6 +149,10 @@ namespace MetaObjectBuilder {
             }
         }
     };
+
+    template<typename F, int N>
+    constexpr MetaMethodInfo<F, N> makeMetaSlotInfo(F f, StaticStringArray<N> &name)
+    { return { MetaMethodInfo<F, N>::Slot, MetaMethodInfo<F, N>::Public /* FIXME */, f, name }; }
 
     /** Holds information about a property */
     template<typename Type, int NameLength, typename Getter, typename Setter, typename Member, typename Notify>
@@ -212,12 +230,6 @@ namespace MetaObjectBuilder {
         Methods methods;
         Properties properties;
 
-        template<typename M>
-        constexpr auto addMethod(const M&m) const {
-            auto newM = std::tuple_cat(methods, std::make_tuple(m));
-            return ClassInfo<NameLength, decltype(newM), Properties>{ name, newM, properties };
-        }
-
         template<typename P>
         constexpr auto addProperty(const P&p) const {
             auto newP = std::tuple_cat(properties, std::make_tuple(p));
@@ -230,30 +242,9 @@ namespace MetaObjectBuilder {
     /** Construct a ClassInfo with just the name */
     template<typename T, int N>
     constexpr auto makeClassInfo(StaticStringArray<N> &name)
-        -> ClassInfo<N, std::tuple<>, std::tuple<>>
-    { return { name, {}, {} }; }
+        -> ClassInfo<N, decltype(T::w_MethodState(cs_number<255>{})), std::tuple<>>
+    { return { name, T::w_MethodState(cs_number<255>{}), {} }; }
 
-#if 0
-
-    /**
-     * parseMember(ClassInfo, member, name) :
-     *   member and name are coming from the typedef... and typename... traits
-     * if member is a signal, slot, or property, add it to the ClassInfo
-     */
-    // Generic: don't do nothing.
-    template<typename ClassInfo, typename T, int N>
-    constexpr auto parseMember(const ClassInfo &ci, const T&, const StaticString<N> &) { return ci; }
-    // A method. (I consider everything as a signal for now)
-    template<typename ClassInfo, int N, class O, typename Ret, typename... A>
-    constexpr auto parseMember(const ClassInfo &ci, Ret (O::*func)(A...) , const StaticString<N> &name) {
-        using MI = MetaMethodInfo<decltype(func), N>;
-        return ci.addMethod(MI{ MI::Signal, MI::Public, func, name});
-    }
-    // A property
-    template<typename ClassInfo, int N, typename T, typename... P>
-    constexpr auto parseMember(const ClassInfo &ci, QProperty<T, P...> p, const StaticString<N> &name) {
-        return ci.addProperty(makePropertyInfo(name, p, make_index_sequence<N-12>()));
-    }
 
     /**
      * generate...
@@ -281,7 +272,7 @@ namespace MetaObjectBuilder {
         auto next = generateMethods<ParamIndex + 1 + Method::argCount * 2>(s2, tuple_tail(t));
         return std::make_pair(next.first, thisMethod() + next.second);
     }
-
+#if 0
     template<typename Strings>
     constexpr auto generateProperties(const Strings &s, const std::tuple<>&) {
         return std::make_pair(s, index_sequence<>());
@@ -347,10 +338,10 @@ namespace MetaObjectBuilder {
                 CI::methodCount   // signalCount  /* Yes, everything is considered signal for now */
         >;
         auto stringData = std::make_tuple(classInfo.name, StaticString<1>(""));
-     //   auto methods = generateMethods<paramIndex>(stringData , classInfo.methods);
+        auto methods = generateMethods<paramIndex>(stringData , classInfo.methods);
      //   auto properties = generateProperties(methods.first , classInfo.properties);
      //   auto parametters = generateMethodsParameters(properties.first, classInfo.methods);
-        return std::make_pair(stringData,  header() /* + methods.second + properties.second + parametters.second*/);
+        return std::make_pair(methods.first,  header()  + methods.second /*+ properties.second + parametters.second*/);
     }
 
 
@@ -520,21 +511,6 @@ template<typename T> void qt_static_metacall_impl(QObject *_o, QMetaObject::Call
 }
 
 
-template<int N>
-class cs_number : public cs_number<N - 1>
-{
-public:
-    static constexpr int value = N;
-};
-
-template<>
-class cs_number<0>
-{
-public:
-    static constexpr int value = 0;
-};
-
-
 template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
 
 
@@ -546,6 +522,31 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
         struct MetaObjectCreatorHelper; \
         using W_BaseType = decltype(getParentObjectHelper(&W_ThisType::qt_metacast)); \
     Q_OBJECT
+
+
+#define W_SLOT_1(access, ...) \
+    __VA_ARGS__; \
+
+//     static constexpr const int CS_TOKENPASTE2(cs_counter_value, __LINE__) =  \
+//     decltype(cs_counter(cs_number<255>{}))::value; \
+//     static constexpr cs_number<CS_TOKENPASTE2(cs_counter_value, __LINE__) + 1>  \
+//     cs_counter(cs_number<CS_TOKENPASTE2(cs_counter_value, __LINE__) + 1>) \
+//     {  \
+//     return cs_number<CS_TOKENPASTE2(cs_counter_value, __LINE__) + 1>{};      \
+//     }  \
+//     static void cs_regTrigger(cs_number<CS_TOKENPASTE2(cs_counter_value, __LINE__)>) \
+//     {  \
+//     const char *va_args = #__VA_ARGS__;    \
+//     QMetaMethod::Access accessType = QMetaMethod::access; \
+//     constexpr int cntValue = CS_TOKENPASTE2(cs_counter_value, __LINE__);
+//     // do not remove the ";", this is required for part two of the macro
+
+
+#define W_SLOT_2(slotName) \
+    static constexpr auto w_MethodState(cs_number<std::tuple_size<decltype(w_MethodState(cs_number<255>{}))>::value+1> counter) \
+    -> decltype(std::tuple_cat(w_MethodState(counter.prev()), std::make_tuple(MetaObjectBuilder::makeMetaSlotInfo(&W_ThisType::slotName, #slotName)))) \
+        { return std::tuple_cat(w_MethodState(counter.prev()), std::make_tuple(MetaObjectBuilder::makeMetaSlotInfo(&W_ThisType::slotName, #slotName))); }
+
 
 
 
