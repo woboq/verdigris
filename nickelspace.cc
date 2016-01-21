@@ -5,10 +5,13 @@
 
 class TestObject : public QObject {
 public:
-    W_OBJECT
+    W_OBJECT(TestObject)
 public:
 
     ~TestObject();
+
+
+
 };
 
 TestObject::~TestObject()
@@ -24,7 +27,7 @@ W_OBJECT_IMPL(TestObject)
 
 int main() {
     TestObject obj;
-    qDebug() << obj.metaObject()->className() << TestObject::ParentMetaObjectGetter::value->className();
+    qDebug() << obj.metaObject()->className() << obj.metaObject()->superClass()->className();
     //qDebug() << TestObject::parentMetaObject::value->className();
 
 }

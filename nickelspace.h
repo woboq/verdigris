@@ -16,33 +16,6 @@ qt_makeProperty<TYPE>(__VA_ARGS__);
 
 
 /*-----------------------------------------------------------------------------------------------*/
-/* Implements the extensions in terms of traits to be specialized manually                       */
-/*-----------------------------------------------------------------------------------------------*/
-
-
-/**
- * the implementation of typename...
- *
- *      typename_<T>::staticStringList();
- *    would be the same as
- *      makeStaticStringList(typename<T>...)
- *
- */
-template <typename T> struct typename_;
-// { static constexpr auto staticStringList() { return makeStaticStringList(typename<T>...); }  };
-
-/**
- * the implemtnation of typedef...
- *
- *     typedef_<T>::tuple()
- *    vould be the same as
- *     std::make_tuple(typedef<T>...)
- */
-template <typename T> struct typedef_;
-// { static constexpr auto tuple() { return make_tuple(typedef<T>...); }  };
-
-
-/*-----------------------------------------------------------------------------------------------*/
 /* Helpers to play with tuple or strings at compile time                                         */
 /*-----------------------------------------------------------------------------------------------*/
 
@@ -510,7 +483,7 @@ constexpr QMetaObject createMetaObject()
     auto string_data = MetaObjectBuilder::build_string_data<Creator>(Creator::string_data);
     auto int_data = MetaObjectBuilder::build_int_data<typename std::remove_const<decltype(Creator::int_data)>::type>::data;
 
-    return { { T::ParentMetaObjectGetter::value , string_data , int_data,  T::qt_static_metacall }  };
+    return { { &T::W_BaseType::staticMetaObject , string_data , int_data,  T::qt_static_metacall }  };
 }
 
 
@@ -547,16 +520,34 @@ template<typename T> void qt_static_metacall_impl(QObject *_o, QMetaObject::Call
 }
 
 
-template <const QMetaObject *metaObject> struct GetMetaObjectHelper {
-    static constexpr const QMetaObject *value = metaObject;
+template<int N>
+class cs_number : public cs_number<N - 1>
+{
+public:
+    static constexpr int value = N;
 };
 
-#define W_OBJECT \
+template<>
+class cs_number<0>
+{
+public:
+    static constexpr int value = 0;
+};
+
+
+template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
+
+
+#define W_OBJECT(TYPE) \
+        using W_ThisType = TYPE; /* This is the only reason why we need TYPE */ \
         template<typename T> friend constexpr QMetaObject createMetaObject(); \
+        static constexpr std::tuple<> w_MethodState(cs_number<0>) { return {}; } \
     public: \
         struct MetaObjectCreatorHelper; \
-        using ParentMetaObjectGetter = GetMetaObjectHelper<&staticMetaObject>; \
+        using W_BaseType = decltype(getParentObjectHelper(&W_ThisType::qt_metacast)); \
     Q_OBJECT
+
+
 
 #define W_OBJECT_IMPL(TYPE) \
     struct TYPE::MetaObjectCreatorHelper { \
