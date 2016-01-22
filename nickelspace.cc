@@ -52,8 +52,10 @@ public slots:
 
 public:
 
-  //  Q_PROPERTY2(int, foo, &MyObject::getFoo, &MyObject::setFoo)
-  //  W_PROPERTY(int, foo, &MyObject::getFoo, &MyObject::setFoo)
+    W_PROPERTY(int, foo, &MyObject::getFoo, &MyObject::setFoo)
+
+    QString m_strin;
+    W_PROPERTY(QString, prop2, &MyObject::m_strin)
 
 };
 
@@ -83,6 +85,11 @@ int main() {
     obj.barChanged(222);
 
     obj.setProperty("foo", 333);
+
+    obj.setProperty("prop2", "YAY");
+    qDebug() << obj.property("prop2");
+
+
 }
 
 

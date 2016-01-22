@@ -3,17 +3,6 @@
 #include <utility>
 
 
-// This would go in the qobjectdefs.h header with the other defines
-template <typename Type, typename... T> struct QProperty : std::tuple<T...> {
-    using std::tuple<T...>::tuple;
-    using PropertyType = Type;
-};
-template <typename Type, typename... T> constexpr auto qt_makeProperty(T&& ...t)
-{ return QProperty<Type, typename std::decay<T>::type...>{ std::forward<T>(t)... }; }
-
-#define Q_PROPERTY2(TYPE, NAME, ...) static constexpr auto qt_property_##NAME = \
-qt_makeProperty<TYPE>(__VA_ARGS__);
-
 
 /*-----------------------------------------------------------------------------------------------*/
 /* Helpers to play with tuple or strings at compile time                                         */
@@ -179,7 +168,7 @@ namespace MetaObjectBuilder {
         uint flags = 0;
 
         template <typename S> constexpr auto setGetter(const S&s) const
-        { return MetaPropertyInfo<Type, NameLength, S, Getter, Member, Notify>{name, s, setter, member, notify, flags}; }
+        { return MetaPropertyInfo<Type, NameLength, S, Setter, Member, Notify>{name, s, setter, member, notify, flags}; }
         template <typename S> constexpr auto setSetter(const S&s) const
         { return MetaPropertyInfo<Type, NameLength, Getter, S, Member, Notify>{name, getter, s, member, notify, flags}; }
         template <typename S> constexpr auto setMember(const S&s) const
@@ -205,36 +194,30 @@ namespace MetaObjectBuilder {
         }
     };
 
-#if 0
-    /** Just a dummy pointer to member function to be used when there is none */
-    template<typename T> struct DummyFunctPointer { operator bool() const { return false; } };
-    template<typename T, typename O> T &operator->*(O*, DummyFunctPointer<T>) { return *static_cast<T*>(nullptr);  }
-
     /** Parse a property and fill a MetaPropertyInfo */
-    template <typename PropInfo> constexpr auto parseProperty(const PropInfo &p, const std::tuple<> &) { return p; }
+    // base case
+    template <typename PropInfo> constexpr auto parseProperty(const PropInfo &p) { return p; }
+    // setter
     template <typename PropInfo, typename Obj, typename Arg, typename Ret, typename... Tail>
-    constexpr auto parseProperty(const PropInfo &p, const std::tuple<Ret (Obj::*)(Arg), Tail...> &t) {
-        return parseProperty(p.setSetter(std::get<0>(t)) ,tuple_tail(t));
+    constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)(Arg), Tail... t) {
+        return parseProperty(p.setSetter(s) , t...);
     }
+    // getter
     template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
-    constexpr auto parseProperty(const PropInfo &p, const std::tuple<Ret (Obj::*)(), Tail...> &t) {
-        return parseProperty(p.setGetter(std::get<0>(t)) ,tuple_tail(t));
+    constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)(), Tail... t) {
+        return parseProperty(p.setGetter(s), t...);
     }
+    // member
     template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
-    constexpr auto parseProperty(const PropInfo &p, const std::tuple<Ret (Obj::*), Tail...> &t) {
-        return parseProperty(p.setMember(std::get<0>(t)) ,tuple_tail(t));
+    constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s), Tail... t) {
+        return parseProperty(p.setMember(s) ,t...);
     }
 
-    template<typename P, int... I>
-    constexpr auto makePropertyInfo(const StaticString<sizeof...(I)+12> &n,  const P &p, index_sequence<I...>) {
-        constexpr int nSize = sizeof...(I);
-        StaticStringArray<nSize> d = { n[I+12]... };
-        using Type = typename P::PropertyType;
-        using Dummy = DummyFunctPointer<Type>;
-        MetaPropertyInfo<Type, sizeof...(I), Dummy, Dummy, Dummy, Dummy> meta { d };
-        return parseProperty(meta, p);
+    template<typename T, int N, typename ... Args>
+    constexpr auto makeMetaPropertyInfo(StaticStringArray<N> &name, Args... args) {
+        MetaPropertyInfo<T, N, T(QObject::*)(), void(QObject::*)(const T&), T QObject::*, int> meta { name };
+        return parseProperty(meta, args...);
     }
-#endif
 
     /** Holds information about a class,  includeing all the properties and methods */
     template<int NameLength, typename Methods, typename Properties, int SignalCount>
@@ -252,8 +235,9 @@ namespace MetaObjectBuilder {
     constexpr auto makeClassInfo(StaticStringArray<N> &name) {
         const auto sigState = T::w_SignalState(cs_number<255>{});
         const auto methodInfo = std::tuple_cat(sigState, T::w_SlotState(cs_number<255>{}));
+        const auto propertyInfo = T::w_PropertyState(cs_number<255>{});
         constexpr int sigCount = std::tuple_size<decltype(sigState)>::value;
-        return ClassInfo<N, decltype(methodInfo), std::tuple<>, sigCount>{ name, methodInfo, {} };
+        return ClassInfo<N, decltype(methodInfo), decltype(propertyInfo), sigCount>{ name, methodInfo, propertyInfo };
     }
 
 
@@ -283,7 +267,7 @@ namespace MetaObjectBuilder {
         auto next = generateMethods<ParamIndex + 1 + Method::argCount * 2>(s2, tuple_tail(t));
         return std::make_pair(next.first, thisMethod() + next.second);
     }
-#if 0
+
     template<typename Strings>
     constexpr auto generateProperties(const Strings &s, const std::tuple<>&) {
         return std::make_pair(s, index_sequence<>());
@@ -303,7 +287,6 @@ namespace MetaObjectBuilder {
         return std::make_pair(next.first, thisProp() + next.second);
 
     }
-#endif
 
     //Helper class for generateSingleMethodParameter:  generate the parametter array
     template<typename ...Args> struct HandleArgsHelper { using Result = index_sequence<>; };
@@ -350,10 +333,9 @@ namespace MetaObjectBuilder {
         >;
         auto stringData = std::make_tuple(classInfo.name, StaticString<1>(""));
         auto methods = generateMethods<paramIndex>(stringData , classInfo.methods);
-     //   auto properties = generateProperties(methods.first , classInfo.properties);
-        auto parametters = generateMethodsParameters(methods.first, classInfo.methods);
-     //   auto parametters = generateMethodsParameters(properties.first, classInfo.methods);
-        return std::make_pair(parametters.first,  header()  + methods.second /*+ properties.second*/ + parametters.second);
+        auto properties = generateProperties(methods.first , classInfo.properties);
+        auto parametters = generateMethodsParameters(properties.first, classInfo.methods);
+        return std::make_pair(parametters.first,  header()  + methods.second + properties.second + parametters.second);
     }
 
 
@@ -550,10 +532,30 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
         template<typename T> friend int qt_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void** _a); \
         static constexpr std::tuple<> w_SlotState(cs_number<0>) { return {}; } \
         static constexpr std::tuple<> w_SignalState(cs_number<0>) { return {}; } \
+        static constexpr std::tuple<> w_PropertyState(cs_number<0>) { return {}; } \
     public: \
         struct MetaObjectCreatorHelper; \
         using W_BaseType = decltype(getParentObjectHelper(&W_ThisType::qt_metacast)); \
     Q_OBJECT
+
+
+#define W_OBJECT_IMPL(TYPE) \
+    struct TYPE::MetaObjectCreatorHelper { \
+        static constexpr auto classInfo = MetaObjectBuilder::makeClassInfo<TYPE>(#TYPE); \
+        static constexpr auto data = generateDataArray(classInfo); \
+        static constexpr auto string_data = data.first; \
+        static constexpr auto int_data = data.second; \
+    }; \
+    constexpr const QMetaObject TYPE::staticMetaObject = createMetaObject<TYPE>(); \
+    const QMetaObject *TYPE::metaObject() const  { return &staticMetaObject; } \
+    void *TYPE::qt_metacast(const char *) { return nullptr; } /* TODO */ \
+    int TYPE::qt_metacall(QMetaObject::Call _c, int _id, void** _a) { \
+        return qt_metacall_impl<TYPE>(this, _c, _id, _a); \
+    } \
+    void TYPE::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) { \
+        qt_static_metacall_impl<TYPE>(_o, _c, _id, _a); \
+    } \
+
 
 
 #define W_SLOT_1(access, ...) \
@@ -575,21 +577,7 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
         W_RETURN(std::tuple_cat(w_SignalState(counter.prev()), \
                                 std::make_tuple(MetaObjectBuilder::makeMetaSignalInfo(&W_ThisType::signalName, #signalName, #__VA_ARGS__)))) \
 
-
-#define W_OBJECT_IMPL(TYPE) \
-    struct TYPE::MetaObjectCreatorHelper { \
-        static constexpr auto classInfo = MetaObjectBuilder::makeClassInfo<TYPE>(#TYPE); \
-        static constexpr auto data = generateDataArray(classInfo); \
-        static constexpr auto string_data = data.first; \
-        static constexpr auto int_data = data.second; \
-    }; \
-    constexpr const QMetaObject TYPE::staticMetaObject = createMetaObject<TYPE>(); \
-    const QMetaObject *TYPE::metaObject() const  { return &staticMetaObject; } \
-    void *TYPE::qt_metacast(const char *) { return nullptr; } /* TODO */ \
-    int TYPE::qt_metacall(QMetaObject::Call _c, int _id, void** _a) { \
-        return qt_metacall_impl<TYPE>(this, _c, _id, _a); \
-    } \
-    void TYPE::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) { \
-        qt_static_metacall_impl<TYPE>(_o, _c, _id, _a); \
-    } \
-
+#define W_PROPERTY(TYPE, NAME, ...) \
+    static constexpr auto w_PropertyState(cs_number<std::tuple_size<decltype(w_PropertyState(cs_number<255>{}))>::value+1> counter) \
+        W_RETURN(std::tuple_cat(w_PropertyState(counter.prev()), \
+                                std::make_tuple(MetaObjectBuilder::makeMetaPropertyInfo<TYPE>(#NAME, __VA_ARGS__)))) \
