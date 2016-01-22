@@ -15,10 +15,12 @@ private /*slots*/:
     W_SLOT(signalSlot, W_Access::Private)
 
     void property_data();
-    W_SLOT(property_data)
-
+    W_SLOT(property_data, W_Access::Private)
     void property();
-    W_SLOT(property)
+    W_SLOT(property, W_Access::Private)
+
+    void signalArgs();
+    W_SLOT(signalArgs, W_Access::Private)
 };
 
 W_OBJECT_IMPL(tst_Basic)
@@ -39,6 +41,9 @@ void tst_Basic::firstTest()
 
 */
 
+W_DECLARE_METATYPE(char*)
+Q_DECLARE_METATYPE(char*)
+
 class BTestObj  : public QObject
 {   W_OBJECT(BTestObj)
     QString value;
@@ -57,6 +62,10 @@ public: /*signals*/
 
     W_SIGNAL_1(void simpleSignal())
     W_SIGNAL_2(simpleSignal)
+
+    W_SIGNAL_1(void signalSeveralArgs(int a, const QString &b, char * c = nullptr))
+    W_SIGNAL_2(signalSeveralArgs, a, b, c)
+
 
 public:
     W_PROPERTY(QString, value1, &BTestObj::setValue, &BTestObj::getValue )
@@ -97,9 +106,9 @@ void tst_Basic::signalSlot()
 void tst_Basic::property_data()
 {
     QTest::addColumn<QByteArray>("name");
-    QTest::newRow("value1") << "value1";
-    QTest::newRow("member1") << "member1";
-    QTest::newRow("all") << "all";
+    QTest::newRow("value1") << QByteArrayLiteral("value1");
+    QTest::newRow("member1") << QByteArrayLiteral("member1");
+    QTest::newRow("all") << QByteArrayLiteral("all");
 }
 
 
@@ -112,6 +121,13 @@ void tst_Basic::property()
     QVERIFY(obj.setProperty(name, str));
     QCOMPARE(obj.property(name), QVariant(str));
 }
+
+void tst_Basic::signalArgs()
+{
+    auto method = QMetaMethod::fromSignal(&BTestObj::signalSeveralArgs);
+    qDebug() << method.parameterTypes() << method.parameterNames();
+}
+
 
 
 QTEST_MAIN(tst_Basic)

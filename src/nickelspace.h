@@ -67,6 +67,7 @@ template<int N> struct StaticString  {
     static constexpr int size = N;
     constexpr char operator[](int p) const { return data[p]; }
 };
+template <int N> constexpr StaticString<N> makeStaticString(StaticStringArray<N> &d) { return {d}; }
 
 /* A tuple containing many  StaticString with possibly different sizes */
 template<int ...Sizes> using StaticStringList = std::tuple<StaticString<Sizes>...>;
@@ -144,10 +145,25 @@ namespace W_MethodType {
     constexpr cs_number<0x0c> Constructor{};
 }
 
+template<typename T> struct W_TypeRegistery { enum { registered = false }; };
+#define W_DECLARE_METATYPE(T) template<> struct W_TypeRegistery<T> { \
+    enum { registered = true }; \
+    static constexpr auto name = makeStaticString(#T); \
+};
+
 /*-----------------------------------------------------------------------------------------------*/
 /* The code that generates the QMetaObject                                                          */
 /*-----------------------------------------------------------------------------------------------*/
 namespace MetaObjectBuilder {
+
+
+//     template<typename T>
+//     constexpr std::enable_if<QMetaTypeId2<T>::IsBuiltIn, int>::type metaTypeId()
+//     { return  QMetaTypeId2<T>::qt_metatype_id();}
+//     template<typename T>
+//     constexpr std::enable_if<!QMetaTypeId2<T>::IsBuiltIn, int>::type metaTypeId()
+//     { return -1;}
+
     /** Holds information about a method */
     template<typename F, int NameLength, int Flags>
     struct MetaMethodInfo {
@@ -317,16 +333,43 @@ struct FriendHelper1 { /* FIXME */
     }
 
     //Helper class for generateSingleMethodParameter:  generate the parametter array
-    template<typename ...Args> struct HandleArgsHelper { using Result = index_sequence<>; };
+
+    template<typename T, bool Builtin = QMetaTypeId2<T>::IsBuiltIn>
+    struct HandleArg {
+        template<typename S> static constexpr auto result(const S&s) {
+            return std::make_pair(s, index_sequence<QMetaTypeId2<T>::MetaType>());
+        }
+    };
+    template<typename T>
+    struct HandleArg<T, false> {
+        template<typename Strings> static constexpr auto result(const Strings &ss) {
+            constexpr auto IsUnresolvedType = 0x80000000;
+            static_assert(W_TypeRegistery<T>::registered, "Please Register T with W_DECLARE_METATYPE");
+            auto s2 = addString(ss, W_TypeRegistery<T>::name);
+            return std::make_pair(s2, index_sequence<int(IsUnresolvedType)
+                | int(std::tuple_size<Strings>::value)>());
+        }
+    };
+
+    template<typename ...Args> struct HandleArgsHelper {
+        template<typename Strings> static constexpr auto result(const Strings &ss)
+        { return std::make_pair(ss, index_sequence<>()); }
+    };
     template<typename A, typename... Args>
     struct HandleArgsHelper<A, Args...> {
-        using Result =  decltype(index_sequence<qMetaTypeId<A>(), 1>() + typename HandleArgsHelper<Args...>::Result());
+        template<typename Strings> static constexpr auto result(const Strings &ss) {
+            auto r1 = HandleArg<A>::result(ss);
+            auto r2 = HandleArgsHelper<Args...>::result(r1.first);
+            return std::make_pair(r2.first, r1.second + r2.second);
+
+        }
     };
 
     template<typename Strings, typename Obj, typename Ret, typename... Args>
     constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...) ) {
-        constexpr int retTyp = qMetaTypeId<Ret>();
-        return std::make_pair(ss, index_sequence<retTyp>() + typename HandleArgsHelper<Args...>::Result());
+        auto r1 = HandleArgsHelper<Ret, Args...>::result(ss);
+        auto r2 = index_sequence< (void(sizeof(Args)),1)... >(); // names: vector of 1s
+        return std::make_pair(r1.first, r1.second + r2);
     }
 
     template<typename Strings>
@@ -457,7 +500,7 @@ struct FriendHelper1 { /* FIXME */
     template<int... I> struct build_int_data<index_sequence<I...>> {
         static const uint data[sizeof...(I)];
     };
-    template<int... I> const uint build_int_data<index_sequence<I...>>::data[sizeof...(I)] = { I... };
+    template<int... I> const uint build_int_data<index_sequence<I...>>::data[sizeof...(I)] = { uint(I)... };
 
 
     /**
