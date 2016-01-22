@@ -38,6 +38,8 @@
 #include <qabstractproxymodel.h>
 #include <private/qmetaobject_p.h>
 
+#include <nickelspace.h>
+
 Q_DECLARE_METATYPE(const QMetaObject *)
 
 struct MyStruct
@@ -141,7 +143,17 @@ namespace MyNamespace {
 
 class tst_QMetaObject : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(tst_QMetaObject)
+
+#undef Q_PROPERTY
+#define WRITE , &ThisType::
+#define READ , &ThisType::
+#define NOTIFY , &ThisType::
+#define MEMBER , &ThisType::
+
+#define Q_PROPERTY(...)  Q_PROPERTY_IMPL(__VA_ARGS__)  /* expands the WRITE and READ macro */
+#define Q_PROPERTY_IMPL(...) W_PROPERTY(__VA_ARGS__)
+
     Q_PROPERTY(EnumType value WRITE setValue READ getValue)
     Q_PROPERTY(EnumType value2 WRITE set_value READ get_value)
     Q_PROPERTY(MyStruct value3 WRITE setVal3 READ val3)
