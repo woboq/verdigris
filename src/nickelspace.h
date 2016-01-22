@@ -88,7 +88,7 @@ template<int... I1, int... I2> struct concatenate_helper<index_sequence<I1...>, 
         return StaticString<size>( d );
     }
 };
-constexpr StaticString<1> concatenate(const StaticStringList<>) { return ""; }
+constexpr StaticString<1> concatenate(const StaticStringList<>) { return {""}; }
 template<int H,  int... T> constexpr auto concatenate(const StaticStringList<H, T...> &s) {
     auto tail = concatenate(tuple_tail(s));
     return concatenate_helper<make_index_sequence<H>, make_index_sequence<tail.size>>::concatenate(std::get<0>(s), tail);
@@ -148,12 +148,12 @@ namespace MetaObjectBuilder {
     template<typename F, int N>
     constexpr MetaMethodInfo<F, N> makeMetaSlotInfo(F f, StaticStringArray<N> &name,
                                                     W_Access access = W_Access::Public)
-    { return {W_MethodType::Slot , access, f, name }; }
+    { return {W_MethodType::Slot , access, f, {name} }; }
 
     template<typename F, int N, int N2>
     constexpr MetaMethodInfo<F, N> makeMetaSignalInfo(F f, StaticStringArray<N> &name,
                                                       StaticStringArray<N2> &argumentsNames)
-    { return { W_MethodType::Signal, W_Access::Public, f, name }; }
+    { return { W_MethodType::Signal, W_Access::Public, f, {name} }; }
 
 
     /** Holds information about a property */
@@ -215,7 +215,7 @@ namespace MetaObjectBuilder {
 
     template<typename T, int N, typename ... Args>
     constexpr auto makeMetaPropertyInfo(StaticStringArray<N> &name, Args... args) {
-        MetaPropertyInfo<T, N, T(QObject::*)(), void(QObject::*)(const T&), T QObject::*, int> meta { name };
+        MetaPropertyInfo<T, N, T(QObject::*)(), void(QObject::*)(const T&), T QObject::*, int> meta { {name} };
         return parseProperty(meta, args...);
     }
 
@@ -237,7 +237,7 @@ namespace MetaObjectBuilder {
         const auto methodInfo = std::tuple_cat(sigState, T::w_SlotState(cs_number<255>{}));
         const auto propertyInfo = T::w_PropertyState(cs_number<255>{});
         constexpr int sigCount = std::tuple_size<decltype(sigState)>::value;
-        return ClassInfo<N, decltype(methodInfo), decltype(propertyInfo), sigCount>{ name, methodInfo, propertyInfo };
+        return ClassInfo<N, decltype(methodInfo), decltype(propertyInfo), sigCount>{ {name}, methodInfo, propertyInfo };
     }
 
 
@@ -576,9 +576,9 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
     static constexpr int w_signalIndex_##signalName = std::tuple_size<decltype(w_SignalState(cs_number<255>{}))>::value; \
     static constexpr auto w_SignalState(cs_number<w_signalIndex_##signalName + 1> counter) \
         W_RETURN(std::tuple_cat(w_SignalState(counter.prev()), \
-                                std::make_tuple(MetaObjectBuilder::makeMetaSignalInfo(&W_ThisType::signalName, #signalName, #__VA_ARGS__)))) \
+                                std::make_tuple(MetaObjectBuilder::makeMetaSignalInfo(&W_ThisType::signalName, #signalName, #__VA_ARGS__))))
 
 #define W_PROPERTY(TYPE, NAME, ...) \
     static constexpr auto w_PropertyState(cs_number<std::tuple_size<decltype(w_PropertyState(cs_number<255>{}))>::value+1> counter) \
         W_RETURN(std::tuple_cat(w_PropertyState(counter.prev()), \
-                                std::make_tuple(MetaObjectBuilder::makeMetaPropertyInfo<TYPE>(#NAME, __VA_ARGS__)))) \
+                                std::make_tuple(MetaObjectBuilder::makeMetaPropertyInfo<TYPE>(#NAME, __VA_ARGS__))))
