@@ -49,7 +49,14 @@ constexpr auto zip(A a, B b) {
     return zip_helper(a, b, make_index_sequence<std::tuple_size<A>::value>());
 }
 
-
+/**
+ * ones()
+ * return an index_sequence with N ones
+ **/
+template<typename> struct ones_helper;
+template<int...I> struct ones_helper<index_sequence<I...>>
+{ using result = index_sequence<(void(I),1)...>; };
+template<int N> using ones = typename ones_helper<make_index_sequence<N>>::result;
 
 /*
  * Helpers to play with static strings
@@ -165,10 +172,11 @@ namespace MetaObjectBuilder {
 //     { return -1;}
 
     /** Holds information about a method */
-    template<typename F, int NameLength, int Flags>
+    template<typename F, int NameLength, int Flags, typename ParamNames = StaticStringList<>>
     struct MetaMethodInfo {
         F func;
         StaticString<NameLength> name;
+        ParamNames paramNames;
         static constexpr int argCount = QtPrivate::FunctionPointer<F>::ArgumentCount;
         static constexpr int flags = Flags;
         using ReturnType = typename QtPrivate::FunctionPointer<F>::ReturnType;
@@ -185,12 +193,12 @@ namespace MetaObjectBuilder {
     template<typename F, int N, int Flags = W_Access::Public.value>
     constexpr MetaMethodInfo<F, N, Flags | W_MethodType::Slot.value>
     makeMetaSlotInfo(F f, StaticStringArray<N> &name, cs_number<Flags> = {})
-    { return { f, {name} }; }
+    { return { f, {name}, {} }; }
 
-    template<typename F, int N, int N2>
-    constexpr MetaMethodInfo<F, N, W_MethodType::Signal.value | W_Access::Public.value>
-    makeMetaSignalInfo(F f, StaticStringArray<N> &name, StaticStringArray<N2> &/*argumentsNames*/)
-    { return { f, {name} }; }
+    template<typename F, int N, typename ParamNames>
+    constexpr MetaMethodInfo<F, N, W_MethodType::Signal.value | W_Access::Public.value, ParamNames>
+    makeMetaSignalInfo(F f, StaticStringArray<N> &name, ParamNames paramNames)
+    { return { f, {name}, paramNames }; }
 
 
     /** Holds information about a property */
@@ -365,11 +373,30 @@ struct FriendHelper1 { /* FIXME */
         }
     };
 
-    template<typename Strings, typename Obj, typename Ret, typename... Args>
-    constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...) ) {
-        auto r1 = HandleArgsHelper<Ret, Args...>::result(ss);
-        auto r2 = index_sequence< (void(sizeof(Args)),1)... >(); // names: vector of 1s
-        return std::make_pair(r1.first, r1.second + r2);
+    template<int N> struct HandleArgNames{
+        template<typename Strings, int S, int...T>
+        static constexpr auto result(const Strings &ss, StaticStringList<S, T...> pn)
+        {
+            auto s2 = addString(ss, std::get<0>(pn));
+            auto tail = tuple_tail(pn);
+            auto t = HandleArgNames<N-1>::result(s2, tail);
+            return std::make_pair(t.first, index_sequence<std::tuple_size<Strings>::value>() + t.second );
+        }
+        template<typename Strings> static constexpr auto result(const Strings &ss, StaticStringList<>)
+        { return std::make_pair(ss, ones<N>()); }
+
+    };
+    template<> struct HandleArgNames<0> {
+        template<typename Strings, typename PN> static constexpr auto result(const Strings &ss, PN)
+        { return std::make_pair(ss, index_sequence<>()); }
+    };
+
+    template<typename Strings, typename ParamNames, typename Obj, typename Ret, typename... Args>
+    constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...),
+                                                 ParamNames paramNames ) {
+        auto types = HandleArgsHelper<Ret, Args...>::result(ss);
+        auto names = HandleArgNames<sizeof...(Args)>::result(types.first, paramNames);
+        return std::make_pair(names.first, types.second + names.second);
     }
 
     template<typename Strings>
@@ -379,7 +406,7 @@ struct FriendHelper1 { /* FIXME */
     template<typename Strings, typename Method, typename... Tail>
     constexpr auto generateMethodsParameters(const Strings &s, const std::tuple<Method, Tail...> &t) {
         auto method = std::get<0>(t);
-        auto thisMethod = generateSingleMethodParameter(s, method.func);
+        auto thisMethod = generateSingleMethodParameter(s, method.func, method.paramNames);
         auto next = generateMethodsParameters(thisMethod.first, tuple_tail(t));
         return std::make_pair(next.first, thisMethod.second + next.second);
     }
@@ -596,8 +623,6 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
 
 #define W_RETURN(R) -> decltype(R) { return R; }
 
-
-
 #define W_OBJECT(TYPE) \
         using W_ThisType = TYPE; /* This is the only reason why we need TYPE */ \
         template<typename T> friend constexpr QMetaObject createMetaObject(); \
@@ -650,9 +675,14 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
     static constexpr int w_signalIndex_##signalName = std::tuple_size<decltype(w_SignalState(cs_number<255>{}))>::value; \
     static constexpr auto w_SignalState(cs_number<w_signalIndex_##signalName + 1> counter) \
         W_RETURN(std::tuple_cat(w_SignalState(counter.prev()), \
-                                std::make_tuple(MetaObjectBuilder::makeMetaSignalInfo(&W_ThisType::signalName, #signalName, #__VA_ARGS__))))
+            std::make_tuple(MetaObjectBuilder::makeMetaSignalInfo(&W_ThisType::signalName, \
+                #signalName, W_PARAM_TOSTRING(__VA_ARGS__)))))
 
 #define W_PROPERTY(TYPE, NAME, ...) \
     static constexpr auto w_PropertyState(cs_number<std::tuple_size<decltype(w_PropertyState(cs_number<255>{}))>::value+1> counter) \
         W_RETURN(std::tuple_cat(w_PropertyState(counter.prev()), \
                                 std::make_tuple(MetaObjectBuilder::makeMetaPropertyInfo<TYPE>(#NAME, __VA_ARGS__))))
+
+#define W_PARAM_TOSTRING(...) W_PARAM_TOSTRING2(__VA_ARGS__ ,,,,,,,,,,,,,,,,)
+#define W_PARAM_TOSTRING2(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
+    makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)

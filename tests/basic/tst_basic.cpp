@@ -125,7 +125,8 @@ void tst_Basic::property()
 void tst_Basic::signalArgs()
 {
     auto method = QMetaMethod::fromSignal(&BTestObj::signalSeveralArgs);
-    qDebug() << method.parameterTypes() << method.parameterNames();
+    QCOMPARE(method.parameterTypes(), (QByteArrayList{ "int", "QString", "char*" }));
+    QCOMPARE(method.parameterNames(), (QByteArrayList{ "a", "b", "c" }));
 }
 
 
