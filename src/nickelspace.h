@@ -450,7 +450,8 @@ namespace MetaObjectBuilder {
     void indexOfMethod (int *, void **, int, const std::tuple<> &) {}
     template<typename Ms> void indexOfMethod (int *result, void **func, int _id, const Ms &ms) {
         auto f = std::get<0>(ms).func;
-        if (f == *reinterpret_cast<decltype(f)*>(func)) {
+        if (std::get<0>(ms).type == W_MethodType::Signal
+                &&  f == *reinterpret_cast<decltype(f)*>(func)) {
             *result = _id;
         } else {
             indexOfMethod(result, func, _id+1, tuple_tail(ms));
