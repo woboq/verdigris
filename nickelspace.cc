@@ -16,6 +16,13 @@ public:
     W_SLOT_2(fooBar)
 
 
+    int fooBar2(int x) { return x; }
+    W_SLOT_2(fooBar2, W_Access::Private)
+
+    int fooBar3(QString x) { return x.toInt(); }
+    W_SLOT_2(fooBar3, W_Access::Private)
+
+
 };
 
 TestObject::~TestObject()

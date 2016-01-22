@@ -1,7 +1,7 @@
 #include <QtCore/qobjectdefs.h>
+#include <QtCore/qmetatype.h>
 #include <tuple>
 #include <utility>
-
 
 
 /*-----------------------------------------------------------------------------------------------*/
@@ -220,23 +220,24 @@ namespace MetaObjectBuilder {
     template <typename PropInfo> constexpr auto parseProperty(const PropInfo &p) { return p; }
     // setter
     template <typename PropInfo, typename Obj, typename Arg, typename Ret, typename... Tail>
-    constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)(Arg), Tail... t) {
-        return parseProperty(p.setSetter(s) , t...);
-    }
+    constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)(Arg), Tail... t)
+    { return parseProperty(p.setSetter(s) , t...); }
     // getter
     template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
-    constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)(), Tail... t) {
-        return parseProperty(p.setGetter(s), t...);
-    }
+    constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)(), Tail... t)
+    { return parseProperty(p.setGetter(s), t...); }
+    template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
+    constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)() const, Tail... t)
+    { return parseProperty(p.setGetter(s), t...); }
     // member
     template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
-    constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s), Tail... t) {
-        return parseProperty(p.setMember(s) ,t...);
-    }
+    constexpr auto parseProperty(const PropInfo &p, Ret Obj::*s, Tail... t)
+    { return parseProperty(p.setMember(s) ,t...); }
 
     template<typename T, int N, typename ... Args>
     constexpr auto makeMetaPropertyInfo(StaticStringArray<N> &name, Args... args) {
-        MetaPropertyInfo<T, N, T(QObject::*)(), void(QObject::*)(const T&), T QObject::*, int> meta { {name} };
+        MetaPropertyInfo<T, N, T(QObject::*)(), void(QObject::*)(const T&), T QObject::*, int> meta
+        { {name}, {}, {}, {}, {} };
         return parseProperty(meta, args...);
     }
 
@@ -534,16 +535,16 @@ template<typename Ret, typename Obj, typename... Args, int Idx>
 struct SignalImplementation<Ret (Obj::*)(Args...), Idx>{
     static Ret impl (Obj *this_,Args... args) {
         Ret r{};
-        void * a[]= { &r, (&args)... };
-        QMetaObject::activate(this_, &Obj::staticMetaObject, Idx, a);
+        const void * a[]= { &r, (&args)... };
+        QMetaObject::activate(this_, &Obj::staticMetaObject, Idx, const_cast<void **>(a));
         return r;
     }
 };
 template<typename Obj, typename... Args, int Idx>
 struct SignalImplementation<void (Obj::*)(Args...), Idx>{
     static void impl (Obj *this_,Args... args) {
-        void *a[]= { nullptr, (&args)... };
-        QMetaObject::activate(this_, &Obj::staticMetaObject, Idx, a);
+        const void *a[]= { nullptr, (&args)... };
+        QMetaObject::activate(this_, &Obj::staticMetaObject, Idx, const_cast<void **>(a));
     }
 };
 
