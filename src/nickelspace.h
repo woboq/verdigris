@@ -1,4 +1,4 @@
-#include <QtCore/QObject>
+#include <QtCore/qobjectdefs.h>
 #include <tuple>
 #include <utility>
 
@@ -115,25 +115,46 @@ struct cs_number<0>
 { static constexpr int value = 0; };
 
 
-// we do not include qmetaobject.h so replicate some stuff here
 
 // Mirror of QMetaMethod::Access
-enum class W_Access { Public, Protected, Private };
+namespace W_Access {
+/* // From qmetaobject_p.h MethodFlags
+    AccessPrivate = 0x00,
+    AccessProtected = 0x01,
+    AccessPublic = 0x02,
+    AccessMask = 0x03, //mask
+ */
+    constexpr cs_number<0x02> Public{};
+    constexpr cs_number<0x01> Protected{};
+    constexpr cs_number<0x00> Private{};
+}
+
 // Mirror of QMetaMethod::MethodType
-enum class W_MethodType { Method, Signal, Slot, Constructor };
+namespace W_MethodType {
+/*  // From qmetaobject_p.h MethodFlags
+    MethodMethod = 0x00,
+    MethodSignal = 0x04,
+    MethodSlot = 0x08,
+    MethodConstructor = 0x0c,
+    MethodTypeMask = 0x0c,
+*/
+    constexpr cs_number<0x00> Method{};
+    constexpr cs_number<0x04> Signal{};
+    constexpr cs_number<0x08> Slot{};
+    constexpr cs_number<0x0c> Constructor{};
+}
 
 /*-----------------------------------------------------------------------------------------------*/
 /* The code that generates the QMetaObject                                                          */
 /*-----------------------------------------------------------------------------------------------*/
 namespace MetaObjectBuilder {
     /** Holds information about a method */
-    template<typename F, int NameLength>
+    template<typename F, int NameLength, int Flags>
     struct MetaMethodInfo {
-        W_MethodType type;
-        W_Access access;
         F func;
         StaticString<NameLength> name;
         static constexpr int argCount = QtPrivate::FunctionPointer<F>::ArgumentCount;
+        static constexpr int flags = Flags;
         using ReturnType = typename QtPrivate::FunctionPointer<F>::ReturnType;
 
         template<typename T>
@@ -145,15 +166,15 @@ namespace MetaObjectBuilder {
         }
     };
 
-    template<typename F, int N>
-    constexpr MetaMethodInfo<F, N> makeMetaSlotInfo(F f, StaticStringArray<N> &name,
-                                                    W_Access access = W_Access::Public)
-    { return {W_MethodType::Slot , access, f, {name} }; }
+    template<typename F, int N, int Flags = W_Access::Public.value>
+    constexpr MetaMethodInfo<F, N, Flags | W_MethodType::Slot.value>
+    makeMetaSlotInfo(F f, StaticStringArray<N> &name, cs_number<Flags> = {})
+    { return { f, {name} }; }
 
     template<typename F, int N, int N2>
-    constexpr MetaMethodInfo<F, N> makeMetaSignalInfo(F f, StaticStringArray<N> &name,
-                                                      StaticStringArray<N2> &argumentsNames)
-    { return { W_MethodType::Signal, W_Access::Public, f, {name} }; }
+    constexpr MetaMethodInfo<F, N, W_MethodType::Signal.value | W_Access::Public.value>
+    makeMetaSignalInfo(F f, StaticStringArray<N> &name, StaticStringArray<N2> &/*argumentsNames*/)
+    { return { f, {name} }; }
 
 
     /** Holds information about a property */
@@ -230,15 +251,21 @@ namespace MetaObjectBuilder {
         static constexpr int propertyCount = std::tuple_size<Properties>::value;
         static constexpr int signalCount = SignalCount;
     };
+
+struct FriendHelper1 { /* FIXME */
     /** Construct a ClassInfo with just the name */
     template<typename T, int N>
-    constexpr auto makeClassInfo(StaticStringArray<N> &name) {
+    static constexpr auto makeClassInfo(StaticStringArray<N> &name) {
         const auto sigState = T::w_SignalState(cs_number<255>{});
         const auto methodInfo = std::tuple_cat(sigState, T::w_SlotState(cs_number<255>{}));
         const auto propertyInfo = T::w_PropertyState(cs_number<255>{});
         constexpr int sigCount = std::tuple_size<decltype(sigState)>::value;
         return ClassInfo<N, decltype(methodInfo), decltype(propertyInfo), sigCount>{ {name}, methodInfo, propertyInfo };
     }
+};
+
+    template<typename T, int N>
+    constexpr auto makeClassInfo(StaticStringArray<N> &name) { return FriendHelper1::makeClassInfo<T>(name); }
 
 
     /**
@@ -261,7 +288,7 @@ namespace MetaObjectBuilder {
                                           Method::argCount,
                                           ParamIndex, //parametters
                                           1, //tag, always \0
-                                          0x0a /* hardcoded flags: Public */
+                                          Method::flags
                                         >;
 
         auto next = generateMethods<ParamIndex + 1 + Method::argCount * 2>(s2, tuple_tail(t));
@@ -450,7 +477,7 @@ namespace MetaObjectBuilder {
     void indexOfMethod (int *, void **, int, const std::tuple<> &) {}
     template<typename Ms> void indexOfMethod (int *result, void **func, int _id, const Ms &ms) {
         auto f = std::get<0>(ms).func;
-        if (std::get<0>(ms).type == W_MethodType::Signal
+        if (std::get<0>(ms).flags & W_MethodType::Signal.value
                 &&  f == *reinterpret_cast<decltype(f)*>(func)) {
             *result = _id;
         } else {
@@ -469,7 +496,7 @@ constexpr QMetaObject createMetaObject()
     auto string_data = MetaObjectBuilder::build_string_data<Creator>(Creator::string_data);
     auto int_data = MetaObjectBuilder::build_int_data<typename std::remove_const<decltype(Creator::int_data)>::type>::data;
 
-    return { { &T::W_BaseType::staticMetaObject , string_data , int_data,  T::qt_static_metacall }  };
+    return { { &T::W_BaseType::staticMetaObject , string_data , int_data,  T::qt_static_metacall, {}, {} }  };
 }
 
 
@@ -531,6 +558,7 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
         using W_ThisType = TYPE; /* This is the only reason why we need TYPE */ \
         template<typename T> friend constexpr QMetaObject createMetaObject(); \
         template<typename T> friend int qt_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void** _a); \
+        friend struct MetaObjectBuilder::FriendHelper1; \
         static constexpr std::tuple<> w_SlotState(cs_number<0>) { return {}; } \
         static constexpr std::tuple<> w_SignalState(cs_number<0>) { return {}; } \
         static constexpr std::tuple<> w_PropertyState(cs_number<0>) { return {}; } \
@@ -559,13 +587,15 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
 
 
 
-#define W_SLOT_1(access, ...) \
-    __VA_ARGS__; \
-
-#define W_SLOT_2(slotName) \
+#define W_SLOT(slotName, ...) \
     static constexpr auto w_SlotState(cs_number<std::tuple_size<decltype(w_SlotState(cs_number<255>{}))>::value+1> counter) \
         W_RETURN(std::tuple_cat(w_SlotState(counter.prev()), \
-                                std::make_tuple(MetaObjectBuilder::makeMetaSlotInfo(&W_ThisType::slotName, #slotName)))) \
+                                std::make_tuple(MetaObjectBuilder::makeMetaSlotInfo(&W_ThisType::slotName, #slotName, ##__VA_ARGS__))))
+
+//todo: remove
+#define W_SLOT_2 W_SLOT
+
+
 
 #define W_SIGNAL_1(...) \
     __VA_ARGS__ {
