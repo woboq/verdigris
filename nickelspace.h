@@ -126,6 +126,12 @@ struct cs_number<0>
 { static constexpr int value = 0; };
 
 
+// we do not include qmetaobject.h so replicate some stuff here
+
+// Mirror of QMetaMethod::Access
+enum class W_Access { Public, Protected, Private };
+// Mirror of QMetaMethod::MethodType
+enum class W_MethodType { Method, Signal, Slot, Constructor };
 
 /*-----------------------------------------------------------------------------------------------*/
 /* The code that generates the QMetaObject                                                          */
@@ -134,8 +140,8 @@ namespace MetaObjectBuilder {
     /** Holds information about a method */
     template<typename F, int NameLength>
     struct MetaMethodInfo {
-        enum { Signal, Slot } type;
-        enum { Public, Protected, Private } access;
+        W_MethodType type;
+        W_Access access;
         F func;
         StaticString<NameLength> name;
         static constexpr int argCount = QtPrivate::FunctionPointer<F>::ArgumentCount;
@@ -151,12 +157,14 @@ namespace MetaObjectBuilder {
     };
 
     template<typename F, int N>
-    constexpr MetaMethodInfo<F, N> makeMetaSlotInfo(F f, StaticStringArray<N> &name)
-    { return { MetaMethodInfo<F, N>::Slot, MetaMethodInfo<F, N>::Public /* FIXME */, f, name }; }
+    constexpr MetaMethodInfo<F, N> makeMetaSlotInfo(F f, StaticStringArray<N> &name,
+                                                    W_Access access = W_Access::Public)
+    { return {W_MethodType::Slot , access, f, name }; }
 
-    template<typename F, int N>
-    constexpr MetaMethodInfo<F, N> makeMetaSignalInfo(F f, StaticStringArray<N> &name)
-    { return { MetaMethodInfo<F, N>::Signal, MetaMethodInfo<F, N>::Public, f, name }; }
+    template<typename F, int N, int N2>
+    constexpr MetaMethodInfo<F, N> makeMetaSignalInfo(F f, StaticStringArray<N> &name,
+                                                      StaticStringArray<N2> &argumentsNames)
+    { return { W_MethodType::Signal, W_Access::Public, f, name }; }
 
 
     /** Holds information about a property */
@@ -538,6 +546,8 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
 #define W_MACRO_CONCAT(X, Y) W_MACRO_CONCAT2(X, Y)
 #define W_UNIQUE(X) W_MACRO_CONCAT(X, __LINE__)
 
+#define W_RETURN(R) -> decltype(R) { return R; }
+
 
 
 #define W_OBJECT(TYPE) \
@@ -556,8 +566,8 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
 
 #define W_SLOT_2(slotName) \
     static constexpr auto w_MethodState(cs_number<std::tuple_size<decltype(w_MethodState(cs_number<255>{}))>::value+1> counter) \
-    -> decltype(std::tuple_cat(w_MethodState(counter.prev()), std::make_tuple(MetaObjectBuilder::makeMetaSlotInfo(&W_ThisType::slotName, #slotName)))) \
-        { return std::tuple_cat(w_MethodState(counter.prev()), std::make_tuple(MetaObjectBuilder::makeMetaSlotInfo(&W_ThisType::slotName, #slotName))); }
+        W_RETURN(std::tuple_cat(w_MethodState(counter.prev()), \
+                                std::make_tuple(MetaObjectBuilder::makeMetaSlotInfo(&W_ThisType::slotName, #slotName)))) \
 
 #define W_SIGNAL_1(...) \
     static constexpr auto W_UNIQUE(w_signalIndex) = std::tuple_size<decltype(w_MethodState(cs_number<255>{}))>::value; \
@@ -568,8 +578,8 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
         return SignalImplementation<w_SignalType, w_signalIndex>::impl(this,## __VA_ARGS__); \
     } \
     static constexpr auto w_MethodState(cs_number<std::tuple_size<decltype(w_MethodState(cs_number<255>{}))>::value+1> counter) \
-    -> decltype(std::tuple_cat(w_MethodState(counter.prev()), std::make_tuple(MetaObjectBuilder::makeMetaSignalInfo(&W_ThisType::signalName, #signalName)))) \
-        { return std::tuple_cat(w_MethodState(counter.prev()), std::make_tuple(MetaObjectBuilder::makeMetaSignalInfo(&W_ThisType::signalName, #signalName))); }
+        W_RETURN(std::tuple_cat(w_MethodState(counter.prev()), \
+        std::make_tuple(MetaObjectBuilder::makeMetaSignalInfo(&W_ThisType::signalName, #signalName, #__VA_ARGS__)))) \
 
 
 
