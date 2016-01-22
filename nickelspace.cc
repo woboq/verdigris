@@ -48,11 +48,12 @@ public slots:
 
 
         W_SIGNAL_1(void barChanged(int bar))
-        W_SIGNAL_2(barChanged,(bar))
+        W_SIGNAL_2(barChanged,bar)
 
 public:
 
   //  Q_PROPERTY2(int, foo, &MyObject::getFoo, &MyObject::setFoo)
+  //  W_PROPERTY(int, foo, &MyObject::getFoo, &MyObject::setFoo)
 
 };
 
@@ -77,7 +78,7 @@ int main() {
     QMetaObject::invokeMethod(&obj, "setFoo", Q_ARG(int, 111));
 
     //    qDebug() << obj.metaObject()->indexOfMethod("barChanged(int)") - obj.metaObject()->methodOffset();
-    QObject::connect(&obj,SIGNAL(barChanged(int)), &obj, SIGNAL(setFoo(int)));  // (setFoo is using SIGNAL because all method are signal in this prototype)
+    QObject::connect(&obj,SIGNAL(barChanged(int)), &obj, SLOT(setFoo(int)));
     QObject::connect(&obj, &MyObject::barChanged, [](auto q){ qDebug() << Q_FUNC_INFO << q;  });
     obj.barChanged(222);
 

@@ -237,26 +237,24 @@ namespace MetaObjectBuilder {
 #endif
 
     /** Holds information about a class,  includeing all the properties and methods */
-    template<int NameLength, typename Methods, typename Properties>
+    template<int NameLength, typename Methods, typename Properties, int SignalCount>
     struct ClassInfo {
         StaticString<NameLength> name;
         Methods methods;
         Properties properties;
 
-        template<typename P>
-        constexpr auto addProperty(const P&p) const {
-            auto newP = std::tuple_cat(properties, std::make_tuple(p));
-            return ClassInfo<NameLength, Methods, decltype(newP)>{ name, methods, newP };
-        }
-
         static constexpr int methodCount = std::tuple_size<Methods>::value;
         static constexpr int propertyCount = std::tuple_size<Properties>::value;
+        static constexpr int signalCount = SignalCount;
     };
     /** Construct a ClassInfo with just the name */
     template<typename T, int N>
-    constexpr auto makeClassInfo(StaticStringArray<N> &name)
-        -> ClassInfo<N, decltype(T::w_MethodState(cs_number<255>{})), std::tuple<>>
-    { return { name, T::w_MethodState(cs_number<255>{}), {} }; }
+    constexpr auto makeClassInfo(StaticStringArray<N> &name) {
+        const auto sigState = T::w_SignalState(cs_number<255>{});
+        const auto methodInfo = std::tuple_cat(sigState, T::w_SlotState(cs_number<255>{}));
+        constexpr int sigCount = std::tuple_size<decltype(sigState)>::value;
+        return ClassInfo<N, decltype(methodInfo), std::tuple<>, sigCount>{ name, methodInfo, {} };
+    }
 
 
     /**
@@ -348,7 +346,7 @@ namespace MetaObjectBuilder {
                 0,    0, // enums/sets
                 0,    0, // constructors
                 0,       // flags
-                CI::methodCount   // signalCount  /* Yes, everything is considered signal for now */
+                CI::signalCount
         >;
         auto stringData = std::make_tuple(classInfo.name, StaticString<1>(""));
         auto methods = generateMethods<paramIndex>(stringData , classInfo.methods);
@@ -542,10 +540,6 @@ struct SignalImplementation<void (Obj::*)(Args...), Idx>{
 
 template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
 
-#define W_MACRO_CONCAT2(X, Y) X ## Y
-#define W_MACRO_CONCAT(X, Y) W_MACRO_CONCAT2(X, Y)
-#define W_UNIQUE(X) W_MACRO_CONCAT(X, __LINE__)
-
 #define W_RETURN(R) -> decltype(R) { return R; }
 
 
@@ -554,7 +548,8 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
         using W_ThisType = TYPE; /* This is the only reason why we need TYPE */ \
         template<typename T> friend constexpr QMetaObject createMetaObject(); \
         template<typename T> friend int qt_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void** _a); \
-        static constexpr std::tuple<> w_MethodState(cs_number<0>) { return {}; } \
+        static constexpr std::tuple<> w_SlotState(cs_number<0>) { return {}; } \
+        static constexpr std::tuple<> w_SignalState(cs_number<0>) { return {}; } \
     public: \
         struct MetaObjectCreatorHelper; \
         using W_BaseType = decltype(getParentObjectHelper(&W_ThisType::qt_metacast)); \
@@ -565,22 +560,20 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
     __VA_ARGS__; \
 
 #define W_SLOT_2(slotName) \
-    static constexpr auto w_MethodState(cs_number<std::tuple_size<decltype(w_MethodState(cs_number<255>{}))>::value+1> counter) \
-        W_RETURN(std::tuple_cat(w_MethodState(counter.prev()), \
+    static constexpr auto w_SlotState(cs_number<std::tuple_size<decltype(w_SlotState(cs_number<255>{}))>::value+1> counter) \
+        W_RETURN(std::tuple_cat(w_SlotState(counter.prev()), \
                                 std::make_tuple(MetaObjectBuilder::makeMetaSlotInfo(&W_ThisType::slotName, #slotName)))) \
 
 #define W_SIGNAL_1(...) \
-    static constexpr auto W_UNIQUE(w_signalIndex) = std::tuple_size<decltype(w_MethodState(cs_number<255>{}))>::value; \
-    __VA_ARGS__ {  \
-        static constexpr auto w_signalIndex = W_UNIQUE(w_signalIndex);
+    __VA_ARGS__ {
 #define W_SIGNAL_2(signalName, ...) \
         using w_SignalType = decltype(&W_ThisType::signalName); \
-        return SignalImplementation<w_SignalType, w_signalIndex>::impl(this,## __VA_ARGS__); \
+        return SignalImplementation<w_SignalType, w_signalIndex_##signalName>::impl(this,## __VA_ARGS__); \
     } \
-    static constexpr auto w_MethodState(cs_number<std::tuple_size<decltype(w_MethodState(cs_number<255>{}))>::value+1> counter) \
-        W_RETURN(std::tuple_cat(w_MethodState(counter.prev()), \
-        std::make_tuple(MetaObjectBuilder::makeMetaSignalInfo(&W_ThisType::signalName, #signalName, #__VA_ARGS__)))) \
-
+    static constexpr int w_signalIndex_##signalName = std::tuple_size<decltype(w_SignalState(cs_number<255>{}))>::value; \
+    static constexpr auto w_SignalState(cs_number<w_signalIndex_##signalName + 1> counter) \
+        W_RETURN(std::tuple_cat(w_SignalState(counter.prev()), \
+                                std::make_tuple(MetaObjectBuilder::makeMetaSignalInfo(&W_ThisType::signalName, #signalName, #__VA_ARGS__)))) \
 
 
 #define W_OBJECT_IMPL(TYPE) \
