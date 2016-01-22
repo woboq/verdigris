@@ -42,7 +42,11 @@ public slots:
     QObject *getBar() {  return this; }
     W_SLOT_2(getBar)
     signals:  // would expands to public [[qt::signals]]:
-        //void fooChanged();
+
+        W_SIGNAL_1(void fooChanged())
+        W_SIGNAL_2(fooChanged)
+
+
         W_SIGNAL_1(void barChanged(int bar))
         W_SIGNAL_2(barChanged,(bar))
 

@@ -534,6 +534,11 @@ struct SignalImplementation<void (Obj::*)(Args...), Idx>{
 
 template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
 
+#define W_MACRO_CONCAT2(X, Y) X ## Y
+#define W_MACRO_CONCAT(X, Y) W_MACRO_CONCAT2(X, Y)
+#define W_UNIQUE(X) W_MACRO_CONCAT(X, __LINE__)
+
+
 
 #define W_OBJECT(TYPE) \
         using W_ThisType = TYPE; /* This is the only reason why we need TYPE */ \
@@ -555,10 +560,12 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
         { return std::tuple_cat(w_MethodState(counter.prev()), std::make_tuple(MetaObjectBuilder::makeMetaSlotInfo(&W_ThisType::slotName, #slotName))); }
 
 #define W_SIGNAL_1(...) \
-    __VA_ARGS__ { 
+    static constexpr auto W_UNIQUE(w_signalIndex) = std::tuple_size<decltype(w_MethodState(cs_number<255>{}))>::value; \
+    __VA_ARGS__ {  \
+        static constexpr auto w_signalIndex = W_UNIQUE(w_signalIndex);
 #define W_SIGNAL_2(signalName, ...) \
-        using SignalType = decltype(&W_ThisType::signalName); \
-        return SignalImplementation<SignalType, 0>::impl(this, __VA_ARGS__); \
+        using w_SignalType = decltype(&W_ThisType::signalName); \
+        return SignalImplementation<w_SignalType, w_signalIndex>::impl(this,## __VA_ARGS__); \
     } \
     static constexpr auto w_MethodState(cs_number<std::tuple_size<decltype(w_MethodState(cs_number<255>{}))>::value+1> counter) \
     -> decltype(std::tuple_cat(w_MethodState(counter.prev()), std::make_tuple(MetaObjectBuilder::makeMetaSignalInfo(&W_ThisType::signalName, #signalName)))) \
