@@ -43,7 +43,8 @@ public slots:
     W_SLOT_2(getBar)
     signals:  // would expands to public [[qt::signals]]:
         //void fooChanged();
-        //void barChanged(int);
+        W_SIGNAL_1(void barChanged(int bar))
+        W_SIGNAL_2(barChanged,(bar))
 
 public:
 
@@ -73,10 +74,33 @@ int main() {
 
     //    qDebug() << obj.metaObject()->indexOfMethod("barChanged(int)") - obj.metaObject()->methodOffset();
     QObject::connect(&obj,SIGNAL(barChanged(int)), &obj, SIGNAL(setFoo(int)));  // (setFoo is using SIGNAL because all method are signal in this prototype)
-//    QObject::connect(&obj, &MyObject::barChanged, [](auto q){ qDebug() << Q_FUNC_INFO << q;  });
-//    obj.barChanged(222);
+    QObject::connect(&obj, &MyObject::barChanged, [](auto q){ qDebug() << Q_FUNC_INFO << q;  });
+    obj.barChanged(222);
 
     obj.setProperty("foo", 333);
 }
 
+
+#define MACRO_CAT(CAT, ...) CAT
+#define MACRO_TAIL(CAT, ...) __VA_ARGS__
+
+#define X(a) +a+
+
+#define MACRO_FOREACH(FUNC, VAL) MACRO_EVAL(FUNC(MACRO_CAT VAL) MACRO_FOREACH(FUN, (MACRO_TAIL VAL)))
+#define MACRO_FOREACH_(F, V) MACRO_FOREACH
+#define MACRO_EVAL(...) MACRO_EVAL1(MACRO_EVAL1(MACRO_EVAL1(__VA_ARGS__)))
+#define MACRO_EVAL1(...) __VA_ARGS__
+
+
+    qDebug() << QT_STRINGIFY(MACRO_FOREACH(X, (A, B, C, D)));
+
+
+
+
 }
+
+
+
+
+
+

@@ -154,6 +154,11 @@ namespace MetaObjectBuilder {
     constexpr MetaMethodInfo<F, N> makeMetaSlotInfo(F f, StaticStringArray<N> &name)
     { return { MetaMethodInfo<F, N>::Slot, MetaMethodInfo<F, N>::Public /* FIXME */, f, name }; }
 
+    template<typename F, int N>
+    constexpr MetaMethodInfo<F, N> makeMetaSignalInfo(F f, StaticStringArray<N> &name)
+    { return { MetaMethodInfo<F, N>::Signal, MetaMethodInfo<F, N>::Public, f, name }; }
+
+
     /** Holds information about a property */
     template<typename Type, int NameLength, typename Getter, typename Setter, typename Member, typename Notify>
     struct MetaPropertyInfo {
@@ -292,7 +297,7 @@ namespace MetaObjectBuilder {
         return std::make_pair(next.first, thisProp() + next.second);
 
     }
-
+#endif
 
     //Helper class for generateSingleMethodParameter:  generate the parametter array
     template<typename ...Args> struct HandleArgsHelper { using Result = index_sequence<>; };
@@ -319,7 +324,7 @@ namespace MetaObjectBuilder {
         return std::make_pair(next.first, thisMethod.second + next.second);
     }
 
-#endif
+
     // generate the integer array and the lists of string
     template<typename CI>
     constexpr auto generateDataArray(const CI &classInfo) {
@@ -340,8 +345,9 @@ namespace MetaObjectBuilder {
         auto stringData = std::make_tuple(classInfo.name, StaticString<1>(""));
         auto methods = generateMethods<paramIndex>(stringData , classInfo.methods);
      //   auto properties = generateProperties(methods.first , classInfo.properties);
+        auto parametters = generateMethodsParameters(methods.first, classInfo.methods);
      //   auto parametters = generateMethodsParameters(properties.first, classInfo.methods);
-        return std::make_pair(methods.first,  header()  + methods.second /*+ properties.second + parametters.second*/);
+        return std::make_pair(parametters.first,  header()  + methods.second /*+ properties.second*/ + parametters.second);
     }
 
 
@@ -437,7 +443,7 @@ namespace MetaObjectBuilder {
     };
     template<int... I> const uint build_int_data<index_sequence<I...>>::data[sizeof...(I)] = { I... };
 
-#if 0
+
     /**
      * calls metacall on each element of the tuple
      */
@@ -462,7 +468,7 @@ namespace MetaObjectBuilder {
             indexOfMethod(result, func, _id+1, tuple_tail(ms));
         }
     }
-#endif
+
 }
 
 template<typename T>
@@ -479,9 +485,8 @@ constexpr QMetaObject createMetaObject()
 
 
 template<typename T> int qt_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void** _a) {
-#if 0
-    using Creator = MetaObjectBuilder::MetaObjectCreatorHelper<T>;
-    _id = _o->Creator::Base::qt_metacall(_c, _id, _a);
+    using Creator = typename T::MetaObjectCreatorHelper;
+    _id = _o->T::W_BaseType::qt_metacall(_c, _id, _a);
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod || _c == QMetaObject::RegisterMethodArgumentMetaType) {
@@ -494,21 +499,37 @@ template<typename T> int qt_metacall_impl(T *_o, QMetaObject::Call _c, int _id, 
         constexpr auto ps = Creator::classInfo.properties;
         MetaObjectBuilder::metacall(_o, _c, _id, _a, ps);
     }
-#endif
     return _id;
 }
 
 template<typename T> void qt_static_metacall_impl(QObject *_o, QMetaObject::Call _c, int _id, void** _a) {
-#if 0
-    constexpr auto ms = MetaObjectBuilder::MetaObjectCreatorHelper<T>::classInfo.methods;
+    constexpr auto ms = T::MetaObjectCreatorHelper::classInfo.methods;
     if (_c == QMetaObject::InvokeMetaMethod || _c == QMetaObject::RegisterMethodArgumentMetaType) {
         Q_ASSERT(T::staticMetaObject.cast(_o));
         MetaObjectBuilder::metacall(static_cast<T*>(_o), _c, _id, _a, ms);
     } else if (_c == QMetaObject::IndexOfMethod) {
         MetaObjectBuilder::indexOfMethod(reinterpret_cast<int *>(_a[0]), reinterpret_cast<void **>(_a[1]), 0, ms);
     }
-#endif
 }
+
+
+template<typename Func, int Idx> struct SignalImplementation {};
+template<typename Ret, typename Obj, typename... Args, int Idx>
+struct SignalImplementation<Ret (Obj::*)(Args...), Idx>{
+    static Ret impl (Obj *this_,Args... args) {
+        Ret r{};
+        void * a[]= { &r, (&args)... };
+        QMetaObject::activate(this_, &Obj::staticMetaObject, Idx, a);
+        return r;
+    }
+};
+template<typename Obj, typename... Args, int Idx>
+struct SignalImplementation<void (Obj::*)(Args...), Idx>{
+    static void impl (Obj *this_,Args... args) {
+        void *a[]= { nullptr, (&args)... };
+        QMetaObject::activate(this_, &Obj::staticMetaObject, Idx, a);
+    }
+};
 
 
 template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
@@ -517,6 +538,7 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
 #define W_OBJECT(TYPE) \
         using W_ThisType = TYPE; /* This is the only reason why we need TYPE */ \
         template<typename T> friend constexpr QMetaObject createMetaObject(); \
+        template<typename T> friend int qt_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void** _a); \
         static constexpr std::tuple<> w_MethodState(cs_number<0>) { return {}; } \
     public: \
         struct MetaObjectCreatorHelper; \
@@ -527,26 +549,20 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
 #define W_SLOT_1(access, ...) \
     __VA_ARGS__; \
 
-//     static constexpr const int CS_TOKENPASTE2(cs_counter_value, __LINE__) =  \
-//     decltype(cs_counter(cs_number<255>{}))::value; \
-//     static constexpr cs_number<CS_TOKENPASTE2(cs_counter_value, __LINE__) + 1>  \
-//     cs_counter(cs_number<CS_TOKENPASTE2(cs_counter_value, __LINE__) + 1>) \
-//     {  \
-//     return cs_number<CS_TOKENPASTE2(cs_counter_value, __LINE__) + 1>{};      \
-//     }  \
-//     static void cs_regTrigger(cs_number<CS_TOKENPASTE2(cs_counter_value, __LINE__)>) \
-//     {  \
-//     const char *va_args = #__VA_ARGS__;    \
-//     QMetaMethod::Access accessType = QMetaMethod::access; \
-//     constexpr int cntValue = CS_TOKENPASTE2(cs_counter_value, __LINE__);
-//     // do not remove the ";", this is required for part two of the macro
-
-
 #define W_SLOT_2(slotName) \
     static constexpr auto w_MethodState(cs_number<std::tuple_size<decltype(w_MethodState(cs_number<255>{}))>::value+1> counter) \
     -> decltype(std::tuple_cat(w_MethodState(counter.prev()), std::make_tuple(MetaObjectBuilder::makeMetaSlotInfo(&W_ThisType::slotName, #slotName)))) \
         { return std::tuple_cat(w_MethodState(counter.prev()), std::make_tuple(MetaObjectBuilder::makeMetaSlotInfo(&W_ThisType::slotName, #slotName))); }
 
+#define W_SIGNAL_1(...) \
+    __VA_ARGS__ { 
+#define W_SIGNAL_2(signalName, ...) \
+        using SignalType = decltype(&W_ThisType::signalName); \
+        return SignalImplementation<SignalType, 0>::impl(this, __VA_ARGS__); \
+    } \
+    static constexpr auto w_MethodState(cs_number<std::tuple_size<decltype(w_MethodState(cs_number<255>{}))>::value+1> counter) \
+    -> decltype(std::tuple_cat(w_MethodState(counter.prev()), std::make_tuple(MetaObjectBuilder::makeMetaSignalInfo(&W_ThisType::signalName, #signalName)))) \
+        { return std::tuple_cat(w_MethodState(counter.prev()), std::make_tuple(MetaObjectBuilder::makeMetaSignalInfo(&W_ThisType::signalName, #signalName))); }
 
 
 
