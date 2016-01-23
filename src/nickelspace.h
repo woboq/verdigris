@@ -111,17 +111,11 @@ constexpr auto addString(const StaticStringList<N...> &l, const StaticString<L> 
 
 /*-----------*/
 
-template<int N>
-struct cs_number : public cs_number<N - 1>
-{
+template<int N = 255> struct w_number : public w_number<N - 1> {
     static constexpr int value = N;
-    static constexpr cs_number<N-1> prev() { return {}; }
+    static constexpr w_number<N-1> prev() { return {}; }
 };
-
-template<>
-struct cs_number<0>
-{ static constexpr int value = 0; };
-
+template<> struct w_number<0> { static constexpr int value = 0; };
 
 
 // Mirror of QMetaMethod::Access
@@ -132,9 +126,9 @@ namespace W_Access {
     AccessPublic = 0x02,
     AccessMask = 0x03, //mask
  */
-    constexpr cs_number<0x02> Public{};
-    constexpr cs_number<0x01> Protected{};
-    constexpr cs_number<0x00> Private{};
+    constexpr w_number<0x02> Public{};
+    constexpr w_number<0x01> Protected{};
+    constexpr w_number<0x00> Private{};
 }
 
 // Mirror of QMetaMethod::MethodType
@@ -146,10 +140,10 @@ namespace W_MethodType {
     MethodConstructor = 0x0c,
     MethodTypeMask = 0x0c,
 */
-    constexpr cs_number<0x00> Method{};
-    constexpr cs_number<0x04> Signal{};
-    constexpr cs_number<0x08> Slot{};
-    constexpr cs_number<0x0c> Constructor{};
+    constexpr w_number<0x00> Method{};
+    constexpr w_number<0x04> Signal{};
+    constexpr w_number<0x08> Slot{};
+    constexpr w_number<0x0c> Constructor{};
 }
 
 template<typename T> struct W_TypeRegistery { enum { registered = false }; };
@@ -192,7 +186,7 @@ namespace MetaObjectBuilder {
 
     template<typename F, int N, int Flags = W_Access::Public.value>
     constexpr MetaMethodInfo<F, N, Flags | W_MethodType::Slot.value>
-    makeMetaSlotInfo(F f, StaticStringArray<N> &name, cs_number<Flags> = {})
+    makeMetaSlotInfo(F f, StaticStringArray<N> &name, w_number<Flags> = {})
     { return { f, {name}, {} }; }
 
     template<typename F, int N, typename ParamNames>
@@ -281,9 +275,9 @@ struct FriendHelper1 { /* FIXME */
     /** Construct a ClassInfo with just the name */
     template<typename T, int N>
     static constexpr auto makeClassInfo(StaticStringArray<N> &name) {
-        const auto sigState = T::w_SignalState(cs_number<255>{});
-        const auto methodInfo = std::tuple_cat(sigState, T::w_SlotState(cs_number<255>{}));
-        const auto propertyInfo = T::w_PropertyState(cs_number<255>{});
+        const auto sigState = T::w_SignalState(w_number<>{});
+        const auto methodInfo = std::tuple_cat(sigState, T::w_SlotState(w_number<>{}));
+        const auto propertyInfo = T::w_PropertyState(w_number<>{});
         constexpr int sigCount = std::tuple_size<decltype(sigState)>::value;
         return ClassInfo<N, decltype(methodInfo), decltype(propertyInfo), sigCount>{ {name}, methodInfo, propertyInfo };
     }
@@ -628,9 +622,9 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
         template<typename T> friend constexpr QMetaObject createMetaObject(); \
         template<typename T> friend int qt_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void** _a); \
         friend struct MetaObjectBuilder::FriendHelper1; \
-        static constexpr std::tuple<> w_SlotState(cs_number<0>) { return {}; } \
-        static constexpr std::tuple<> w_SignalState(cs_number<0>) { return {}; } \
-        static constexpr std::tuple<> w_PropertyState(cs_number<0>) { return {}; } \
+        static constexpr std::tuple<> w_SlotState(w_number<0>) { return {}; } \
+        static constexpr std::tuple<> w_SignalState(w_number<0>) { return {}; } \
+        static constexpr std::tuple<> w_PropertyState(w_number<0>) { return {}; } \
     public: \
         struct MetaObjectCreatorHelper; \
         using W_BaseType = decltype(getParentObjectHelper(&W_ThisType::qt_metacast)); \
@@ -657,7 +651,7 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
 
 
 #define W_SLOT(slotName, ...) \
-    static constexpr auto w_SlotState(cs_number<std::tuple_size<decltype(w_SlotState(cs_number<255>{}))>::value+1> counter) \
+    static constexpr auto w_SlotState(w_number<std::tuple_size<decltype(w_SlotState(w_number<>{}))>::value+1> counter) \
         W_RETURN(std::tuple_cat(w_SlotState(counter.prev()), \
                                 std::make_tuple(MetaObjectBuilder::makeMetaSlotInfo(&W_ThisType::slotName, #slotName, ##__VA_ARGS__))))
 
@@ -672,14 +666,14 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
         using w_SignalType = decltype(&W_ThisType::signalName); \
         return SignalImplementation<w_SignalType, w_signalIndex_##signalName>::impl(this,## __VA_ARGS__); \
     } \
-    static constexpr int w_signalIndex_##signalName = std::tuple_size<decltype(w_SignalState(cs_number<255>{}))>::value; \
-    static constexpr auto w_SignalState(cs_number<w_signalIndex_##signalName + 1> counter) \
+    static constexpr int w_signalIndex_##signalName = std::tuple_size<decltype(w_SignalState(w_number<>{}))>::value; \
+    static constexpr auto w_SignalState(w_number<w_signalIndex_##signalName + 1> counter) \
         W_RETURN(std::tuple_cat(w_SignalState(counter.prev()), \
             std::make_tuple(MetaObjectBuilder::makeMetaSignalInfo(&W_ThisType::signalName, \
                 #signalName, W_PARAM_TOSTRING(__VA_ARGS__)))))
 
 #define W_PROPERTY(TYPE, NAME, ...) \
-    static constexpr auto w_PropertyState(cs_number<std::tuple_size<decltype(w_PropertyState(cs_number<255>{}))>::value+1> counter) \
+    static constexpr auto w_PropertyState(w_number<std::tuple_size<decltype(w_PropertyState(w_number<>{}))>::value+1> counter) \
         W_RETURN(std::tuple_cat(w_PropertyState(counter.prev()), \
                                 std::make_tuple(MetaObjectBuilder::makeMetaPropertyInfo<TYPE>(#NAME, __VA_ARGS__))))
 
