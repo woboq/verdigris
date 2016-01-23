@@ -181,6 +181,11 @@ namespace MetaObjectBuilder {
     makeMetaSlotInfo(F f, StaticStringArray<N> &name, w_number<Flags> = {})
     { return { f, {name}, {} }; }
 
+    template<typename F, int N, int Flags = W_Access::Public.value>
+    constexpr MetaMethodInfo<F, N, Flags | W_MethodType::Method.value>
+    makeMetaMethodInfo(F f, StaticStringArray<N> &name, w_number<Flags> = {})
+    { return { f, {name}, {} }; }
+
     template<typename F, int N, typename ParamNames>
     constexpr MetaMethodInfo<F, N, W_MethodType::Signal.value | W_Access::Public.value, ParamNames>
     makeMetaSignalInfo(F f, StaticStringArray<N> &name, ParamNames paramNames)
@@ -672,6 +677,7 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
         friend struct ::FriendHelper2; \
         static constexpr std::tuple<> w_SlotState(w_number<0>) { return {}; } \
         static constexpr std::tuple<> w_SignalState(w_number<0>) { return {}; } \
+        static constexpr std::tuple<> w_MethodState(w_number<0>) { return {}; } \
         static constexpr std::tuple<> w_PropertyState(w_number<0>) { return {}; } \
     public: \
         struct MetaObjectCreatorHelper; \
@@ -703,8 +709,11 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
         W_RETURN(tuple_append(w_SlotState(counter.prev()), \
                               MetaObjectBuilder::makeMetaSlotInfo(&W_ThisType::slotName, #slotName, ##__VA_ARGS__)))
 
-//todo: remove
-#define W_SLOT_2 W_SLOT
+#define W_INVOKABLE(slotName, ...) \
+    static constexpr auto w_MethodState(w_number<std::tuple_size<decltype(w_MethodState(w_number<>{}))>::value+1> counter) \
+        W_RETURN(tuple_append(w_MethodState(counter.prev()), \
+                              MetaObjectBuilder::makeMetaMethodInfo(&W_ThisType::slotName, #slotName, ##__VA_ARGS__)))
+
 
 
 
