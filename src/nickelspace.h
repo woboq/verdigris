@@ -719,6 +719,7 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
 makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
 
 #define W_MACRO_EMPTY
+#define W_MACRO_EVAL(...) __VA_ARGS__
 #define W_MACRO_DELAY(X,...) X(__VA_ARGS__)
 #define W_MACRO_DELAY2(X,...) X(__VA_ARGS__)
 #define W_MACRO_TAIL(A, ...) __VA_ARGS__
@@ -732,9 +733,10 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
 
 
 // remove the first argument if it is in parentheses"
-#define W_OVERLOAD_REMOVE(A, ...) W_MACRO_DELAY(W_OVERLOAD_REMOVE2, W_OVERLOAD_REMOVE_HELPER A) ,## __VA_ARGS__
-#define W_OVERLOAD_REMOVE2(A, ...) W_MACRO_DELAY2(W_MACRO_TAIL, W_OVERLOAD_REMOVE_HELPER_##A ,## __VA_ARGS__)
-#define W_OVERLOAD_REMOVE_HELPER(...)
+#define W_OVERLOAD_REMOVE(...) W_MACRO_DELAY(W_OVERLOAD_REMOVE2, W_OVERLOAD_REMOVE_HELPER __VA_ARGS__)
+#define W_OVERLOAD_REMOVE2(...) W_MACRO_DELAY2(W_MACRO_TAIL, W_OVERLOAD_REMOVE_HELPER_##__VA_ARGS__)
+
+#define W_OVERLOAD_REMOVE_HELPER(...) _
 #define W_OVERLOAD_REMOVE_HELPER_W_OVERLOAD_REMOVE_HELPER ,
 
 #define W_RETURN(R) -> decltype(R) { return R; }
@@ -795,7 +797,8 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
     static constexpr int w_signalIndex_##NAME = std::tuple_size<decltype(w_SignalState(w_number<>{}))>::value; \
     static constexpr auto w_SignalState(w_number<w_signalIndex_##NAME + 1> counter) \
         W_RETURN(tuple_append(w_SignalState(counter.prev()), MetaObjectBuilder::makeMetaSignalInfo( \
-            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, W_PARAM_TOSTRING(__VA_ARGS__))))
+            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
+            W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))))
 
 #define W_PROPERTY(TYPE, NAME, ...) \
     static constexpr auto w_PropertyState(w_number<std::tuple_size<decltype(w_PropertyState(w_number<>{}))>::value+1> counter) \

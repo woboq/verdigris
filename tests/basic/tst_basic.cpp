@@ -21,6 +21,9 @@ private /*slots*/:
 
     void signalArgs();
     W_SLOT(signalArgs, W_Access::Private)
+
+    void overloadForm();
+    W_SLOT(overloadForm,(), W_Access::Private)
 };
 
 W_OBJECT_IMPL(tst_Basic)
@@ -127,6 +130,31 @@ void tst_Basic::signalArgs()
     QCOMPARE(method.parameterNames(), (QByteArrayList{ "a", "b", "c" }));
 }
 
+
+struct My {};
+
+class OverloadForm  : public QObject
+{   W_OBJECT(OverloadForm)
+public:
+    int over1(My, int x) { return x; }
+    W_SLOT(over1,(My,int))
+    int over1() const { return 34; }
+    W_INVOKABLE(over1,())
+};
+
+
+W_OBJECT_IMPL(OverloadForm)
+
+
+void overloadForm()
+{
+    OverloadForm obj;
+    int result;
+    QVERIFY(QMetaObject::invokeMethod(&obj, "over1", Q_RETURN_ARG(int, result), Q_ARG(My, {}), Q_ARG(int, 23)));
+    QCOMPARE(result, 23)
+    QVERIFY(QMetaObject::invokeMethod(&obj, "over1", Q_RETURN_ARG(int, result)));
+    QCOMPARE(result, 34)
+}
 
 
 QTEST_MAIN(tst_Basic)
