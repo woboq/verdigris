@@ -34,6 +34,18 @@ template<typename T> constexpr auto tuple_tail(const T& tuple) {
     return tuple_tail_helper(tuple, make_index_sequence<std::tuple_size<T>::value-1>());
 }
 
+/** tuple_append
+ *
+ */
+template<typename T1, typename T, int...I>
+constexpr auto tuple_append_helper(const T1 &tuple, const T &t, index_sequence<I...>) {
+    return std::make_tuple(std::get<I>(tuple)... , t);
+}
+template<typename T1, typename T>
+constexpr auto tuple_append(const T1 &tuple, const T &t) {
+    return tuple_append_helper(tuple, t, make_index_sequence<std::tuple_size<T1>::value>());
+}
+
 
 /** zip():
  * make tuple<pair<A1, B1>, pair<A2, B2>, ...> from two tuples tuple<A1, A2, ...> and tuple<B1, B2, ...>
@@ -105,7 +117,7 @@ template<int H,  int... T> constexpr auto concatenate(const StaticStringList<H, 
 /** Add a string in a StaticStringList */
 template<int L, int...N >
 constexpr auto addString(const StaticStringList<N...> &l, const StaticString<L> & s) {
-    return std::tuple_cat(l, std::make_tuple(s));
+    return tuple_append(l, s);
 }
 
 
@@ -652,8 +664,8 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
 
 #define W_SLOT(slotName, ...) \
     static constexpr auto w_SlotState(w_number<std::tuple_size<decltype(w_SlotState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(std::tuple_cat(w_SlotState(counter.prev()), \
-                                std::make_tuple(MetaObjectBuilder::makeMetaSlotInfo(&W_ThisType::slotName, #slotName, ##__VA_ARGS__))))
+        W_RETURN(tuple_append(w_SlotState(counter.prev()), \
+                              MetaObjectBuilder::makeMetaSlotInfo(&W_ThisType::slotName, #slotName, ##__VA_ARGS__)))
 
 //todo: remove
 #define W_SLOT_2 W_SLOT
@@ -668,14 +680,14 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
     } \
     static constexpr int w_signalIndex_##signalName = std::tuple_size<decltype(w_SignalState(w_number<>{}))>::value; \
     static constexpr auto w_SignalState(w_number<w_signalIndex_##signalName + 1> counter) \
-        W_RETURN(std::tuple_cat(w_SignalState(counter.prev()), \
-            std::make_tuple(MetaObjectBuilder::makeMetaSignalInfo(&W_ThisType::signalName, \
-                #signalName, W_PARAM_TOSTRING(__VA_ARGS__)))))
+        W_RETURN(tuple_append(w_SignalState(counter.prev()), \
+            MetaObjectBuilder::makeMetaSignalInfo(&W_ThisType::signalName, \
+                #signalName, W_PARAM_TOSTRING(__VA_ARGS__))))
 
 #define W_PROPERTY(TYPE, NAME, ...) \
     static constexpr auto w_PropertyState(w_number<std::tuple_size<decltype(w_PropertyState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(std::tuple_cat(w_PropertyState(counter.prev()), \
-                                std::make_tuple(MetaObjectBuilder::makeMetaPropertyInfo<TYPE>(#NAME, __VA_ARGS__))))
+        W_RETURN(tuple_append(w_PropertyState(counter.prev()), \
+                              MetaObjectBuilder::makeMetaPropertyInfo<TYPE>(#NAME, __VA_ARGS__)))
 
 #define W_PARAM_TOSTRING(...) W_PARAM_TOSTRING2(__VA_ARGS__ ,,,,,,,,,,,,,,,,)
 #define W_PARAM_TOSTRING2(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
