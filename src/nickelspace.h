@@ -8,67 +8,42 @@
 /* Helpers to play with tuple or strings at compile time                                         */
 /*-----------------------------------------------------------------------------------------------*/
 
-
-/**
- * define index_sequence and make_index_sequence  since I don't have C++14 headers
- */
-template<int...I> struct index_sequence {
-    /** Added an operator+  to concatenate two sequences */
-    template<int... J> constexpr index_sequence<I...,J...> operator+(index_sequence<J...>) const { return {}; }
-};
-template<int I> struct make_integer_sequence_helper {
-    template<int... Is> static index_sequence<Is..., I-1> func(index_sequence<Is...>);
-    using result = decltype(func(typename make_integer_sequence_helper<I-1>::result()));
-};
-template<> struct make_integer_sequence_helper<0> { using result = index_sequence<>; };
-template<int I> using make_index_sequence = typename make_integer_sequence_helper<I>::result;
-
+template<std::size_t... I, std::size_t...J>
+constexpr std::index_sequence<I...,J...> operator+(std::index_sequence<I...>,std::index_sequence<J...>)
+{ return {}; }
 
 /**
  *  tuple_tail()  Returns a tuple with the first element removed
  */
-template<typename T, int...I> constexpr auto tuple_tail_helper(const T&t , index_sequence<I...>) {
+template<typename T, std::size_t...I> constexpr auto tuple_tail_helper(const T&t , std::index_sequence<I...>) {
     return std::make_tuple(std::get<I+1>(t)...);
 }
 template<typename T> constexpr auto tuple_tail(const T& tuple) {
-    return tuple_tail_helper(tuple, make_index_sequence<std::tuple_size<T>::value-1>());
+    return tuple_tail_helper(tuple, std::make_index_sequence<std::tuple_size<T>::value-1>());
 }
 
 /** tuple_append
  *
  */
-template<typename T1, typename T, int...I>
-constexpr auto tuple_append_helper(const T1 &tuple, const T &t, index_sequence<I...>) {
+template<typename T1, typename T, std::size_t...I>
+constexpr auto tuple_append_helper(const T1 &tuple, const T &t, std::index_sequence<I...>) {
     return std::make_tuple(std::get<I>(tuple)... , t);
 }
 template<typename T1, typename T>
 constexpr auto tuple_append(const T1 &tuple, const T &t) {
-    return tuple_append_helper(tuple, t, make_index_sequence<std::tuple_size<T1>::value>());
+    return tuple_append_helper(tuple, t, std::make_index_sequence<std::tuple_size<T1>::value>());
 }
 
 
-/** zip():
- * make tuple<pair<A1, B1>, pair<A2, B2>, ...> from two tuples tuple<A1, A2, ...> and tuple<B1, B2, ...>
- */
-template<typename A, typename B, int... I>
-constexpr auto zip_helper(A a, B b, index_sequence<I...>) {
-    return std::make_tuple( std::make_pair(std::get<I>(a), std::get<I>(b))... );
-}
-template<typename A, typename B>
-constexpr auto zip(A a, B b) {
-    static_assert(std::tuple_size<A>::value == std::tuple_size<B>::value,
-                  "arguments must be tuples of the same sizes");
-    return zip_helper(a, b, make_index_sequence<std::tuple_size<A>::value>());
-}
 
 /**
  * ones()
  * return an index_sequence with N ones
  **/
 template<typename> struct ones_helper;
-template<int...I> struct ones_helper<index_sequence<I...>>
-{ using result = index_sequence<(void(I),1)...>; };
-template<int N> using ones = typename ones_helper<make_index_sequence<N>>::result;
+template<std::size_t...I> struct ones_helper<std::index_sequence<I...>>
+{ using result = std::index_sequence<(void(I),1)...>; };
+template<int N> using ones = typename ones_helper<std::make_index_sequence<N>>::result;
 
 /*
  * Helpers to play with static strings
@@ -80,9 +55,9 @@ template<int N> using StaticStringArray = const char [N];
 /** Represents a string of size N  (N includes the 0 at the end) */
 template<int N> struct StaticString  {
     StaticStringArray<N> data;
-    template <int... I>
-    constexpr StaticString(StaticStringArray<N> &d, index_sequence<I...>) : data{ (d[I])... } { }
-    constexpr StaticString(StaticStringArray<N> &d) : StaticString(d, make_index_sequence<N>()) {}
+    template <std::size_t... I>
+    constexpr StaticString(StaticStringArray<N> &d, std::index_sequence<I...>) : data{ (d[I])... } { }
+    constexpr StaticString(StaticStringArray<N> &d) : StaticString(d, std::make_index_sequence<N>()) {}
     static constexpr int size = N;
     constexpr char operator[](int p) const { return data[p]; }
 };
@@ -101,7 +76,7 @@ constexpr StaticStringList<N...> makeStaticStringList(StaticStringArray<N> & ...
  *     Note:  keeps the \0 between the strings
  */
 template<typename I1, typename I2> struct concatenate_helper;
-template<int... I1, int... I2> struct concatenate_helper<index_sequence<I1...>, index_sequence<I2...>> {
+template<std::size_t... I1, std::size_t... I2> struct concatenate_helper<std::index_sequence<I1...>, std::index_sequence<I2...>> {
     static constexpr int size = sizeof...(I1) + sizeof...(I2);
     static constexpr auto concatenate(const StaticString<sizeof...(I1)> &s1, const StaticString<sizeof...(I2)> &s2) {
         StaticStringArray<size> d = { s1[I1]... , s2[I2]... };
@@ -111,7 +86,7 @@ template<int... I1, int... I2> struct concatenate_helper<index_sequence<I1...>, 
 constexpr StaticString<1> concatenate(const StaticStringList<>) { return {""}; }
 template<int H,  int... T> constexpr auto concatenate(const StaticStringList<H, T...> &s) {
     auto tail = concatenate(tuple_tail(s));
-    return concatenate_helper<make_index_sequence<H>, make_index_sequence<tail.size>>::concatenate(std::get<0>(s), tail);
+    return concatenate_helper<std::make_index_sequence<H>, std::make_index_sequence<tail.size>>::concatenate(std::get<0>(s), tail);
 }
 
 /** Add a string in a StaticStringList */
@@ -307,7 +282,7 @@ struct FriendHelper1 { /* FIXME */
      */
     template<int, typename Strings>
     constexpr auto generateMethods(const Strings &s, const std::tuple<>&) {
-        return std::make_pair(s, index_sequence<>());
+        return std::make_pair(s, std::index_sequence<>());
     }
     template<int ParamIndex, typename Strings, typename Method, typename... Tail>
     constexpr auto generateMethods(const Strings &s, const std::tuple<Method, Tail...> &t) {
@@ -315,7 +290,7 @@ struct FriendHelper1 { /* FIXME */
         auto method = std::get<0>(t);
         auto s2 = addString(s, method.name);
 
-        using thisMethod = index_sequence<std::tuple_size<Strings>::value, //name
+        using thisMethod = std::index_sequence<std::tuple_size<Strings>::value, //name
                                           Method::argCount,
                                           ParamIndex, //parametters
                                           1, //tag, always \0
@@ -328,7 +303,7 @@ struct FriendHelper1 { /* FIXME */
 
     template<typename Strings>
     constexpr auto generateProperties(const Strings &s, const std::tuple<>&) {
-        return std::make_pair(s, index_sequence<>());
+        return std::make_pair(s, std::index_sequence<>());
     }
     template<typename Strings, typename Prop, typename... Tail>
     constexpr auto generateProperties(const Strings &s, const std::tuple<Prop, Tail...> &t) {
@@ -336,10 +311,10 @@ struct FriendHelper1 { /* FIXME */
         auto prop = std::get<0>(t);
         auto s2 = addString(s, prop.name);
 
-        using thisProp = index_sequence<std::tuple_size<Strings>::value, //name
-                                        qMetaTypeId<typename Prop::PropertyType>(),
-                                        0x03 /* hardcoded flags: Public */
-                                        >;
+        using thisProp = std::index_sequence<std::tuple_size<Strings>::value, //name
+                                             qMetaTypeId<typename Prop::PropertyType>(),
+                                             0x03 /* hardcoded flags: Public */
+                                             >;
 
         auto next = generateProperties(s2, tuple_tail(t));
         return std::make_pair(next.first, thisProp() + next.second);
@@ -351,23 +326,23 @@ struct FriendHelper1 { /* FIXME */
     template<typename T, bool Builtin = QMetaTypeId2<T>::IsBuiltIn>
     struct HandleArg {
         template<typename S> static constexpr auto result(const S&s) {
-            return std::make_pair(s, index_sequence<QMetaTypeId2<T>::MetaType>());
+            return std::make_pair(s, std::index_sequence<QMetaTypeId2<T>::MetaType>());
         }
     };
     template<typename T>
     struct HandleArg<T, false> {
         template<typename Strings> static constexpr auto result(const Strings &ss) {
-            constexpr auto IsUnresolvedType = 0x80000000;
+            constexpr auto IsUnresolvedType = 0x80000000LL;
             static_assert(W_TypeRegistery<T>::registered, "Please Register T with W_DECLARE_METATYPE");
             auto s2 = addString(ss, W_TypeRegistery<T>::name);
-            return std::make_pair(s2, index_sequence<int(IsUnresolvedType)
-                | int(std::tuple_size<Strings>::value)>());
+            return std::make_pair(s2, std::index_sequence<IsUnresolvedType
+                | std::tuple_size<Strings>::value>());
         }
     };
 
     template<typename ...Args> struct HandleArgsHelper {
         template<typename Strings> static constexpr auto result(const Strings &ss)
-        { return std::make_pair(ss, index_sequence<>()); }
+        { return std::make_pair(ss, std::index_sequence<>()); }
     };
     template<typename A, typename... Args>
     struct HandleArgsHelper<A, Args...> {
@@ -386,7 +361,7 @@ struct FriendHelper1 { /* FIXME */
             auto s2 = addString(ss, std::get<0>(pn));
             auto tail = tuple_tail(pn);
             auto t = HandleArgNames<N-1>::result(s2, tail);
-            return std::make_pair(t.first, index_sequence<std::tuple_size<Strings>::value>() + t.second );
+            return std::make_pair(t.first, std::index_sequence<std::tuple_size<Strings>::value>() + t.second );
         }
         template<typename Strings> static constexpr auto result(const Strings &ss, StaticStringList<>)
         { return std::make_pair(ss, ones<N>()); }
@@ -394,7 +369,7 @@ struct FriendHelper1 { /* FIXME */
     };
     template<> struct HandleArgNames<0> {
         template<typename Strings, typename PN> static constexpr auto result(const Strings &ss, PN)
-        { return std::make_pair(ss, index_sequence<>()); }
+        { return std::make_pair(ss, std::index_sequence<>()); }
     };
 
     template<typename Strings, typename ParamNames, typename Obj, typename Ret, typename... Args>
@@ -407,7 +382,7 @@ struct FriendHelper1 { /* FIXME */
 
     template<typename Strings>
     constexpr auto generateMethodsParameters(const Strings &s, const std::tuple<>&) {
-        return std::make_pair(s, index_sequence<>());
+        return std::make_pair(s, std::index_sequence<>());
     }
     template<typename Strings, typename Method, typename... Tail>
     constexpr auto generateMethodsParameters(const Strings &s, const std::tuple<Method, Tail...> &t) {
@@ -424,7 +399,7 @@ struct FriendHelper1 { /* FIXME */
         constexpr int methodOffset = 14;
         constexpr int propertyOffset = methodOffset + CI::methodCount * 5;
         constexpr int paramIndex = propertyOffset + CI::propertyCount * 3 ;
-        using header = index_sequence<
+        using header = std::index_sequence<
                 7,       // revision
                 0,       // classname
                 0,    0, // classinfo
@@ -480,14 +455,14 @@ struct FriendHelper1 { /* FIXME */
      * \param T: the MetaObjectCreatorHelper
      */
     template<typename S, typename I, typename O, typename N, typename T> struct BuildStringDataHelper;
-    template<int... S, int... I, int... O, int...N, typename T>
-    struct BuildStringDataHelper<index_sequence<S...>, index_sequence<I...>, index_sequence<O...>, index_sequence<N...>, T> {
+    template<std::size_t... S, std::size_t... I, std::size_t... O, std::size_t...N, typename T>
+    struct BuildStringDataHelper<std::index_sequence<S...>, std::index_sequence<I...>, std::index_sequence<O...>, std::index_sequence<N...>, T> {
         using meta_stringdata_t = const qt_meta_stringdata_t<sizeof...(I), sizeof...(S)>;
         static meta_stringdata_t qt_meta_stringdata;
     };
-    template<int... S, int... I, int... O, int...N, typename T>
+    template<std::size_t... S, std::size_t... I, std::size_t... O, std::size_t...N, typename T>
     const qt_meta_stringdata_t<sizeof...(I), sizeof...(S)>
-    BuildStringDataHelper<index_sequence<S...>, index_sequence<I...>, index_sequence<O...>, index_sequence<N...>, T>::qt_meta_stringdata = {
+    BuildStringDataHelper<std::index_sequence<S...>, std::index_sequence<I...>, std::index_sequence<O...>, std::index_sequence<N...>, T>::qt_meta_stringdata = {
         {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(N-1,
                 qptrdiff(offsetof(meta_stringdata_t, stringdata) + O - I * sizeof(QByteArrayData)) )...},
         { concatenate(T::string_data)[S]...     }
@@ -503,12 +478,12 @@ struct FriendHelper1 { /* FIXME */
     /**
      * Given N a list of string sizes, compute the list offsets to each of the strings.
      */
-    template<int... N> struct ComputeOffsets;
+    template<std::size_t... N> struct ComputeOffsets;
     template<> struct ComputeOffsets<> {
-        using Result = index_sequence<>;
+        using Result = std::index_sequence<>;
     };
-    template<int H, int... T> struct ComputeOffsets<H, T...> {
-        template<int ... I> static index_sequence<0, (I+H)...> func(index_sequence<I...>);
+    template<std::size_t H, std::size_t... T> struct ComputeOffsets<H, T...> {
+        template<std::size_t ... I> static std::index_sequence<0, (I+H)...> func(std::index_sequence<I...>);
         using Result = decltype(func(typename ComputeOffsets<T...>::Result()));
     };
 
@@ -518,10 +493,10 @@ struct FriendHelper1 { /* FIXME */
      */
     template<typename T, int... N>
     constexpr const QByteArrayData *build_string_data(StaticStringList<N...>)  {
-        return BuildStringDataHelper<make_index_sequence<sums(N...)>,
-                                      make_index_sequence<sizeof...(N)>,
-                                      typename ComputeOffsets<N...>::Result,
-                                      index_sequence<N...>,
+        return BuildStringDataHelper<std::make_index_sequence<sums(N...)>,
+                                     std::make_index_sequence<sizeof...(N)>,
+                                     typename ComputeOffsets<N...>::Result,
+                                     std::index_sequence<N...>,
                                       T>
             ::qt_meta_stringdata.data;
     }
@@ -530,10 +505,10 @@ struct FriendHelper1 { /* FIXME */
      * returns a pointer to an array of string built at compile time.
      */
     template<typename I> struct build_int_data;
-    template<int... I> struct build_int_data<index_sequence<I...>> {
+    template<std::size_t... I> struct build_int_data<std::index_sequence<I...>> {
         static const uint data[sizeof...(I)];
     };
-    template<int... I> const uint build_int_data<index_sequence<I...>>::data[sizeof...(I)] = { uint(I)... };
+    template<std::size_t... I> const uint build_int_data<std::index_sequence<I...>>::data[sizeof...(I)] = { uint(I)... };
 
 
     /**
