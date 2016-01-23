@@ -22,12 +22,12 @@ template<typename T> constexpr auto tuple_tail(const T& tuple) {
     return tuple_tail_helper(tuple, std::make_index_sequence<std::tuple_size<T>::value-1>());
 }
 
-/** tuple_append
- *
+/**
+ * tuple_append() Appends one element to the tuple (faster than tuple_cat)
  */
-template<typename T1, typename T, std::size_t...I>
-constexpr auto tuple_append_helper(const T1 &tuple, const T &t, std::index_sequence<I...>) {
-    return std::make_tuple(std::get<I>(tuple)... , t);
+template<typename... Ts, typename T, std::size_t...I>
+constexpr auto tuple_append_helper(const std::tuple<Ts...> &tuple, const T &t, std::index_sequence<I...>) {
+    return std::tuple<Ts..., T>{std::get<I>(tuple)... , t};
 }
 template<typename T1, typename T>
 constexpr auto tuple_append(const T1 &tuple, const T &t) {
