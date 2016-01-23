@@ -133,6 +133,8 @@ namespace W_MethodType {
     constexpr w_number<0x0c> Constructor{};
 }
 
+constexpr struct {} W_Notify{};
+
 template<typename T> struct W_TypeRegistery { enum { registered = false }; };
 #define W_DECLARE_METATYPE(T) template<> struct W_TypeRegistery<T> { \
     enum { registered = true }; \
@@ -203,6 +205,8 @@ namespace MetaObjectBuilder {
         { return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, S, Member, Notify> {name, typeStr, getter, s, member, notify, flags}; }
         template <typename S> constexpr auto setMember(const S&s) const
         { return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, S, Notify> {name, typeStr, getter, setter, s, notify, flags}; }
+        template <typename S> constexpr auto setNotify(const S&s) const
+        { return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, Member, S> {name, typeStr, getter, setter, member, s, flags}; }
 
         template<typename T>
         void metacall(T *_o, QMetaObject::Call _c, void **_a) const {
@@ -242,6 +246,10 @@ namespace MetaObjectBuilder {
     template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
     constexpr auto parseProperty(const PropInfo &p, Ret Obj::*s, Tail... t)
     { return parseProperty(p.setMember(s) ,t...); }
+    // notify
+    template <typename PropInfo, typename F, typename... Tail>
+    constexpr auto parseProperty(const PropInfo &p, decltype(W_Notify), F f, Tail... t)
+    { return parseProperty(p.setNotify(f) ,t...); }
 
     template<typename T, int N1, int N2, typename ... Args>
     constexpr auto makeMetaPropertyInfo(StaticStringArray<N1> &name, StaticStringArray<N2> &type, Args... args) {
