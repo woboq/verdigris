@@ -3,6 +3,41 @@
 #include <tuple>
 #include <utility>
 
+// Qt should have that https://codereview.qt-project.org/139583
+inline namespace ShouldBeInQt {
+
+template <typename... Args>
+struct QNonConstOverload
+{
+    template <typename R, typename T>
+    Q_DECL_CONSTEXPR auto operator()(R (T::*ptr)(Args...)) const
+    { return ptr; }
+};
+
+template <typename... Args>
+struct QConstOverload
+{
+    template <typename R, typename T>
+    Q_DECL_CONSTEXPR auto operator()(R (T::*ptr)(Args...) const) const
+    { return ptr; }
+};
+
+template <typename... Args>
+struct QOverload : QConstOverload<Args...>, QNonConstOverload<Args...>
+{
+    using QConstOverload<Args...>::operator();
+    using QNonConstOverload<Args...>::operator();
+
+    template <typename R>
+    Q_DECL_CONSTEXPR auto operator()(R (*ptr)(Args...)) const
+    { return ptr; }
+};
+
+template <typename... Args> QOverload<Args...> qOverload = {};
+template <typename... Args> QConstOverload<Args...> qConstOverload = {};
+template <typename... Args> QNonConstOverload<Args...> qNonConstOverload = {};
+
+}
 
 /*-----------------------------------------------------------------------------------------------*/
 /* Helpers to play with tuple or strings at compile time                                         */
@@ -132,6 +167,11 @@ namespace W_MethodType {
     constexpr w_number<0x08> Slot{};
     constexpr w_number<0x0c> Constructor{};
 }
+
+// workaround to avoid leading coma in macro that can optionaly take a flag
+struct W_RemoveLeadingComa { constexpr w_number<0> operator+() const { return {}; } };
+template <typename T> constexpr T operator+(T &&t, W_RemoveLeadingComa) { return t; }
+constexpr W_RemoveLeadingComa W_removeLeadingComa{};
 
 constexpr struct {} W_Notify{};
 
@@ -651,7 +691,8 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
 template<typename Func, int Idx> struct SignalImplementation {};
 template<typename Ret, typename Obj, typename... Args, int Idx>
 struct SignalImplementation<Ret (Obj::*)(Args...), Idx>{
-    static Ret impl (Obj *this_,Args... args) {
+    Obj *this_;
+    Ret operator()(Args... args) const {
         Ret r{};
         const void * a[]= { &r, (&args)... };
         QMetaObject::activate(this_, &Obj::staticMetaObject, Idx, const_cast<void **>(a));
@@ -660,7 +701,8 @@ struct SignalImplementation<Ret (Obj::*)(Args...), Idx>{
 };
 template<typename Obj, typename... Args, int Idx>
 struct SignalImplementation<void (Obj::*)(Args...), Idx>{
-    static void impl (Obj *this_,Args... args) {
+    Obj *this_;
+    void operator()(Args... args) {
         const void *a[]= { nullptr, (&args)... };
         QMetaObject::activate(this_, &Obj::staticMetaObject, Idx, const_cast<void **>(a));
     }
@@ -669,8 +711,36 @@ struct SignalImplementation<void (Obj::*)(Args...), Idx>{
 
 template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
 
+// private macro helpers
+
+// strignify and make a StaticStringList out of an array of arguments
+#define W_PARAM_TOSTRING(...) W_PARAM_TOSTRING2(__VA_ARGS__ ,,,,,,,,,,,,,,,,)
+#define W_PARAM_TOSTRING2(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
+makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
+
+#define W_MACRO_EMPTY
+#define W_MACRO_DELAY(X,...) X(__VA_ARGS__)
+#define W_MACRO_DELAY2(X,...) X(__VA_ARGS__)
+#define W_MACRO_TAIL(A, ...) __VA_ARGS__
+
+// if __VA_ARGS__ is "(types), foobar"   then return just the types, otherwise return nothing
+#define W_OVERLOAD_TYPES(A, ...) W_MACRO_DELAY(W_MACRO_TAIL,W_OVERLOAD_TYPES_HELPER A)
+#define W_OVERLOAD_TYPES_HELPER(...) , __VA_ARGS__
+
+#define W_OVERLOAD_RESOLVE(A, ...) W_MACRO_DELAY(W_MACRO_TAIL,W_OVERLOAD_RESOLVE_HELPER A)
+#define W_OVERLOAD_RESOLVE_HELPER(...) , qOverload<__VA_ARGS__>
+
+
+// remove the first argument if it is in parentheses"
+#define W_OVERLOAD_REMOVE(A, ...) W_MACRO_DELAY(W_OVERLOAD_REMOVE2, W_OVERLOAD_REMOVE_HELPER A) ,## __VA_ARGS__
+#define W_OVERLOAD_REMOVE2(A, ...) W_MACRO_DELAY2(W_MACRO_TAIL, W_OVERLOAD_REMOVE_HELPER_##A ,## __VA_ARGS__)
+#define W_OVERLOAD_REMOVE_HELPER(...)
+#define W_OVERLOAD_REMOVE_HELPER_W_OVERLOAD_REMOVE_HELPER ,
+
 #define W_RETURN(R) -> decltype(R) { return R; }
 
+
+// public macros
 #define W_OBJECT(TYPE) \
         using W_ThisType = TYPE; /* This is the only reason why we need TYPE */ \
         friend struct MetaObjectBuilder::FriendHelper1; \
@@ -704,37 +774,31 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
 
 
 
-#define W_SLOT(slotName, ...) \
+#define W_SLOT(NAME, ...) \
     static constexpr auto w_SlotState(w_number<std::tuple_size<decltype(w_SlotState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(tuple_append(w_SlotState(counter.prev()), \
-                              MetaObjectBuilder::makeMetaSlotInfo(&W_ThisType::slotName, #slotName, ##__VA_ARGS__)))
+        W_RETURN(tuple_append(w_SlotState(counter.prev()), MetaObjectBuilder::makeMetaSlotInfo( \
+            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
+            W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa)))
 
-#define W_INVOKABLE(slotName, ...) \
+#define W_INVOKABLE(NAME, ...) \
     static constexpr auto w_MethodState(w_number<std::tuple_size<decltype(w_MethodState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(tuple_append(w_MethodState(counter.prev()), \
-                              MetaObjectBuilder::makeMetaMethodInfo(&W_ThisType::slotName, #slotName, ##__VA_ARGS__)))
-
-
-
+        W_RETURN(tuple_append(w_MethodState(counter.prev()), MetaObjectBuilder::makeMetaMethodInfo( \
+            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
+            W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa)))
 
 #define W_SIGNAL_1(...) \
     __VA_ARGS__ {
-#define W_SIGNAL_2(signalName, ...) \
-        using w_SignalType = decltype(&W_ThisType::signalName); \
-        return SignalImplementation<w_SignalType, w_signalIndex_##signalName>::impl(this,## __VA_ARGS__); \
+#define W_SIGNAL_2(NAME, ...) \
+        using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
+        return SignalImplementation<w_SignalType, w_signalIndex_##NAME>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
     } \
-    static constexpr int w_signalIndex_##signalName = std::tuple_size<decltype(w_SignalState(w_number<>{}))>::value; \
-    static constexpr auto w_SignalState(w_number<w_signalIndex_##signalName + 1> counter) \
-        W_RETURN(tuple_append(w_SignalState(counter.prev()), \
-            MetaObjectBuilder::makeMetaSignalInfo(&W_ThisType::signalName, \
-                #signalName, W_PARAM_TOSTRING(__VA_ARGS__))))
+    static constexpr int w_signalIndex_##NAME = std::tuple_size<decltype(w_SignalState(w_number<>{}))>::value; \
+    static constexpr auto w_SignalState(w_number<w_signalIndex_##NAME + 1> counter) \
+        W_RETURN(tuple_append(w_SignalState(counter.prev()), MetaObjectBuilder::makeMetaSignalInfo( \
+            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, W_PARAM_TOSTRING(__VA_ARGS__))))
 
 #define W_PROPERTY(TYPE, NAME, ...) \
     static constexpr auto w_PropertyState(w_number<std::tuple_size<decltype(w_PropertyState(w_number<>{}))>::value+1> counter) \
         W_RETURN(tuple_append(w_PropertyState(counter.prev()), \
                               MetaObjectBuilder::makeMetaPropertyInfo<TYPE>(#NAME, #TYPE, __VA_ARGS__)))
-
-#define W_PARAM_TOSTRING(...) W_PARAM_TOSTRING2(__VA_ARGS__ ,,,,,,,,,,,,,,,,)
-#define W_PARAM_TOSTRING2(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
-    makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
 

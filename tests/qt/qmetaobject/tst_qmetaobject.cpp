@@ -374,9 +374,9 @@ private slots:
         if (!obj || obj != child)
             qWarning() << "on_child1_destroyed invoked with wrong child object";
     }
-    //W_SLOT(on_child1_destroyed)
+    W_SLOT(on_child1_destroyed,(QObject*))
     void on_child1_destroyed() { ++invokeCount2; }
-   // W_SLOT(on_child1_destroyed)
+    W_SLOT(on_child1_destroyed,())
 };
 
 W_OBJECT_IMPL(CTestObjectOverloads)
