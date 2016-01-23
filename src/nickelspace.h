@@ -202,9 +202,14 @@ namespace MetaObjectBuilder {
 
         template<typename T>
         void metacall(T *_o, QMetaObject::Call _c, void **_a) const {
+            using P = QtPrivate::FunctionPointer<F>;
             if (_c == QMetaObject::InvokeMetaMethod) {
-                using P = QtPrivate::FunctionPointer<F>;
                 P::template call<typename P::Arguments, ReturnType>(func, _o, _a);
+            } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
+                auto _t = QtPrivate::ConnectionTypes<typename P::Arguments>::types();
+                uint arg = *reinterpret_cast<int*>(_a[1]);
+                *reinterpret_cast<int*>(_a[0]) = _t && arg < QtPrivate::FunctionPointer<F>::ArgumentCount ?
+                    _t[arg] : -1;
             }
         }
     };
