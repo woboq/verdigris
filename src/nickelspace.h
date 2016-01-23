@@ -139,6 +139,9 @@ template<typename T> struct W_TypeRegistery { enum { registered = false }; };
     static constexpr auto name = makeStaticString(#T); \
 };
 
+W_DECLARE_METATYPE(char*)
+W_DECLARE_METATYPE(const char*)
+
 /*-----------------------------------------------------------------------------------------------*/
 /* The code that generates the QMetaObject                                                          */
 /*-----------------------------------------------------------------------------------------------*/
@@ -183,10 +186,11 @@ namespace MetaObjectBuilder {
 
 
     /** Holds information about a property */
-    template<typename Type, int NameLength, typename Getter, typename Setter, typename Member, typename Notify>
+    template<typename Type, int NameLength, int TypeLength, typename Getter, typename Setter, typename Member, typename Notify>
     struct MetaPropertyInfo {
         using PropertyType = Type;
         StaticString<NameLength> name;
+        StaticString<TypeLength> typeStr;
         Getter getter;
         Setter setter;
         Member member;
@@ -194,11 +198,11 @@ namespace MetaObjectBuilder {
         uint flags = 0;
 
         template <typename S> constexpr auto setGetter(const S&s) const
-        { return MetaPropertyInfo<Type, NameLength, S, Setter, Member, Notify>{name, s, setter, member, notify, flags}; }
+        { return MetaPropertyInfo<Type, NameLength, TypeLength, S, Setter, Member, Notify> {name, typeStr, s, setter, member, notify, flags}; }
         template <typename S> constexpr auto setSetter(const S&s) const
-        { return MetaPropertyInfo<Type, NameLength, Getter, S, Member, Notify>{name, getter, s, member, notify, flags}; }
+        { return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, S, Member, Notify> {name, typeStr, getter, s, member, notify, flags}; }
         template <typename S> constexpr auto setMember(const S&s) const
-        { return MetaPropertyInfo<Type, NameLength, Getter, Setter, S, Notify>{name, getter, setter, s, notify, flags}; }
+        { return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, S, Notify> {name, typeStr, getter, setter, s, notify, flags}; }
 
         template<typename T>
         void metacall(T *_o, QMetaObject::Call _c, void **_a) const {
@@ -239,10 +243,10 @@ namespace MetaObjectBuilder {
     constexpr auto parseProperty(const PropInfo &p, Ret Obj::*s, Tail... t)
     { return parseProperty(p.setMember(s) ,t...); }
 
-    template<typename T, int N, typename ... Args>
-    constexpr auto makeMetaPropertyInfo(StaticStringArray<N> &name, Args... args) {
-        MetaPropertyInfo<T, N, T(QObject::*)(), void(QObject::*)(const T&), T QObject::*, int> meta
-        { {name}, {}, {}, {}, {} };
+    template<typename T, int N1, int N2, typename ... Args>
+    constexpr auto makeMetaPropertyInfo(StaticStringArray<N1> &name, StaticStringArray<N2> &type, Args... args) {
+        MetaPropertyInfo<T, N1, N2, T(QObject::*)(), void(QObject::*)(const T&), T QObject::*, int> meta
+        { {name}, {type}, {}, {}, {}, {} };
         return parseProperty(meta, args...);
     }
 
@@ -301,6 +305,34 @@ struct FriendHelper1 { /* FIXME */
         return std::make_pair(next.first, thisMethod() + next.second);
     }
 
+    template <typename T, typename = void> struct MetaTypeIdIsBuiltIn : std::false_type {};
+    template <typename T> struct MetaTypeIdIsBuiltIn<T, typename std::enable_if<QMetaTypeId2<T>::IsBuiltIn>::type> : std::true_type{};
+
+    template<typename T, bool Builtin = MetaTypeIdIsBuiltIn<T>::value>
+    struct HandleType {
+        template<typename S, typename TypeStr = int>
+        static constexpr auto result(const S&s, TypeStr = {})
+        { return std::make_pair(s, std::index_sequence<QMetaTypeId2<T>::MetaType>()); }
+    };
+    template<typename T>
+    struct HandleType<T, false> {
+        enum { IsUnresolvedType = 0x80000000 };
+        template<typename Strings, typename TypeStr = int>
+        static constexpr auto result(const Strings &ss, TypeStr = {}) {
+            static_assert(W_TypeRegistery<T>::registered, "Please Register T with W_DECLARE_METATYPE");
+            auto s2 = addString(ss, W_TypeRegistery<T>::name);
+            return std::make_pair(s2, std::index_sequence<IsUnresolvedType
+                                                | std::tuple_size<Strings>::value>());
+        }
+        template<typename Strings, int N>
+        static constexpr auto result(const Strings &ss, StaticString<N> typeStr,
+                                     typename std::enable_if<(N>1),int>::type=0) {
+            auto s2 = addString(ss, typeStr);
+            return std::make_pair(s2, std::index_sequence<IsUnresolvedType
+                    | std::tuple_size<Strings>::value>());
+        }
+    };
+
     template<typename Strings>
     constexpr auto generateProperties(const Strings &s, const std::tuple<>&) {
         return std::make_pair(s, std::index_sequence<>());
@@ -310,35 +342,45 @@ struct FriendHelper1 { /* FIXME */
 
         auto prop = std::get<0>(t);
         auto s2 = addString(s, prop.name);
+        auto type = HandleType<typename Prop::PropertyType>::result(s2, prop.typeStr);
+        auto next = generateProperties(type.first, tuple_tail(t));
 
-        using thisProp = std::index_sequence<std::tuple_size<Strings>::value, //name
-                                             qMetaTypeId<typename Prop::PropertyType>(),
-                                             0x03 /* hardcoded flags: Public */
-                                             >;
+        // From qmetaobject_p.h
+        enum PropertyFlags  {
+            Invalid = 0x00000000,
+            Readable = 0x00000001,
+            Writable = 0x00000002,
+            Resettable = 0x00000004,
+            EnumOrFlag = 0x00000008,
+            StdCppSet = 0x00000100,
+            //     Override = 0x00000200,
+            Constant = 0x00000400,
+            Final = 0x00000800,
+            Designable = 0x00001000,
+            ResolveDesignable = 0x00002000,
+            Scriptable = 0x00004000,
+            ResolveScriptable = 0x00008000,
+            Stored = 0x00010000,
+            ResolveStored = 0x00020000,
+            Editable = 0x00040000,
+            ResolveEditable = 0x00080000,
+            User = 0x00100000,
+            ResolveUser = 0x00200000,
+            Notify = 0x00400000,
+            Revisioned = 0x00800000
+        };
 
-        auto next = generateProperties(s2, tuple_tail(t));
-        return std::make_pair(next.first, thisProp() + next.second);
+        constexpr std::size_t flags = (Writable|Readable); // FIXME
+
+        auto thisProp = std::index_sequence<std::tuple_size<Strings>::value>() //name
+                        + type.second
+                        + std::index_sequence<flags>()
+                        + next.second;
+        return std::make_pair(next.first, thisProp);
 
     }
 
     //Helper class for generateSingleMethodParameter:  generate the parametter array
-
-    template<typename T, bool Builtin = QMetaTypeId2<T>::IsBuiltIn>
-    struct HandleArg {
-        template<typename S> static constexpr auto result(const S&s) {
-            return std::make_pair(s, std::index_sequence<QMetaTypeId2<T>::MetaType>());
-        }
-    };
-    template<typename T>
-    struct HandleArg<T, false> {
-        template<typename Strings> static constexpr auto result(const Strings &ss) {
-            constexpr auto IsUnresolvedType = 0x80000000LL;
-            static_assert(W_TypeRegistery<T>::registered, "Please Register T with W_DECLARE_METATYPE");
-            auto s2 = addString(ss, W_TypeRegistery<T>::name);
-            return std::make_pair(s2, std::index_sequence<IsUnresolvedType
-                | std::tuple_size<Strings>::value>());
-        }
-    };
 
     template<typename ...Args> struct HandleArgsHelper {
         template<typename Strings> static constexpr auto result(const Strings &ss)
@@ -347,7 +389,7 @@ struct FriendHelper1 { /* FIXME */
     template<typename A, typename... Args>
     struct HandleArgsHelper<A, Args...> {
         template<typename Strings> static constexpr auto result(const Strings &ss) {
-            auto r1 = HandleArg<A>::result(ss);
+            auto r1 = HandleType<A>::result(ss);
             auto r2 = HandleArgsHelper<Args...>::result(r1.first);
             return std::make_pair(r2.first, r1.second + r2.second);
 
@@ -539,8 +581,11 @@ struct FriendHelper1 { /* FIXME */
 
 }
 
+
+struct FriendHelper2 {
+
 template<typename T>
-constexpr QMetaObject createMetaObject()
+static constexpr QMetaObject createMetaObject()
 {
 
     using Creator = typename T::MetaObjectCreatorHelper;
@@ -552,7 +597,7 @@ constexpr QMetaObject createMetaObject()
 }
 
 
-template<typename T> int qt_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void** _a) {
+template<typename T> static int qt_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void** _a) {
     using Creator = typename T::MetaObjectCreatorHelper;
     _id = _o->T::W_BaseType::qt_metacall(_c, _id, _a);
     if (_id < 0)
@@ -570,7 +615,7 @@ template<typename T> int qt_metacall_impl(T *_o, QMetaObject::Call _c, int _id, 
     return _id;
 }
 
-template<typename T> void qt_static_metacall_impl(QObject *_o, QMetaObject::Call _c, int _id, void** _a) {
+template<typename T> static void qt_static_metacall_impl(QObject *_o, QMetaObject::Call _c, int _id, void** _a) {
     constexpr auto ms = T::MetaObjectCreatorHelper::classInfo.methods;
     if (_c == QMetaObject::InvokeMetaMethod || _c == QMetaObject::RegisterMethodArgumentMetaType) {
         Q_ASSERT(T::staticMetaObject.cast(_o));
@@ -579,6 +624,15 @@ template<typename T> void qt_static_metacall_impl(QObject *_o, QMetaObject::Call
         MetaObjectBuilder::indexOfMethod(reinterpret_cast<int *>(_a[0]), reinterpret_cast<void **>(_a[1]), 0, ms);
     }
 }
+
+};
+
+template<typename T> constexpr auto createMetaObject() {  return FriendHelper2::createMetaObject<T>(); }
+template<typename T, typename... Ts> auto qt_metacall_impl(Ts &&...args)
+{  return FriendHelper2::qt_metacall_impl<T>(std::forward<Ts>(args)...); }
+template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
+{  return FriendHelper2::qt_static_metacall_impl<T>(std::forward<Ts>(args)...); }
+
 
 
 template<typename Func, int Idx> struct SignalImplementation {};
@@ -606,9 +660,8 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
 
 #define W_OBJECT(TYPE) \
         using W_ThisType = TYPE; /* This is the only reason why we need TYPE */ \
-        template<typename T> friend constexpr QMetaObject createMetaObject(); \
-        template<typename T> friend int qt_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void** _a); \
         friend struct MetaObjectBuilder::FriendHelper1; \
+        friend struct ::FriendHelper2; \
         static constexpr std::tuple<> w_SlotState(w_number<0>) { return {}; } \
         static constexpr std::tuple<> w_SignalState(w_number<0>) { return {}; } \
         static constexpr std::tuple<> w_PropertyState(w_number<0>) { return {}; } \
@@ -662,8 +715,9 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
 #define W_PROPERTY(TYPE, NAME, ...) \
     static constexpr auto w_PropertyState(w_number<std::tuple_size<decltype(w_PropertyState(w_number<>{}))>::value+1> counter) \
         W_RETURN(tuple_append(w_PropertyState(counter.prev()), \
-                              MetaObjectBuilder::makeMetaPropertyInfo<TYPE>(#NAME, __VA_ARGS__)))
+                              MetaObjectBuilder::makeMetaPropertyInfo<TYPE>(#NAME, #TYPE, __VA_ARGS__)))
 
 #define W_PARAM_TOSTRING(...) W_PARAM_TOSTRING2(__VA_ARGS__ ,,,,,,,,,,,,,,,,)
 #define W_PARAM_TOSTRING2(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
     makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
+

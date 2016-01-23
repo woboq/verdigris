@@ -41,8 +41,6 @@ void tst_Basic::firstTest()
 
 */
 
-W_DECLARE_METATYPE(char*)
-Q_DECLARE_METATYPE(char*)
 
 class BTestObj  : public QObject
 {   W_OBJECT(BTestObj)

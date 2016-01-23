@@ -40,7 +40,19 @@
 
 #include <nickelspace.h>
 
+#define WRITE , &W_ThisType::
+#define READ , &W_ThisType::
+#define NOTIFY , &W_ThisType::
+#define MEMBER , &W_ThisType::
+#define CONSTANT //TODO
+#define FINAL //TODO
+#define W_PROPERTY2(...) W_PROPERTY(__VA_ARGS__)
+
 Q_DECLARE_METATYPE(const QMetaObject *)
+
+W_DECLARE_METATYPE(QList<QString>)
+W_DECLARE_METATYPE(QString&)
+
 
 struct MyStruct
 {
@@ -51,9 +63,7 @@ namespace MyNamespace {
     // Used in tst_QMetaObject::checkScope
     class MyClass : public QObject
     {
-        Q_OBJECT
-        Q_PROPERTY(MyEnum myEnum READ myEnum WRITE setMyEnum)
-        Q_PROPERTY(MyFlags myFlags READ myFlags WRITE setMyFlags)
+        W_OBJECT(MyClass)
 
     public:
         enum MyEnum {
@@ -91,6 +101,11 @@ namespace MyNamespace {
 
         MyEnum m_enum;
         MyFlags m_flags;
+
+        W_PROPERTY2(MyEnum, myEnum READ myEnum WRITE setMyEnum)
+        W_PROPERTY2(MyFlags, myFlags READ myFlags WRITE setMyFlags)
+
+
     };
     Q_DECLARE_OPERATORS_FOR_FLAGS(MyClass::MyFlags)
 
@@ -98,9 +113,7 @@ namespace MyNamespace {
     // test the old Q_ENUMS macro
     class MyClass2 : public QObject
     {
-        Q_OBJECT
-        Q_PROPERTY(MyEnum myEnum READ myEnum WRITE setMyEnum)
-        Q_PROPERTY(MyFlags myFlags READ myFlags WRITE setMyFlags)
+        W_OBJECT(MyClass2)
 
     public:
         enum MyEnum {
@@ -137,33 +150,18 @@ namespace MyNamespace {
 
         MyEnum m_enum;
         MyFlags m_flags;
+
+        W_PROPERTY2(MyEnum, myEnum READ myEnum WRITE setMyEnum)
+        W_PROPERTY2(MyFlags, myFlags READ myFlags WRITE setMyFlags)
+
     };
 }
-
+W_OBJECT_IMPL(MyNamespace::MyClass)
+W_OBJECT_IMPL(MyNamespace::MyClass2)
 
 class tst_QMetaObject : public QObject
 {
     W_OBJECT(tst_QMetaObject)
-
-#undef Q_PROPERTY
-#define WRITE , &ThisType::
-#define READ , &ThisType::
-#define NOTIFY , &ThisType::
-#define MEMBER , &ThisType::
-
-#define Q_PROPERTY(...)  Q_PROPERTY_IMPL(__VA_ARGS__)  /* expands the WRITE and READ macro */
-#define Q_PROPERTY_IMPL(...) W_PROPERTY(__VA_ARGS__)
-
-    Q_PROPERTY(EnumType value WRITE setValue READ getValue)
-    Q_PROPERTY(EnumType value2 WRITE set_value READ get_value)
-    Q_PROPERTY(MyStruct value3 WRITE setVal3 READ val3)
-    Q_PROPERTY(QList<QVariant> value4 WRITE setVal4 READ val4)
-    Q_PROPERTY(QVariantList value5 WRITE setVal5 READ val5)
-    Q_PROPERTY(int value6 READ value6 NOTIFY value6Changed)
-    Q_PROPERTY(MyStruct value7 READ value7 WRITE setVal7 NOTIFY value7Changed)
-    Q_PROPERTY(int value8 READ value8)
-    Q_PROPERTY(int value9 READ value9 CONSTANT)
-    Q_PROPERTY(int value10 READ value10 FINAL)
 
 public:
     enum EnumType { EnumType1 };
@@ -238,11 +236,70 @@ private slots:
     void signalIndex_data();
     void signalIndex();
     void enumDebugStream();
+    /***/
+    W_SLOT(connectSlotsByName, W_Access::Private)
+    W_SLOT(invokeMetaMember, W_Access::Private)
+    W_SLOT(invokeQueuedMetaMember, W_Access::Private)
+    W_SLOT(invokeBlockingQueuedMetaMember, W_Access::Private)
+    W_SLOT(invokeCustomTypes, W_Access::Private)
+    W_SLOT(invokeMetaConstructor, W_Access::Private)
+    W_SLOT(invokeTypedefTypes, W_Access::Private)
+    W_SLOT(invokeException, W_Access::Private)
+    W_SLOT(qtMetaObjectInheritance, W_Access::Private)
+    W_SLOT(normalizedSignature_data, W_Access::Private)
+    W_SLOT(normalizedSignature, W_Access::Private)
+    W_SLOT(normalizedType_data, W_Access::Private)
+    W_SLOT(normalizedType, W_Access::Private)
+    W_SLOT(customPropertyType, W_Access::Private)
+    W_SLOT(checkScope_data, W_Access::Private)
+    W_SLOT(checkScope, W_Access::Private)
+    W_SLOT(propertyNotify, W_Access::Private)
+    W_SLOT(propertyConstant, W_Access::Private)
+    W_SLOT(propertyFinal, W_Access::Private)
+
+    W_SLOT(stdSet, W_Access::Private)
+    W_SLOT(classInfo, W_Access::Private)
+
+    W_SLOT(metaMethod, W_Access::Private)
+
+    W_SLOT(indexOfMethod_data, W_Access::Private)
+    W_SLOT(indexOfMethod, W_Access::Private)
+
+    W_SLOT(indexOfMethodPMF, W_Access::Private)
+
+    W_SLOT(signalOffset_data, W_Access::Private)
+    W_SLOT(signalOffset, W_Access::Private)
+    W_SLOT(signalCount_data, W_Access::Private)
+    W_SLOT(signalCount, W_Access::Private)
+    W_SLOT(signal_data, W_Access::Private)
+    W_SLOT(signal, W_Access::Private)
+    W_SLOT(signalIndex_data, W_Access::Private)
+    W_SLOT(signalIndex, W_Access::Private)
+    W_SLOT(enumDebugStream, W_Access::Private)
+
 
 signals:
-    void value6Changed();
-    void value7Changed(const QString &);
+    W_SIGNAL_1(void value6Changed())
+    W_SIGNAL_2(value6Changed)
+    W_SIGNAL_1(void value7Changed(const QString &_))
+    W_SIGNAL_2(value7Changed,_)
+
+
+    W_PROPERTY2(EnumType, value WRITE setValue READ getValue)
+    W_PROPERTY2(EnumType, value2 WRITE set_value READ get_value)
+    W_PROPERTY2(MyStruct, value3 WRITE setVal3 READ val3)
+    W_PROPERTY2(QList<QVariant>, value4 WRITE setVal4 READ val4)
+    W_PROPERTY2(QVariantList, value5 WRITE setVal5 READ val5)
+    W_PROPERTY2(int, value6 READ value6 NOTIFY value6Changed)
+    W_PROPERTY2(MyStruct, value7 READ value7 WRITE setVal7 NOTIFY value7Changed)
+    W_PROPERTY2(int, value8 READ value8)
+    W_PROPERTY2(int, value9 READ value9 CONSTANT)
+    W_PROPERTY2(int, value10 READ value10 FINAL)
+
 };
+
+W_OBJECT_IMPL(tst_QMetaObject)
+
 
 void tst_QMetaObject::stdSet()
 {
@@ -259,7 +316,7 @@ void tst_QMetaObject::stdSet()
 
 class CTestObject: public QObject
 {
-    Q_OBJECT
+    W_OBJECT(CTestObject)
 
 public:
     CTestObject(): QObject(), invokeCount1(0), invokeCount2(0)
@@ -285,12 +342,17 @@ public slots:
         if (!obj || obj != child)
             qWarning() << "on_child1_destroyed invoked with wrong child object";
     }
+    W_SLOT(on_child1_destroyed)
     void on_child2_destroyed() { ++invokeCount2; }
+    W_SLOT(on_child2_destroyed)
 };
+
+W_OBJECT_IMPL(CTestObject)
+
 
 class CTestObjectOverloads: public QObject
 {
-    Q_OBJECT
+    W_OBJECT(CTestObjectOverloads)
 
 public:
     CTestObjectOverloads(): invokeCount1(0), invokeCount2(0) {}
@@ -314,8 +376,12 @@ private slots:
         if (!obj || obj != child)
             qWarning() << "on_child1_destroyed invoked with wrong child object";
     }
+    //W_SLOT(on_child1_destroyed)
     void on_child1_destroyed() { ++invokeCount2; }
+   // W_SLOT(on_child1_destroyed)
 };
+
+W_OBJECT_IMPL(CTestObjectOverloads)
 
 #define FUNCTION(x) "QMetaObject::" x ": "
 
@@ -371,7 +437,7 @@ class ObjectException : public std::exception { };
 class QtTestObject: public QObject
 {
     friend class tst_QMetaObject;
-    Q_OBJECT
+    W_OBJECT(QtTestObject)
 
 public:
     QtTestObject();
@@ -379,33 +445,51 @@ public:
 
 public slots:
     void sl0();
+    W_SLOT(sl0)
     QString sl1(QString s1);
+    W_SLOT(sl1)
     void sl2(QString s1, QString s2);
+    W_SLOT(sl2)
     void sl3(QString s1, QString s2, QString s3);
+    W_SLOT(sl3)
     void sl4(QString s1, QString s2, QString s3, const QString s4);
+    W_SLOT(sl4)
     void sl5(QString s1, QString s2, QString s3, QString s4, const QString &s5);
+    W_SLOT(sl5)
     void sl6(QString s1, QString s2, QString s3, QString s4, const QString s5, QString s6);
+    W_SLOT(sl6)
     void sl7(QString s1, QString s2, QString s3, QString s4, QString s5, QString s6, QString s7);
+    W_SLOT(sl7)
     void sl8(QString s1, QString s2, QString s3, QString s4, QString s5, QString s6, QString s7,
             QString s8);
+    W_SLOT(sl8)
     void sl9(QString s1, QString s2, QString s3, QString s4, QString s5, QString s6, QString s7,
             QString s8, QString s9);
+    W_SLOT(sl9)
     void sl10(QString s1, QString s2, QString s3, QString s4, QString s5, QString s6, QString s7,
             QString s8, QString s9, QString s10);
+    W_SLOT(sl10)
     QObject *sl11();
+    W_SLOT(sl11)
     const char *sl12();
+    W_SLOT(sl12)
     QList<QString> sl13(QList<QString> l1);
+    W_SLOT(sl13)
     qint64 sl14();
+    W_SLOT(sl14)
     void testSender();
+    W_SLOT(testSender)
 
     void testReference(QString &str);
-
+    W_SLOT(testReference)
     void testLongLong(qint64 ll1, quint64 ll2);
-
+    W_SLOT(testLongLong)
     void moveToThread(QThread *t)
     { QObject::moveToThread(t); }
+    W_SLOT(moveToThread)
 
     void slotWithUnregisteredParameterType(MyUnregisteredType);
+    W_SLOT(slotWithUnregisteredParameterType)
 
     CountedStruct throwingSlot(const CountedStruct &, CountedStruct s2) {
 #ifndef QT_NO_EXCEPTIONS
@@ -413,12 +497,16 @@ public slots:
 #endif
         return s2;
     }
+    W_SLOT(throwingSlot)
 
 signals:
-    void sig0();
-    QString sig1(QString s1);
-    void sig10(QString s1, QString s2, QString s3, QString s4, QString s5, QString s6, QString s7,
-               QString s8, QString s9, QString s10);
+    W_SIGNAL_1(void sig0())
+    W_SIGNAL_2(sig0)
+    W_SIGNAL_1(QString sig1(QString s1))
+    W_SIGNAL_2(sig1,s1)
+    W_SIGNAL_1(void sig10(QString s1, QString s2, QString s3, QString s4, QString s5, QString s6, QString s7,
+               QString s8, QString s9, QString s10))
+    W_SIGNAL_2(sig10,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10)
 
 protected:
     QtTestObject(QVariant) {}
@@ -428,6 +516,8 @@ private:
 public:
     QString slotResult;
 };
+
+W_OBJECT_IMPL(QtTestObject)
 
 QtTestObject::QtTestObject()
 {
@@ -842,20 +932,24 @@ typedef QString CustomString;
 
 class QtTestCustomObject: public QObject
 {
-    Q_OBJECT
+    W_OBJECT(QtTestCustomObject)
     friend class tst_QMetaObject;
 public:
     QtTestCustomObject(): QObject(), sum(0) {}
 
 public slots:
     void sl1(MyType myType);
+    W_SLOT(sl1)
 
 signals:
-    void sig_custom(const CustomString &string);
+    W_SIGNAL_1(void sig_custom(const CustomString &string))
+    W_SIGNAL_2(sig_custom,string)
 
 public:
     int sum;
 };
+
+W_OBJECT_IMPL(QtTestCustomObject)
 
 void QtTestCustomObject::sl1(MyType myType)
 {
@@ -877,13 +971,15 @@ namespace NamespaceWithConstructibleClass
 
 class ConstructibleClass : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(ConstructibleClass)
 public:
     Q_INVOKABLE ConstructibleClass(QObject *parent = 0)
         : QObject(parent) {}
 };
 
 }
+
+W_OBJECT_IMPL(NamespaceWithConstructibleClass::ConstructibleClass)
 
 void tst_QMetaObject::invokeMetaConstructor()
 {
@@ -1190,14 +1286,18 @@ void tst_QMetaObject::propertyFinal()
 
 class ClassInfoTestObjectA : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(ClassInfoTestObjectA)
     Q_CLASSINFO("Author", "Christopher Pike")
 };
 
+W_OBJECT_IMPL(ClassInfoTestObjectA)
+
 class ClassInfoTestObjectB : public ClassInfoTestObjectA
 {
-    Q_OBJECT
+    W_OBJECT(ClassInfoTestObjectB)
 };
+
+W_OBJECT_IMPL(ClassInfoTestObjectB)
 
 void tst_QMetaObject::classInfo()
 {
@@ -1443,4 +1543,3 @@ void tst_QMetaObject::enumDebugStream()
 }
 
 QTEST_MAIN(tst_QMetaObject)
-#include "tst_qmetaobject.moc"
