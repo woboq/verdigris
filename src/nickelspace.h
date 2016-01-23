@@ -189,19 +189,12 @@ W_DECLARE_METATYPE(const char*)
 /*-----------------------------------------------------------------------------------------------*/
 namespace MetaObjectBuilder {
 
-
-//     template<typename T>
-//     constexpr std::enable_if<QMetaTypeId2<T>::IsBuiltIn, int>::type metaTypeId()
-//     { return  QMetaTypeId2<T>::qt_metatype_id();}
-//     template<typename T>
-//     constexpr std::enable_if<!QMetaTypeId2<T>::IsBuiltIn, int>::type metaTypeId()
-//     { return -1;}
-
     /** Holds information about a method */
-    template<typename F, int NameLength, int Flags, typename ParamNames = StaticStringList<>>
+    template<typename F, int NameLength, int Flags, typename ParamTypes, typename ParamNames = StaticStringList<>>
     struct MetaMethodInfo {
         F func;
         StaticString<NameLength> name;
+        ParamTypes paramTypes;
         ParamNames paramNames;
         static constexpr int argCount = QtPrivate::FunctionPointer<F>::ArgumentCount;
         static constexpr int flags = Flags;
@@ -216,20 +209,20 @@ namespace MetaObjectBuilder {
         }
     };
 
-    template<typename F, int N, int Flags = W_Access::Public.value>
-    constexpr MetaMethodInfo<F, N, Flags | W_MethodType::Slot.value>
-    makeMetaSlotInfo(F f, StaticStringArray<N> &name, w_number<Flags> = {})
-    { return { f, {name}, {} }; }
+    template<typename F, int N, typename ParamTypes, int Flags = W_Access::Public.value>
+    constexpr MetaMethodInfo<F, N, Flags | W_MethodType::Slot.value, ParamTypes>
+    makeMetaSlotInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes, w_number<Flags> = {})
+    { return { f, {name}, paramTypes, {} }; }
 
-    template<typename F, int N, int Flags = W_Access::Public.value>
-    constexpr MetaMethodInfo<F, N, Flags | W_MethodType::Method.value>
-    makeMetaMethodInfo(F f, StaticStringArray<N> &name, w_number<Flags> = {})
-    { return { f, {name}, {} }; }
+    template<typename F, int N, typename ParamTypes, int Flags = W_Access::Public.value>
+    constexpr MetaMethodInfo<F, N, Flags | W_MethodType::Method.value, ParamTypes>
+    makeMetaMethodInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes, w_number<Flags> = {})
+    { return { f, {name}, paramTypes, {} }; }
 
-    template<typename F, int N, typename ParamNames>
-    constexpr MetaMethodInfo<F, N, W_MethodType::Signal.value | W_Access::Public.value, ParamNames>
-    makeMetaSignalInfo(F f, StaticStringArray<N> &name, ParamNames paramNames)
-    { return { f, {name}, paramNames }; }
+    template<typename F, int N, typename ParamTypes, typename ParamNames>
+    constexpr MetaMethodInfo<F, N, W_MethodType::Signal.value | W_Access::Public.value, ParamTypes, ParamNames>
+    makeMetaSignalInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes, const ParamNames &paramNames)
+    { return { f, {name}, paramTypes, paramNames }; }
 
 
     /** Holds information about a property */
@@ -320,7 +313,7 @@ struct FriendHelper1 { /* FIXME */
     template<typename T, int N>
     static constexpr auto makeClassInfo(StaticStringArray<N> &name) {
         const auto sigState = T::w_SignalState(w_number<>{});
-        const auto methodInfo = std::tuple_cat(sigState, T::w_SlotState(w_number<>{}));
+        const auto methodInfo = std::tuple_cat(sigState, T::w_SlotState(w_number<>{}), T::w_MethodState(w_number<>{}));
         const auto propertyInfo = T::w_PropertyState(w_number<>{});
         constexpr int sigCount = std::tuple_size<decltype(sigState)>::value;
         return ClassInfo<N, decltype(methodInfo), decltype(propertyInfo), sigCount>{ {name}, methodInfo, propertyInfo };
@@ -436,16 +429,22 @@ struct FriendHelper1 { /* FIXME */
     //Helper class for generateSingleMethodParameter:  generate the parametter array
 
     template<typename ...Args> struct HandleArgsHelper {
-        template<typename Strings> static constexpr auto result(const Strings &ss)
+        template<typename Strings, typename ParamTypes>
+        static constexpr auto result(const Strings &ss, const ParamTypes&)
         { return std::make_pair(ss, std::index_sequence<>()); }
     };
     template<typename A, typename... Args>
     struct HandleArgsHelper<A, Args...> {
-        template<typename Strings> static constexpr auto result(const Strings &ss) {
-            auto r1 = HandleType<typename QtPrivate::RemoveConstRef<A>::Type>::result(ss);
-            auto r2 = HandleArgsHelper<Args...>::result(r1.first);
+        template<typename Strings, typename ParamTypes>
+        static constexpr auto result(const Strings &ss, const ParamTypes &paramTypes) {
+            using Type = typename QtPrivate::RemoveConstRef<A>::Type;
+            auto typeStr = std::get<0>(paramTypes);
+            using ts_t = decltype(typeStr);
+            // This way, the overload of result will not pick the StaticString one if it is a tuple (because registered types have the priority)
+            auto typeStr2 = std::conditional_t<std::is_same<A, Type>::value, ts_t, std::tuple<ts_t>>{typeStr};
+            auto r1 = HandleType<Type>::result(ss, typeStr2);
+            auto r2 = HandleArgsHelper<Args...>::result(r1.first, tuple_tail(paramTypes));
             return std::make_pair(r2.first, r1.second + r2.second);
-
         }
     };
 
@@ -467,13 +466,21 @@ struct FriendHelper1 { /* FIXME */
         { return std::make_pair(ss, std::index_sequence<>()); }
     };
 
-    template<typename Strings, typename ParamNames, typename Obj, typename Ret, typename... Args>
+    template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
     constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...),
-                                                 ParamNames paramNames ) {
-        auto types = HandleArgsHelper<Ret, Args...>::result(ss);
+                                                 const ParamTypes &paramTypes, const ParamNames &paramNames ) {
+        auto types = HandleArgsHelper<Ret, Args...>::result(ss, std::tuple_cat(std::tuple<int>{}, paramTypes));
         auto names = HandleArgNames<sizeof...(Args)>::result(types.first, paramNames);
         return std::make_pair(names.first, types.second + names.second);
     }
+    template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
+    constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...) const,
+                                                 const ParamTypes &paramTypes, const ParamNames &paramNames ) {
+        auto types = HandleArgsHelper<Ret, Args...>::result(ss, std::tuple_cat(std::tuple<int>{}, paramTypes));
+        auto names = HandleArgNames<sizeof...(Args)>::result(types.first, paramNames);
+        return std::make_pair(names.first, types.second + names.second);
+    }
+
 
     template<typename Strings>
     constexpr auto generateMethodsParameters(const Strings &s, const std::tuple<>&) {
@@ -482,7 +489,7 @@ struct FriendHelper1 { /* FIXME */
     template<typename Strings, typename Method, typename... Tail>
     constexpr auto generateMethodsParameters(const Strings &s, const std::tuple<Method, Tail...> &t) {
         auto method = std::get<0>(t);
-        auto thisMethod = generateSingleMethodParameter(s, method.func, method.paramNames);
+        auto thisMethod = generateSingleMethodParameter(s, method.func, method.paramTypes, method.paramNames);
         auto next = generateMethodsParameters(thisMethod.first, tuple_tail(t));
         return std::make_pair(next.first, thisMethod.second + next.second);
     }
@@ -780,12 +787,14 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
     static constexpr auto w_SlotState(w_number<std::tuple_size<decltype(w_SlotState(w_number<>{}))>::value+1> counter) \
         W_RETURN(tuple_append(w_SlotState(counter.prev()), MetaObjectBuilder::makeMetaSlotInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
+            W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa)))
 
 #define W_INVOKABLE(NAME, ...) \
     static constexpr auto w_MethodState(w_number<std::tuple_size<decltype(w_MethodState(w_number<>{}))>::value+1> counter) \
         W_RETURN(tuple_append(w_MethodState(counter.prev()), MetaObjectBuilder::makeMetaMethodInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
+            W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa)))
 
 #define W_SIGNAL_1(...) \
@@ -798,7 +807,7 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
     static constexpr auto w_SignalState(w_number<w_signalIndex_##NAME + 1> counter) \
         W_RETURN(tuple_append(w_SignalState(counter.prev()), MetaObjectBuilder::makeMetaSignalInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
-            W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))))
+            W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))))
 
 #define W_PROPERTY(TYPE, NAME, ...) \
     static constexpr auto w_PropertyState(w_number<std::tuple_size<decltype(w_PropertyState(w_number<>{}))>::value+1> counter) \

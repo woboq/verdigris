@@ -145,15 +145,14 @@ public:
 
 W_OBJECT_IMPL(OverloadForm)
 
-
-void overloadForm()
+void tst_Basic::overloadForm()
 {
     OverloadForm obj;
     int result;
     QVERIFY(QMetaObject::invokeMethod(&obj, "over1", Q_RETURN_ARG(int, result), Q_ARG(My, {}), Q_ARG(int, 23)));
-    QCOMPARE(result, 23)
+    QCOMPARE(result, 23);
     QVERIFY(QMetaObject::invokeMethod(&obj, "over1", Q_RETURN_ARG(int, result)));
-    QCOMPARE(result, 34)
+    QCOMPARE(result, 34);
 }
 
 
