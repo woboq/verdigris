@@ -389,7 +389,7 @@ struct FriendHelper1 { /* FIXME */
     template<typename A, typename... Args>
     struct HandleArgsHelper<A, Args...> {
         template<typename Strings> static constexpr auto result(const Strings &ss) {
-            auto r1 = HandleType<A>::result(ss);
+            auto r1 = HandleType<typename QtPrivate::RemoveConstRef<A>::Type>::result(ss);
             auto r2 = HandleArgsHelper<Args...>::result(r1.first);
             return std::make_pair(r2.first, r1.second + r2.second);
 

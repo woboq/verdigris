@@ -51,8 +51,6 @@
 Q_DECLARE_METATYPE(const QMetaObject *)
 
 W_DECLARE_METATYPE(QList<QString>)
-W_DECLARE_METATYPE(QString&)
-
 
 struct MyStruct
 {
@@ -433,6 +431,11 @@ struct CountedStruct
 #ifndef QT_NO_EXCEPTIONS
 class ObjectException : public std::exception { };
 #endif
+
+W_DECLARE_METATYPE(QString&)
+W_DECLARE_METATYPE(QThread*)
+W_DECLARE_METATYPE(MyUnregisteredType)
+W_DECLARE_METATYPE(CountedStruct)
 
 class QtTestObject: public QObject
 {
@@ -927,8 +930,10 @@ struct MyType
 {
     int i1, i2, i3;
 };
+W_DECLARE_METATYPE(MyType)
 
 typedef QString CustomString;
+
 
 class QtTestCustomObject: public QObject
 {
