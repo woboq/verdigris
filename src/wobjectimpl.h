@@ -109,6 +109,54 @@ namespace MetaObjectBuilder {
 
     }
 
+    template<int DataIndex, typename Strings>
+    constexpr auto generateEnums(const Strings &s, const simple::tuple<>) {
+        return std::make_pair(s, std::index_sequence<>());
+    }
+    template<int DataIndex, typename Strings, typename Enum, typename... Tail>
+    constexpr auto generateEnums(const Strings &s, const simple::tuple<Enum, Tail...> &t) {
+
+        auto enum_ = simple::get<0>(t);
+        auto s2 = addString(s, enum_.name);
+        auto next = generateProperties<DataIndex + Enum::count*2>(s2, tuple_tail(t));
+
+        // From qmetaobject_p.h
+        enum PropertyFlags  {
+            Invalid = 0x00000000,
+            Readable = 0x00000001,
+            Writable = 0x00000002,
+            Resettable = 0x00000004,
+            EnumOrFlag = 0x00000008,
+            StdCppSet = 0x00000100,
+            //     Override = 0x00000200,
+            Constant = 0x00000400,
+            Final = 0x00000800,
+            Designable = 0x00001000,
+            ResolveDesignable = 0x00002000,
+            Scriptable = 0x00004000,
+            ResolveScriptable = 0x00008000,
+            Stored = 0x00010000,
+            ResolveStored = 0x00020000,
+            Editable = 0x00040000,
+            ResolveEditable = 0x00080000,
+            User = 0x00100000,
+            ResolveUser = 0x00200000,
+            Notify = 0x00400000,
+            Revisioned = 0x00800000
+        };
+
+
+        auto thisProp = std::index_sequence<
+                simple::tuple_size<Strings>::value, //name
+                Enum::flags,
+                Enum::count,
+                DataIndex
+            >{};
+
+        return std::make_pair(next.first, thisProp + next.second());
+
+    }
+
     //Helper class for generateSingleMethodParameter:  generate the parametter array
 
     template<typename ...Args> struct HandleArgsHelper {
@@ -199,17 +247,20 @@ namespace MetaObjectBuilder {
     constexpr auto generateDataArray(const CI &classInfo) {
         constexpr int methodOffset = 14;
         constexpr int propertyOffset = methodOffset + CI::methodCount * 5;
-        constexpr int constructorOffset = propertyOffset + CI::propertyCount * 3 ;
+        constexpr int enumOffset = propertyOffset + CI::propertyCount * 3;
+        constexpr int constructorOffset = enumOffset + CI::enumCount* 4;
         constexpr int paramIndex = constructorOffset + CI::constructorCount * 5 ;
         constexpr int constructorParamIndex = paramIndex +
             paramOffset<decltype(classInfo.methods)>(simple::make_index_sequence<CI::methodCount>{});
+        constexpr int enumValueOffset = constructorParamIndex +
+            paramOffset<decltype(classInfo.constructors)>(simple::make_index_sequence<CI::constructorCount>{});
         using header = std::index_sequence<
                 7,       // revision
                 0,       // classname
                 0,    0, // classinfo
                 CI::methodCount,   methodOffset, // methods
                 CI::propertyCount,    propertyOffset, // properties
-                0,    0, // enums/sets
+                CI::enumCount,    enumOffset, // enums/sets
                 CI::constructorCount, constructorOffset, // constructors
                 0,       // flags
                 CI::signalCount
@@ -217,11 +268,12 @@ namespace MetaObjectBuilder {
         auto stringData = simple::make_tuple(classInfo.name, StaticString<1>(""));
         auto methods = generateMethods<paramIndex>(stringData , classInfo.methods);
         auto properties = generateProperties(methods.first , classInfo.properties);
-        auto constructors = generateMethods<constructorParamIndex>(properties.first, classInfo.constructors);
+        auto enums = generateEnums<enumValueOffset>(properties.first, classInfo.enums);
+        auto constructors = generateMethods<constructorParamIndex>(enums.first, classInfo.constructors);
         auto parametters = generateMethodsParameters(constructors.first, classInfo.methods);
         auto parametters2 = generateConstructorParameters(parametters.first, classInfo.constructors);
         return std::make_pair(parametters2.first,  header()  + methods.second + properties.second +
-                    constructors.second + parametters.second + parametters2.second);
+                    enums.second + constructors.second + parametters.second + parametters2.second);
     }
 
 

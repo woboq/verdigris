@@ -370,17 +370,33 @@ namespace MetaObjectBuilder {
         return parseProperty(meta, args...);
     }
 
+    template<int NameLength, typename Values, typename Names, int Flags>
+    struct MetaEnumInfo {
+        StaticString<NameLength> name;
+        Values values;
+        Names names;
+        static constexpr uint flags = Flags;
+    };
+
+    template<int Flag, int NameLength, typename Values, typename Names>
+    constexpr MetaEnumInfo<NameLength, Values, Names, Flag> makeMetaEnumInfo(
+                    StaticStringArray<NameLength> &name, Values values, Names names) {
+        return { {name}, values, names };
+    }
+
     /** Holds information about a class,  includeing all the properties and methods */
-    template<int NameLength, typename Methods, typename Constructors, typename Properties, int SignalCount>
+    template<int NameLength, typename Methods, typename Constructors, typename Properties, typename Enums, int SignalCount>
     struct ClassInfo {
         StaticString<NameLength> name;
         Methods methods;
         Constructors constructors;
         Properties properties;
+        Enums enums;
 
         static constexpr int methodCount = simple::tuple_size<Methods>::value;
         static constexpr int constructorCount = simple::tuple_size<Constructors>::value;
         static constexpr int propertyCount = simple::tuple_size<Properties>::value;
+        static constexpr int enumCount = simple::tuple_size<Enums>::value;
         static constexpr int signalCount = SignalCount;
     };
 
@@ -392,9 +408,10 @@ struct FriendHelper1 { /* FIXME */
         const auto methodInfo = simple::tuple_cat(sigState, T::w_SlotState(w_number<>{}), T::w_MethodState(w_number<>{}));
         const auto constructorInfo = T::w_ConstructorState(w_number<>{});
         const auto propertyInfo = T::w_PropertyState(w_number<>{});
+        const auto enumInfo = T::w_EnumState(w_number<>{});
         constexpr int sigCount = simple::tuple_size<decltype(sigState)>::value;
-        return ClassInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo), sigCount>
-            { {name}, methodInfo, constructorInfo, propertyInfo };
+        return ClassInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo), decltype(enumInfo), sigCount>
+            { {name}, methodInfo, constructorInfo, propertyInfo, enumInfo };
     }
 };
 
@@ -470,6 +487,7 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
         static constexpr simple::tuple<> w_MethodState(w_number<0>) { return {}; } \
         static constexpr simple::tuple<> w_ConstructorState(w_number<0>) { return {}; } \
         static constexpr simple::tuple<> w_PropertyState(w_number<0>) { return {}; } \
+        static constexpr simple::tuple<> w_EnumState(w_number<0>) { return {}; } \
     public: \
         struct MetaObjectCreatorHelper; \
         using W_BaseType = decltype(getParentObjectHelper(&W_ThisType::qt_metacast)); \
@@ -513,3 +531,15 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
     static constexpr auto w_PropertyState(w_number<simple::tuple_size<decltype(w_PropertyState(w_number<>{}))>::value+1> counter) \
         W_RETURN(tuple_append(w_PropertyState(counter.prev()), \
                               MetaObjectBuilder::makeMetaPropertyInfo<TYPE>(#NAME, #TYPE, __VA_ARGS__)))
+
+#define W_ENUM(NAME, ...) \
+    static constexpr auto w_EnumState(w_number<simple::tuple_size<decltype(w_EnumState(w_number<>{}))>::value+1> counter) \
+        W_RETURN(tuple_append(w_EnumState(counter.prev()), MetaObjectBuilder::makeMetaEnumInfo<false>( \
+            #NAME, simple::make_tuple(__VA_ARGS__), W_PARAM_TOSTRING(__VA_ARGS__)))) \
+    Q_ENUM(NAME)
+
+#define W_FLAG(NAME, ...) \
+    static constexpr auto w_EnumState(w_number<simple::tuple_size<decltype(w_EnumState(w_number<>{}))>::value+1> counter) \
+        W_RETURN(tuple_append(w_EnumState(counter.prev()), MetaObjectBuilder::makeMetaEnumInfo<false>( \
+            #NAME, simple::make_tuple(__VA_ARGS__), W_PARAM_TOSTRING(__VA_ARGS__)))) \
+    Q_FLAG(NAME)
