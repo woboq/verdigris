@@ -5,6 +5,48 @@
 
 namespace MetaObjectBuilder {
 
+enum { IsUnresolvedType = 0x80000000 };
+
+/** A generator has a static function generate which takes a StringState and return a
+  * IntermediateState */
+template<typename Strings, uint... Ints>
+struct IntermediateState {
+    Strings strings;
+    /// add a string to the strings state and add its index to the end of the int array
+    template<int L>
+    constexpr auto addString(const StaticString<L> & s) const {
+        auto s2 = tuple_append(strings, s);
+        return IntermediateState<decltype(s2), Ints..., simple::tuple_size<Strings>::value>{s2};
+    }
+
+    /// same as before but ass the IsUnresolvedType flag
+    template<int L>
+    constexpr auto addTypeString(const StaticString<L> & s) const {
+        auto s2 = tuple_append(strings, s);
+        return IntermediateState<decltype(s2), Ints...,
+            IsUnresolvedType | simple::tuple_size<Strings>::value>{s2};
+    }
+
+
+    template<uint... Add>
+    constexpr IntermediateState<Strings, Ints..., Add...> add() const
+    { return { strings }; }
+
+    static constexpr std::index_sequence<Ints ...> sequence = {};
+};
+
+
+
+/** Iterate over all the items of a tuple and call the Generator::generate function */
+template<typename Generator, int, typename State>
+constexpr auto generate(State s, const simple::tuple<>&)
+{ return s; }
+template<typename Generator, int Ofst, typename State, typename Head, typename... Tail>
+constexpr auto generate(const State &s, const simple::tuple<Head, Tail...> &t) {
+    return generate<Generator, Ofst + Generator::template offset<Head>()>(
+        Generator::template generate<Ofst>(s, simple::get<0>(t)), tuple_tail(t));
+}
+
 
         /** Holds information about a class,  includeing all the properties and methods */
     template<int NameLength, typename Methods, typename Constructors, typename Properties,
@@ -47,161 +89,118 @@ struct FriendHelper1 { /* FIXME */
 
 
 
-    /**
-     * generate...
-     *  Create the metaobject's integer data array
-     *  (as a index_sequence)
-     * returns std::pair<StaticStringList, index_sequence>:  the modified strings and the array of strings
-     */
-    template<int, typename Strings>
-    constexpr auto generateMethods(const Strings &s, const simple::tuple<>&) {
-        return std::make_pair(s, std::index_sequence<>());
+struct MethodGenerator {
+    template<typename Method> static constexpr int offset() { return 1 + Method::argCount * 2; }
+    template<int ParamIndex, typename State, typename Method>
+    static constexpr auto generate(State s, Method method) {
+        return s.addString(method.name). // name
+                template add<Method::argCount,
+                             ParamIndex, //parametters
+                             1, //tag, always \0
+                             Method::flags>();
+
     }
-    template<int ParamIndex, typename Strings, typename Method, typename... Tail>
-    constexpr auto generateMethods(const Strings &s, const simple::tuple<Method, Tail...> &t) {
-
-        auto method = simple::get<0>(t);
-        auto s2 = addString(s, method.name);
-
-
-        using thisMethod = std::index_sequence<
-            simple::tuple_size<Strings>::value, //name
-            Method::argCount,
-            ParamIndex, //parametters
-            1, //tag, always \0
-            Method::flags
-        >;
-
-        auto next = generateMethods<ParamIndex + 1 + Method::argCount * 2>(s2, tuple_tail(t));
-        return std::make_pair(next.first, thisMethod() + next.second);
-    }
+};
 
     template <typename T, typename = void> struct MetaTypeIdIsBuiltIn : std::false_type {};
     template <typename T> struct MetaTypeIdIsBuiltIn<T, typename std::enable_if<QMetaTypeId2<T>::IsBuiltIn>::type> : std::true_type{};
-    enum { IsUnresolvedType = 0x80000000 };
+
 
     template<typename T, bool Builtin = MetaTypeIdIsBuiltIn<T>::value>
     struct HandleType {
         template<typename S, typename TypeStr = int>
         static constexpr auto result(const S&s, TypeStr = {})
-        { return std::make_pair(s, std::index_sequence<QMetaTypeId2<T>::MetaType>()); }
+        { return s.template add<QMetaTypeId2<T>::MetaType>(); }
     };
     template<typename T>
     struct HandleType<T, false> {
         template<typename Strings, typename TypeStr = int>
         static constexpr auto result(const Strings &ss, TypeStr = {}) {
             static_assert(W_TypeRegistery<T>::registered, "Please Register T with W_DECLARE_METATYPE");
-            auto s2 = addString(ss, W_TypeRegistery<T>::name);
-            return std::make_pair(s2, std::index_sequence<IsUnresolvedType
-                                                | simple::tuple_size<Strings>::value>());
+            return ss.addTypeString(W_TypeRegistery<T>::name);
         }
         template<typename Strings, int N>
         static constexpr auto result(const Strings &ss, StaticString<N> typeStr,
                                      typename std::enable_if<(N>1),int>::type=0) {
-            auto s2 = addString(ss, typeStr);
-            return std::make_pair(s2, std::index_sequence<IsUnresolvedType
-                    | simple::tuple_size<Strings>::value>());
+            return ss.addTypeString(typeStr);
         }
     };
 
-    template<typename Strings>
-    constexpr auto generateProperties(const Strings &s, const simple::tuple<>) {
-        return std::make_pair(s, std::index_sequence<>());
+struct PropertyGenerator {
+
+    // From qmetaobject_p.h
+    enum PropertyFlags  {
+        Invalid = 0x00000000,
+        Readable = 0x00000001,
+        Writable = 0x00000002,
+        Resettable = 0x00000004,
+        EnumOrFlag = 0x00000008,
+        StdCppSet = 0x00000100,
+        //     Override = 0x00000200,
+        Constant = 0x00000400,
+        Final = 0x00000800,
+        Designable = 0x00001000,
+        ResolveDesignable = 0x00002000,
+        Scriptable = 0x00004000,
+        ResolveScriptable = 0x00008000,
+        Stored = 0x00010000,
+        ResolveStored = 0x00020000,
+        Editable = 0x00040000,
+        ResolveEditable = 0x00080000,
+        User = 0x00100000,
+        ResolveUser = 0x00200000,
+        Notify = 0x00400000,
+        Revisioned = 0x00800000
+    };
+
+    static constexpr std::size_t flags = (Writable|Readable); // FIXME
+
+    template<typename> static constexpr int offset() { return 0; }
+    template<int, typename State, typename Prop>
+    static constexpr auto generate(State s, Prop prop) {
+        auto s2 = s.addString(prop.name);
+        auto s3 = HandleType<typename Prop::PropertyType>::result(s2, prop.typeStr);
+        return s3.template add<flags>();
     }
-    template<typename Strings, typename Prop, typename... Tail>
-    constexpr auto generateProperties(const Strings &s, const simple::tuple<Prop, Tail...> &t) {
+};
 
-        auto prop = simple::get<0>(t);
-        auto s2 = addString(s, prop.name);
-        auto type = HandleType<typename Prop::PropertyType>::result(s2, prop.typeStr);
-        auto next = generateProperties(type.first, tuple_tail(t));
-
-        // From qmetaobject_p.h
-        enum PropertyFlags  {
-            Invalid = 0x00000000,
-            Readable = 0x00000001,
-            Writable = 0x00000002,
-            Resettable = 0x00000004,
-            EnumOrFlag = 0x00000008,
-            StdCppSet = 0x00000100,
-            //     Override = 0x00000200,
-            Constant = 0x00000400,
-            Final = 0x00000800,
-            Designable = 0x00001000,
-            ResolveDesignable = 0x00002000,
-            Scriptable = 0x00004000,
-            ResolveScriptable = 0x00008000,
-            Stored = 0x00010000,
-            ResolveStored = 0x00020000,
-            Editable = 0x00040000,
-            ResolveEditable = 0x00080000,
-            User = 0x00100000,
-            ResolveUser = 0x00200000,
-            Notify = 0x00400000,
-            Revisioned = 0x00800000
-        };
-
-        constexpr std::size_t flags = (Writable|Readable); // FIXME
-
-        auto thisProp = std::index_sequence<simple::tuple_size<Strings>::value>() //name
-                        + type.second
-                        + std::index_sequence<flags>()
-                        + next.second;
-        return std::make_pair(next.first, thisProp);
-
-    }
-
-    template<int DataIndex, typename Strings>
-    constexpr auto generateEnums(const Strings &s, const simple::tuple<>) {
-        return std::make_pair(s, std::index_sequence<>());
-    }
-    template<int DataIndex, typename Strings, typename Enum, typename... Tail>
-    constexpr auto generateEnums(const Strings &s, const simple::tuple<Enum, Tail...> &t) {
-
-        auto enum_ = simple::get<0>(t);
-        auto s2 = addString(s, enum_.name);
-        auto next = generateEnums<DataIndex + Enum::count*2>(s2, tuple_tail(t));
-
-        auto thisProp = std::index_sequence<
-                simple::tuple_size<Strings>::value, //name
+struct EnumGenerator {
+    template<typename Enum> static constexpr int offset() { return Enum::count * 2; }
+    template<int DataIndex, typename State, typename Enum>
+    static constexpr auto generate(State s, Enum e) {
+        return s.addString(e.name).template add< //name
                 Enum::flags,
                 Enum::count,
                 DataIndex
-            >{};
-
-        return std::make_pair(next.first, thisProp + next.second);
+            >();
     }
+};
+
+struct EnumValuesGenerator {
 
     template<typename Strings>
-    constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<> e, simple::tuple<>)
-    { return std::make_pair(s, e); }
+    static constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<>, simple::tuple<>)
+    { return s; }
 
     template<typename Strings, std::size_t Value, std::size_t... I, typename Names>
-    constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<Value, I...>, Names names) {
-        auto s2 = addString(s, simple::get<0>(names));
-        auto next = generateSingleEnumValues(s2, std::index_sequence<I...>{}, tuple_tail(names));
-        return std::make_pair(next.first, std::index_sequence<
-            simple::tuple_size<Strings>::value, Value>{} + next.second);
+    static constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<Value, I...>, Names names) {
+        auto s2 = s.addString(simple::get<0>(names)).template add<uint(Value)>();
+        return generateSingleEnumValues(s2, std::index_sequence<I...>{}, tuple_tail(names));
     }
 
-    template<typename Strings>
-    constexpr auto generateEnumsValues(const Strings &s, const simple::tuple<> &)
-    { return std::make_pair(s, std::index_sequence<>{}); }
-
-    template<typename Strings, typename Enum, typename... Tail>
-    constexpr auto generateEnumsValues(const Strings &s, const simple::tuple<Enum, Tail...> &t) {
-        auto e = simple::get<0>(t);
-        auto r = generateSingleEnumValues(s, typename Enum::Values{}, e.names);
-        auto next = generateEnumsValues(r.first, tuple_tail(t));
-        return std::make_pair(next.first,  r.second + next.second);
+    template<typename> static constexpr int offset() { return 0; }
+    template<int, typename State, typename Enum>
+    static constexpr auto generate(State s, Enum e) {
+        return generateSingleEnumValues(s, typename Enum::Values{}, e.names);
     }
+};
 
     //Helper class for generateSingleMethodParameter:  generate the parametter array
 
     template<typename ...Args> struct HandleArgsHelper {
         template<typename Strings, typename ParamTypes>
         static constexpr auto result(const Strings &ss, const ParamTypes&)
-        { return std::make_pair(ss, std::index_sequence<>()); }
+        { return ss; }
     };
     template<typename A, typename... Args>
     struct HandleArgsHelper<A, Args...> {
@@ -213,8 +212,7 @@ struct FriendHelper1 { /* FIXME */
             // This way, the overload of result will not pick the StaticString one if it is a tuple (because registered types have the priority)
             auto typeStr2 = std::conditional_t<std::is_same<A, Type>::value, ts_t, simple::tuple<ts_t>>{typeStr};
             auto r1 = HandleType<Type>::result(ss, typeStr2);
-            auto r2 = HandleArgsHelper<Args...>::result(r1.first, tuple_tail(paramTypes));
-            return std::make_pair(r2.first, r1.second + r2.second);
+            return HandleArgsHelper<Args...>::result(r1, tuple_tail(paramTypes));
         }
     };
 
@@ -222,60 +220,54 @@ struct FriendHelper1 { /* FIXME */
         template<typename Strings, int S, int...T>
         static constexpr auto result(const Strings &ss, StaticStringList<S, T...> pn)
         {
-            auto s2 = addString(ss, simple::get<0>(pn));
+            auto s2 = ss.addString(simple::get<0>(pn));
             auto tail = tuple_tail(pn);
-            auto t = HandleArgNames<N-1>::result(s2, tail);
-            return std::make_pair(t.first, std::index_sequence<simple::tuple_size<Strings>::value>() + t.second );
+            return HandleArgNames<N-1>::result(s2, tail);
         }
-        template<typename Strings> static constexpr auto result(const Strings &ss, StaticStringList<>)
-        { return std::make_pair(ss, ones<N>()); }
+        template<typename Strings> static constexpr auto result(const Strings &ss, StaticStringList<> pn)
+        { return HandleArgNames<N-1>::result(ss.template add<1>(), pn); } // FIXME: use ones
 
     };
     template<> struct HandleArgNames<0> {
         template<typename Strings, typename PN> static constexpr auto result(const Strings &ss, PN)
-        { return std::make_pair(ss, std::index_sequence<>()); }
+        { return ss; }
     };
 
+struct MethodParametersGenerator {
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
-    constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...),
+    static constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...),
+                                                        const ParamTypes &paramTypes, const ParamNames &paramNames ) {
+        auto types = HandleArgsHelper<Ret, Args...>::result(ss, simple::tuple_cat(simple::tuple<int>{}, paramTypes));
+        return HandleArgNames<sizeof...(Args)>::result(types, paramNames);
+    }
+    template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
+    static constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...) const,
                                                  const ParamTypes &paramTypes, const ParamNames &paramNames ) {
         auto types = HandleArgsHelper<Ret, Args...>::result(ss, simple::tuple_cat(simple::tuple<int>{}, paramTypes));
-        auto names = HandleArgNames<sizeof...(Args)>::result(types.first, paramNames);
-        return std::make_pair(names.first, types.second + names.second);
-    }
-    template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
-    constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...) const,
-                                                 const ParamTypes &paramTypes, const ParamNames &paramNames ) {
-        auto types = HandleArgsHelper<Ret, Args...>::result(ss, simple::tuple_cat(simple::tuple<int>{}, paramTypes));
-        auto names = HandleArgNames<sizeof...(Args)>::result(types.first, paramNames);
-        return std::make_pair(names.first, types.second + names.second);
+        return HandleArgNames<sizeof...(Args)>::result(types, paramNames);
     }
 
+    template<typename> static constexpr int offset() { return 0; }
+    template<int, typename State, typename Method>
+    static constexpr auto generate(State s, Method method) {
+        return generateSingleMethodParameter(s, method.func, method.paramTypes, method.paramNames);
+    }
+};
 
-    template<typename Strings>
-    constexpr auto generateMethodsParameters(const Strings &s, const simple::tuple<>&) {
-        return std::make_pair(s, std::index_sequence<>());
+struct ConstructorParametersGenerator {
+    template<typename> static constexpr int offset() { return 0; }
+    template<int, typename State, int N, typename... Args>
+    static constexpr auto generate(State s, MetaConstructorInfo<N,Args...>) {
+        auto s2 = s.template add<IsUnresolvedType | 1>();
+        auto s3 = HandleArgsHelper<Args...>::result(s2, simple::tuple<>{});
+        return s3.template add<((void)sizeof(Args),1)...>(); // all the names are 1 (for "\0")
     }
-    template<typename Strings, typename Method, typename... Tail>
-    constexpr auto generateMethodsParameters(const Strings &s, const simple::tuple<Method, Tail...> &t) {
-        auto method = simple::get<0>(t);
-        auto thisMethod = generateSingleMethodParameter(s, method.func, method.paramTypes, method.paramNames);
-        auto next = generateMethodsParameters(thisMethod.first, tuple_tail(t));
-        return std::make_pair(next.first, thisMethod.second + next.second);
-    }
+};
 
-    template<typename Strings>
-    constexpr auto generateConstructorParameters(const Strings &s, const simple::tuple<>&) {
-        return std::make_pair(s, std::index_sequence<>());
-    }
-    template<typename Strings, int N, typename... Args, typename... Tail>
-    constexpr auto generateConstructorParameters(const Strings &ss, const simple::tuple<MetaConstructorInfo<N,Args...>, Tail...> &t) {
-        auto returnT = std::index_sequence<IsUnresolvedType | 1>{};
-        auto types = HandleArgsHelper<Args...>::result(ss, simple::tuple<>{});
-        auto names = ones<sizeof...(Args)>{};
-        auto next = generateConstructorParameters(types.first, tuple_tail(t));
-        return std::make_pair(next.first, returnT + types.second + names + next.second);
-    }
+// template<typename T>   struct assert{
+//     static_assert(!sizeof(T), "");
+// };
+
 
     template<typename Methods, std::size_t... I>
     constexpr int paramOffset(std::index_sequence<I...>)
@@ -293,7 +285,9 @@ struct FriendHelper1 { /* FIXME */
             paramOffset<decltype(objectInfo.methods)>(simple::make_index_sequence<ObjI::methodCount>{});
         constexpr int enumValueOffset = constructorParamIndex +
             paramOffset<decltype(objectInfo.constructors)>(simple::make_index_sequence<ObjI::constructorCount>{});
-        using header = std::index_sequence<
+
+        auto stringData = simple::make_tuple(objectInfo.name, StaticString<1>(""));
+        IntermediateState<decltype(stringData),
                 7,       // revision
                 0,       // classname
                 0,    0, // classinfo
@@ -303,22 +297,17 @@ struct FriendHelper1 { /* FIXME */
                 ObjI::constructorCount, constructorOffset, // constructors
                 0,       // flags
                 ObjI::signalCount
-        >;
-        auto stringData = simple::make_tuple(objectInfo.name, StaticString<1>(""));
-        auto methods = generateMethods<paramIndex>(stringData , objectInfo.methods);
-        auto properties = generateProperties(methods.first , objectInfo.properties);
-        auto enums = generateEnums<enumValueOffset>(properties.first, objectInfo.enums);
-        auto constructors = generateMethods<constructorParamIndex>(enums.first, objectInfo.constructors);
-        auto parametters = generateMethodsParameters(constructors.first, objectInfo.methods);
-        auto parametters2 = generateConstructorParameters(parametters.first, objectInfo.constructors);
-        auto enumValues = generateEnumsValues(parametters2.first, objectInfo.enums);
-        return std::make_pair(enumValues.first,  header()  + methods.second + properties.second
-            + enums.second + constructors.second + parametters.second + parametters2.second
-            + enumValues.second);
+            > header = { stringData };
+
+        auto methods = generate<MethodGenerator, paramIndex>(header , objectInfo.methods);
+        auto properties = generate<PropertyGenerator, 0>(methods, objectInfo.properties);
+        auto enums = generate<EnumGenerator, enumValueOffset>(properties, objectInfo.enums);
+        auto constructors = generate<MethodGenerator, constructorParamIndex>(enums, objectInfo.constructors);
+        auto parametters = generate<MethodParametersGenerator, 0>(constructors, objectInfo.methods);
+        auto parametters2 = generate<ConstructorParametersGenerator, 0>(parametters, objectInfo.constructors);
+        auto enumValues = generate<EnumValuesGenerator, 0>(parametters2, objectInfo.enums);
+        return std::make_pair(enumValues.strings, enumValues.sequence);
     }
-
-
-
 
     /**
      * Holder for the string data.  Just like in the moc generated code.
