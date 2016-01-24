@@ -2,8 +2,54 @@
 
 #include <QtCore/qobjectdefs.h>
 #include <QtCore/qmetatype.h>
-#include <tuple>
 #include <utility>
+
+// std::tuple compilation time is too slow for use in constexpr
+namespace simple {
+
+    template<typename ... Ts> struct tuple;
+    template<typename T, typename ... Ts> struct tuple<T, Ts...> : tuple<Ts...> {
+        static constexpr int size = 1 + sizeof...(Ts);
+        constexpr tuple(T t, Ts... ts) : tuple<Ts...>{ts...} , data{t} {};
+        constexpr tuple() : data{} {};
+        T data;
+        constexpr T get_helper(std::integral_constant<int, sizeof...(Ts)>) { return data; }
+        using tuple<Ts...>::get_helper;
+    };
+    template<> struct tuple<> {
+        static constexpr int size = 0;
+        void get_helper() { }
+
+    };
+
+    template<typename T> struct tuple_size { static constexpr int value = T::size; };
+
+    template<int N, typename...Ts> constexpr auto get(tuple<Ts...> t)
+    { return t.get_helper(std::integral_constant<int, sizeof...(Ts) - N - 1>{}); }
+
+    template<typename... Ts> constexpr tuple<Ts...> make_tuple(Ts... ts) { return {ts...}; }
+
+    template<typename... T1, typename... T2, std::size_t... I1, std::size_t... I2>
+    constexpr tuple<T1..., T2...> tuple_cat_helper(tuple<T1...> t1, tuple<T2...> t2,
+                                    std::index_sequence<I1...>, std::index_sequence<I2...>) {
+        Q_UNUSED(t1) Q_UNUSED(t2)
+        return { get<I1>(t1)..., get<I2>(t2)... };
+    }
+
+
+    template<typename... T1, typename... T2>
+    constexpr tuple<T1..., T2...> tuple_cat(tuple<T1...> t1, tuple<T2...> t2) {
+        return tuple_cat_helper(t1, t2, std::make_index_sequence<sizeof...(T1)>{},
+                                std::make_index_sequence<sizeof...(T2)>{});
+    }
+    template<typename... T1, typename... T2, typename... T>
+    constexpr auto tuple_cat(tuple<T1...> t1, tuple<T2...> t2, T... t)
+    { return tuple_cat(t1, tuple_cat(t2, t...)); }
+
+    template<int I, typename T> using tuple_element_t = decltype(get<I>(std::declval<T>()));
+}
+
+
 
 // Qt should have that https://codereview.qt-project.org/139583
 inline namespace ShouldBeInQt {
@@ -53,34 +99,34 @@ constexpr std::index_sequence<I...,J...> operator+(std::index_sequence<I...>,std
  *  tuple_tail()  Returns a tuple with the first element removed
  */
 template<typename T, std::size_t...I> constexpr auto tuple_tail_helper(const T&t , std::index_sequence<I...>) {
-    return std::make_tuple(std::get<I+1>(t)...);
+    return simple::make_tuple(simple::get<I+1>(t)...);
 }
 template<typename T> constexpr auto tuple_tail(const T& tuple) {
-    return tuple_tail_helper(tuple, std::make_index_sequence<std::tuple_size<T>::value-1>());
+    return tuple_tail_helper(tuple, std::make_index_sequence<simple::tuple_size<T>::value-1>());
 }
-constexpr auto tuple_tail(std::tuple<>)
-{ return std::tuple<>{}; }
+constexpr auto tuple_tail(simple::tuple<>)
+{ return simple::tuple<>{}; }
 
 
 /**
  * tuple_append() Appends one element to the tuple (faster than tuple_cat)
  */
 template<typename... Ts, typename T, std::size_t...I>
-constexpr auto tuple_append_helper(const std::tuple<Ts...> &tuple, const T &t, std::index_sequence<I...>) {
-    return std::tuple<Ts..., T>{std::get<I>(tuple)... , t};
+constexpr auto tuple_append_helper(const simple::tuple<Ts...> &tuple, const T &t, std::index_sequence<I...>) {
+    return simple::tuple<Ts..., T>{simple::get<I>(tuple)... , t};
 }
 template<typename T1, typename T>
 constexpr auto tuple_append(const T1 &tuple, const T &t) {
-    return tuple_append_helper(tuple, t, std::make_index_sequence<std::tuple_size<T1>::value>());
+    return tuple_append_helper(tuple, t, std::make_index_sequence<simple::tuple_size<T1>::value>());
 }
 
 /**
  * tuple_head()  same as get<O> but return something in case the tuple is too small
  */
 template<typename T, typename... Ts>
-constexpr auto tuple_head(const std::tuple<T, Ts...> &t)
-{ return std::get<0>(t); }
-constexpr auto tuple_head(const std::tuple<> &) {
+constexpr auto tuple_head(const simple::tuple<T, Ts...> &t)
+{ return simple::get<0>(t); }
+constexpr auto tuple_head(const simple::tuple<> &) {
     struct _{};
     return _{};
 }
@@ -120,12 +166,12 @@ template<int N> struct StaticString  {
 template <int N> constexpr StaticString<N> makeStaticString(StaticStringArray<N> &d) { return {d}; }
 
 /* A tuple containing many  StaticString with possibly different sizes */
-template<int ...Sizes> using StaticStringList = std::tuple<StaticString<Sizes>...>;
+template<int ...Sizes> using StaticStringList = simple::tuple<StaticString<Sizes>...>;
 
 /* Creates a StaticStringList from a list of string literal */
 template<int... N>
 constexpr StaticStringList<N...> makeStaticStringList(StaticStringArray<N> & ...args)  {
-    return std::make_tuple(StaticString<N>(args)...);
+    return simple::make_tuple(StaticString<N>(args)...);
 }
 
 /** concatenate() : returns a StaticString which is the concatenation of all the strings in a StaticStringList
@@ -142,7 +188,7 @@ template<std::size_t... I1, std::size_t... I2> struct concatenate_helper<std::in
 constexpr StaticString<1> concatenate(const StaticStringList<>) { return {""}; }
 template<int H,  int... T> constexpr auto concatenate(const StaticStringList<H, T...> &s) {
     auto tail = concatenate(tuple_tail(s));
-    return concatenate_helper<std::make_index_sequence<H>, std::make_index_sequence<tail.size>>::concatenate(std::get<0>(s), tail);
+    return concatenate_helper<std::make_index_sequence<H>, std::make_index_sequence<tail.size>>::concatenate(simple::get<0>(s), tail);
 }
 
 /** Add a string in a StaticStringList */
@@ -313,9 +359,9 @@ namespace MetaObjectBuilder {
         Constructors constructors;
         Properties properties;
 
-        static constexpr int methodCount = std::tuple_size<Methods>::value;
-        static constexpr int constructorCount = std::tuple_size<Constructors>::value;
-        static constexpr int propertyCount = std::tuple_size<Properties>::value;
+        static constexpr int methodCount = simple::tuple_size<Methods>::value;
+        static constexpr int constructorCount = simple::tuple_size<Constructors>::value;
+        static constexpr int propertyCount = simple::tuple_size<Properties>::value;
         static constexpr int signalCount = SignalCount;
     };
 
@@ -324,10 +370,10 @@ struct FriendHelper1 { /* FIXME */
     template<typename T, int N>
     static constexpr auto makeClassInfo(StaticStringArray<N> &name) {
         const auto sigState = T::w_SignalState(w_number<>{});
-        const auto methodInfo = std::tuple_cat(sigState, T::w_SlotState(w_number<>{}), T::w_MethodState(w_number<>{}));
+        const auto methodInfo = simple::tuple_cat(sigState, T::w_SlotState(w_number<>{}), T::w_MethodState(w_number<>{}));
         const auto constructorInfo = T::w_ConstructorState(w_number<>{});
         const auto propertyInfo = T::w_PropertyState(w_number<>{});
-        constexpr int sigCount = std::tuple_size<decltype(sigState)>::value;
+        constexpr int sigCount = simple::tuple_size<decltype(sigState)>::value;
         return ClassInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo), sigCount>
             { {name}, methodInfo, constructorInfo, propertyInfo };
     }
@@ -400,25 +446,25 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
         static constexpr auto &W_UnscopedName = #TYPE; /* so we don't repeat it in W_CONSTRUCTOR */ \
         friend struct MetaObjectBuilder::FriendHelper1; \
         friend struct ::FriendHelper2; \
-        static constexpr std::tuple<> w_SlotState(w_number<0>) { return {}; } \
-        static constexpr std::tuple<> w_SignalState(w_number<0>) { return {}; } \
-        static constexpr std::tuple<> w_MethodState(w_number<0>) { return {}; } \
-        static constexpr std::tuple<> w_ConstructorState(w_number<0>) { return {}; } \
-        static constexpr std::tuple<> w_PropertyState(w_number<0>) { return {}; } \
+        static constexpr simple::tuple<> w_SlotState(w_number<0>) { return {}; } \
+        static constexpr simple::tuple<> w_SignalState(w_number<0>) { return {}; } \
+        static constexpr simple::tuple<> w_MethodState(w_number<0>) { return {}; } \
+        static constexpr simple::tuple<> w_ConstructorState(w_number<0>) { return {}; } \
+        static constexpr simple::tuple<> w_PropertyState(w_number<0>) { return {}; } \
     public: \
         struct MetaObjectCreatorHelper; \
         using W_BaseType = decltype(getParentObjectHelper(&W_ThisType::qt_metacast)); \
     Q_OBJECT
 
 #define W_SLOT(NAME, ...) \
-    static constexpr auto w_SlotState(w_number<std::tuple_size<decltype(w_SlotState(w_number<>{}))>::value+1> counter) \
+    static constexpr auto w_SlotState(w_number<simple::tuple_size<decltype(w_SlotState(w_number<>{}))>::value+1> counter) \
         W_RETURN(tuple_append(w_SlotState(counter.prev()), MetaObjectBuilder::makeMetaSlotInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa)))
 
 #define W_INVOKABLE(NAME, ...) \
-    static constexpr auto w_MethodState(w_number<std::tuple_size<decltype(w_MethodState(w_number<>{}))>::value+1> counter) \
+    static constexpr auto w_MethodState(w_number<simple::tuple_size<decltype(w_MethodState(w_number<>{}))>::value+1> counter) \
         W_RETURN(tuple_append(w_MethodState(counter.prev()), MetaObjectBuilder::makeMetaMethodInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
@@ -431,20 +477,20 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
         return SignalImplementation<w_SignalType, w_signalIndex_##NAME>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
     } \
-    static constexpr int w_signalIndex_##NAME = std::tuple_size<decltype(w_SignalState(w_number<>{}))>::value; \
+    static constexpr int w_signalIndex_##NAME = simple::tuple_size<decltype(w_SignalState(w_number<>{}))>::value; \
     static constexpr auto w_SignalState(w_number<w_signalIndex_##NAME + 1> counter) \
         W_RETURN(tuple_append(w_SignalState(counter.prev()), MetaObjectBuilder::makeMetaSignalInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))))
 
 #define W_CONSTRUCTOR(...) \
-    static constexpr auto w_ConstructorState(w_number<std::tuple_size<decltype(w_ConstructorState(w_number<>{}))>::value+1> counter) \
+    static constexpr auto w_ConstructorState(w_number<simple::tuple_size<decltype(w_ConstructorState(w_number<>{}))>::value+1> counter) \
         W_RETURN(tuple_append(w_ConstructorState(counter.prev()), \
             MetaObjectBuilder::makeMetaConstructorInfo<__VA_ARGS__>().setName(W_UnscopedName)))
 
 
 
 #define W_PROPERTY(TYPE, NAME, ...) \
-    static constexpr auto w_PropertyState(w_number<std::tuple_size<decltype(w_PropertyState(w_number<>{}))>::value+1> counter) \
+    static constexpr auto w_PropertyState(w_number<simple::tuple_size<decltype(w_PropertyState(w_number<>{}))>::value+1> counter) \
         W_RETURN(tuple_append(w_PropertyState(counter.prev()), \
                               MetaObjectBuilder::makeMetaPropertyInfo<TYPE>(#NAME, #TYPE, __VA_ARGS__)))

@@ -12,18 +12,18 @@ namespace MetaObjectBuilder {
      * returns std::pair<StaticStringList, index_sequence>:  the modified strings and the array of strings
      */
     template<int, typename Strings>
-    constexpr auto generateMethods(const Strings &s, const std::tuple<>&) {
+    constexpr auto generateMethods(const Strings &s, const simple::tuple<>&) {
         return std::make_pair(s, std::index_sequence<>());
     }
     template<int ParamIndex, typename Strings, typename Method, typename... Tail>
-    constexpr auto generateMethods(const Strings &s, const std::tuple<Method, Tail...> &t) {
+    constexpr auto generateMethods(const Strings &s, const simple::tuple<Method, Tail...> &t) {
 
-        auto method = std::get<0>(t);
+        auto method = simple::get<0>(t);
         auto s2 = addString(s, method.name);
 
 
         using thisMethod = std::index_sequence<
-            std::tuple_size<Strings>::value, //name
+            simple::tuple_size<Strings>::value, //name
             Method::argCount,
             ParamIndex, //parametters
             1, //tag, always \0
@@ -51,25 +51,25 @@ namespace MetaObjectBuilder {
             static_assert(W_TypeRegistery<T>::registered, "Please Register T with W_DECLARE_METATYPE");
             auto s2 = addString(ss, W_TypeRegistery<T>::name);
             return std::make_pair(s2, std::index_sequence<IsUnresolvedType
-                                                | std::tuple_size<Strings>::value>());
+                                                | simple::tuple_size<Strings>::value>());
         }
         template<typename Strings, int N>
         static constexpr auto result(const Strings &ss, StaticString<N> typeStr,
                                      typename std::enable_if<(N>1),int>::type=0) {
             auto s2 = addString(ss, typeStr);
             return std::make_pair(s2, std::index_sequence<IsUnresolvedType
-                    | std::tuple_size<Strings>::value>());
+                    | simple::tuple_size<Strings>::value>());
         }
     };
 
     template<typename Strings>
-    constexpr auto generateProperties(const Strings &s, const std::tuple<>) {
+    constexpr auto generateProperties(const Strings &s, const simple::tuple<>) {
         return std::make_pair(s, std::index_sequence<>());
     }
     template<typename Strings, typename Prop, typename... Tail>
-    constexpr auto generateProperties(const Strings &s, const std::tuple<Prop, Tail...> &t) {
+    constexpr auto generateProperties(const Strings &s, const simple::tuple<Prop, Tail...> &t) {
 
-        auto prop = std::get<0>(t);
+        auto prop = simple::get<0>(t);
         auto s2 = addString(s, prop.name);
         auto type = HandleType<typename Prop::PropertyType>::result(s2, prop.typeStr);
         auto next = generateProperties(type.first, tuple_tail(t));
@@ -101,7 +101,7 @@ namespace MetaObjectBuilder {
 
         constexpr std::size_t flags = (Writable|Readable); // FIXME
 
-        auto thisProp = std::index_sequence<std::tuple_size<Strings>::value>() //name
+        auto thisProp = std::index_sequence<simple::tuple_size<Strings>::value>() //name
                         + type.second
                         + std::index_sequence<flags>()
                         + next.second;
@@ -124,7 +124,7 @@ namespace MetaObjectBuilder {
             auto typeStr = tuple_head(paramTypes);
             using ts_t = decltype(typeStr);
             // This way, the overload of result will not pick the StaticString one if it is a tuple (because registered types have the priority)
-            auto typeStr2 = std::conditional_t<std::is_same<A, Type>::value, ts_t, std::tuple<ts_t>>{typeStr};
+            auto typeStr2 = std::conditional_t<std::is_same<A, Type>::value, ts_t, simple::tuple<ts_t>>{typeStr};
             auto r1 = HandleType<Type>::result(ss, typeStr2);
             auto r2 = HandleArgsHelper<Args...>::result(r1.first, tuple_tail(paramTypes));
             return std::make_pair(r2.first, r1.second + r2.second);
@@ -135,10 +135,10 @@ namespace MetaObjectBuilder {
         template<typename Strings, int S, int...T>
         static constexpr auto result(const Strings &ss, StaticStringList<S, T...> pn)
         {
-            auto s2 = addString(ss, std::get<0>(pn));
+            auto s2 = addString(ss, simple::get<0>(pn));
             auto tail = tuple_tail(pn);
             auto t = HandleArgNames<N-1>::result(s2, tail);
-            return std::make_pair(t.first, std::index_sequence<std::tuple_size<Strings>::value>() + t.second );
+            return std::make_pair(t.first, std::index_sequence<simple::tuple_size<Strings>::value>() + t.second );
         }
         template<typename Strings> static constexpr auto result(const Strings &ss, StaticStringList<>)
         { return std::make_pair(ss, ones<N>()); }
@@ -152,39 +152,39 @@ namespace MetaObjectBuilder {
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
     constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...),
                                                  const ParamTypes &paramTypes, const ParamNames &paramNames ) {
-        auto types = HandleArgsHelper<Ret, Args...>::result(ss, std::tuple_cat(std::tuple<int>{}, paramTypes));
+        auto types = HandleArgsHelper<Ret, Args...>::result(ss, simple::tuple_cat(simple::tuple<int>{}, paramTypes));
         auto names = HandleArgNames<sizeof...(Args)>::result(types.first, paramNames);
         return std::make_pair(names.first, types.second + names.second);
     }
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
     constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...) const,
                                                  const ParamTypes &paramTypes, const ParamNames &paramNames ) {
-        auto types = HandleArgsHelper<Ret, Args...>::result(ss, std::tuple_cat(std::tuple<int>{}, paramTypes));
+        auto types = HandleArgsHelper<Ret, Args...>::result(ss, simple::tuple_cat(simple::tuple<int>{}, paramTypes));
         auto names = HandleArgNames<sizeof...(Args)>::result(types.first, paramNames);
         return std::make_pair(names.first, types.second + names.second);
     }
 
 
     template<typename Strings>
-    constexpr auto generateMethodsParameters(const Strings &s, const std::tuple<>&) {
+    constexpr auto generateMethodsParameters(const Strings &s, const simple::tuple<>&) {
         return std::make_pair(s, std::index_sequence<>());
     }
     template<typename Strings, typename Method, typename... Tail>
-    constexpr auto generateMethodsParameters(const Strings &s, const std::tuple<Method, Tail...> &t) {
-        auto method = std::get<0>(t);
+    constexpr auto generateMethodsParameters(const Strings &s, const simple::tuple<Method, Tail...> &t) {
+        auto method = simple::get<0>(t);
         auto thisMethod = generateSingleMethodParameter(s, method.func, method.paramTypes, method.paramNames);
         auto next = generateMethodsParameters(thisMethod.first, tuple_tail(t));
         return std::make_pair(next.first, thisMethod.second + next.second);
     }
 
     template<typename Strings>
-    constexpr auto generateConstructorParameters(const Strings &s, const std::tuple<>&) {
+    constexpr auto generateConstructorParameters(const Strings &s, const simple::tuple<>&) {
         return std::make_pair(s, std::index_sequence<>());
     }
     template<typename Strings, int N, typename... Args, typename... Tail>
-    constexpr auto generateConstructorParameters(const Strings &ss, const std::tuple<MetaConstructorInfo<N,Args...>, Tail...> &t) {
+    constexpr auto generateConstructorParameters(const Strings &ss, const simple::tuple<MetaConstructorInfo<N,Args...>, Tail...> &t) {
         auto returnT = std::index_sequence<IsUnresolvedType | 1>{};
-        auto types = HandleArgsHelper<Args...>::result(ss, std::tuple<>{});
+        auto types = HandleArgsHelper<Args...>::result(ss, simple::tuple<>{});
         auto names = ones<sizeof...(Args)>{};
         auto next = generateConstructorParameters(types.first, tuple_tail(t));
         return std::make_pair(next.first, returnT + types.second + names + next.second);
@@ -192,7 +192,7 @@ namespace MetaObjectBuilder {
 
     template<typename Methods, std::size_t... I>
     constexpr int paramOffset(std::index_sequence<I...>)
-    { return sums(int(1 + std::tuple_element_t<I, Methods>::argCount * 2)...); }
+    { return sums(int(1 + simple::tuple_element_t<I, Methods>::argCount * 2)...); }
 
     // generate the integer array and the lists of string
     template<typename CI>
@@ -214,7 +214,7 @@ namespace MetaObjectBuilder {
                 0,       // flags
                 CI::signalCount
         >;
-        auto stringData = std::make_tuple(classInfo.name, StaticString<1>(""));
+        auto stringData = simple::make_tuple(classInfo.name, StaticString<1>(""));
         auto methods = generateMethods<paramIndex>(stringData , classInfo.methods);
         auto properties = generateProperties(methods.first , classInfo.properties);
         auto constructors = generateMethods<constructorParamIndex>(properties.first, classInfo.constructors);
@@ -336,9 +336,9 @@ template<typename T> static int qt_metacall_impl(T *_o, QMetaObject::Call _c, in
  */
 template<typename T, int I>
 static int indexOfMethod(void **func) {
-    constexpr auto f = std::get<I>(T::MetaObjectCreatorHelper::classInfo.methods).func;
+    constexpr auto f = simple::get<I>(T::MetaObjectCreatorHelper::classInfo.methods).func;
     using Ms = decltype(T::MetaObjectCreatorHelper::classInfo.methods);
-    if ((std::tuple_element_t<I,Ms>::flags & 0xc) == W_MethodType::Signal.value
+    if ((simple::tuple_element_t<I,Ms>::flags & 0xc) == W_MethodType::Signal.value
         && f == *reinterpret_cast<decltype(f)*>(func))
         return I;
     return -1;
@@ -347,7 +347,7 @@ static int indexOfMethod(void **func) {
 template <typename T, int I>
 static void invokeMethod(T *_o, int _id, void **_a) {
     if (_id == I) {
-        constexpr auto f = std::get<I>(T::MetaObjectCreatorHelper::classInfo.methods).func;
+        constexpr auto f = simple::get<I>(T::MetaObjectCreatorHelper::classInfo.methods).func;
         using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
         P::template call<typename P::Arguments, typename P::ReturnType>(f, _o, _a);
     }
@@ -356,7 +356,7 @@ static void invokeMethod(T *_o, int _id, void **_a) {
 template <typename T, int I>
 static void registerMethodArgumentType(int _id, void **_a) {
     if (_id == I) {
-        constexpr auto f = std::get<I>(T::MetaObjectCreatorHelper::classInfo.methods).func;
+        constexpr auto f = simple::get<I>(T::MetaObjectCreatorHelper::classInfo.methods).func;
         using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
         auto _t = QtPrivate::ConnectionTypes<typename P::Arguments>::types();
         uint arg = *reinterpret_cast<int*>(_a[1]);
@@ -369,7 +369,7 @@ template<typename T, int I>
 static void propertyOp(T *_o, QMetaObject::Call _c, int _id, void **_a) {
     if (_id != I)
         return;
-    constexpr auto p = std::get<I>(T::MetaObjectCreatorHelper::classInfo.properties);
+    constexpr auto p = simple::get<I>(T::MetaObjectCreatorHelper::classInfo.properties);
     using Type = typename decltype(p)::PropertyType;
     switch(+_c) {
         case QMetaObject::ReadProperty:
@@ -395,7 +395,7 @@ static void propertyOp(T *_o, QMetaObject::Call _c, int _id, void **_a) {
 template<typename T, int I>
 static void createInstance(int _id, void** _a) {
     if (_id == I) {
-        constexpr auto m = std::get<I>(T::MetaObjectCreatorHelper::classInfo.constructors);
+        constexpr auto m = simple::get<I>(T::MetaObjectCreatorHelper::classInfo.constructors);
         m.template createInstance<T>(_a, std::make_index_sequence<decltype(m)::argCount>{});
     }
 }
