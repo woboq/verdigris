@@ -4,8 +4,27 @@
 #include <QtCore/qmetatype.h>
 #include <utility>
 
-// std::tuple compilation time is too slow for use in constexpr
 namespace simple {
+
+
+
+    // FIXME default std::make_index_sequence is recursing O(N) times which is too big for big strings
+    using std::index_sequence;
+    template<size_t... I1, size_t... I2>
+    index_sequence<I1... , (I2 +(sizeof...(I1)))...>
+    make_index_sequence_helper_merge(index_sequence<I1...>, index_sequence<I2...>);
+
+    template<int I> struct make_index_sequence_helper {
+        using part1 = typename make_index_sequence_helper<(I+1)/2>::result;
+        using part2 = typename make_index_sequence_helper<I/2>::result;
+        using result = decltype(make_index_sequence_helper_merge(part1(), part2()));
+    };
+    template<> struct make_index_sequence_helper<1> { using result = index_sequence<0>; };
+    template<> struct make_index_sequence_helper<0> { using result = index_sequence<>; };
+    template<int I> using make_index_sequence = typename make_index_sequence_helper<I>::result;
+
+
+    // std::tuple compilation time is too slow for use in constexpr
 
     template<typename ... Ts> struct tuple;
     template<typename T, typename ... Ts> struct tuple<T, Ts...> : tuple<Ts...> {
@@ -39,8 +58,8 @@ namespace simple {
 
     template<typename... T1, typename... T2>
     constexpr tuple<T1..., T2...> tuple_cat(tuple<T1...> t1, tuple<T2...> t2) {
-        return tuple_cat_helper(t1, t2, std::make_index_sequence<sizeof...(T1)>{},
-                                std::make_index_sequence<sizeof...(T2)>{});
+        return tuple_cat_helper(t1, t2, simple::make_index_sequence<sizeof...(T1)>{},
+                                simple::make_index_sequence<sizeof...(T2)>{});
     }
     template<typename... T1, typename... T2, typename... T>
     constexpr auto tuple_cat(tuple<T1...> t1, tuple<T2...> t2, T... t)
@@ -102,7 +121,7 @@ template<typename T, std::size_t...I> constexpr auto tuple_tail_helper(const T&t
     return simple::make_tuple(simple::get<I+1>(t)...);
 }
 template<typename T> constexpr auto tuple_tail(const T& tuple) {
-    return tuple_tail_helper(tuple, std::make_index_sequence<simple::tuple_size<T>::value-1>());
+    return tuple_tail_helper(tuple, simple::make_index_sequence<simple::tuple_size<T>::value-1>());
 }
 constexpr auto tuple_tail(simple::tuple<>)
 { return simple::tuple<>{}; }
@@ -117,7 +136,7 @@ constexpr auto tuple_append_helper(const simple::tuple<Ts...> &tuple, const T &t
 }
 template<typename T1, typename T>
 constexpr auto tuple_append(const T1 &tuple, const T &t) {
-    return tuple_append_helper(tuple, t, std::make_index_sequence<simple::tuple_size<T1>::value>());
+    return tuple_append_helper(tuple, t, simple::make_index_sequence<simple::tuple_size<T1>::value>());
 }
 
 /**
@@ -139,7 +158,7 @@ constexpr auto tuple_head(const simple::tuple<> &) {
 template<typename> struct ones_helper;
 template<std::size_t...I> struct ones_helper<std::index_sequence<I...>>
 { using result = std::index_sequence<(void(I),1)...>; };
-template<int N> using ones = typename ones_helper<std::make_index_sequence<N>>::result;
+template<int N> using ones = typename ones_helper<simple::make_index_sequence<N>>::result;
 
 /* Compute the sum of many integers */
 constexpr int sums() { return 0; }
@@ -159,7 +178,7 @@ template<int N> struct StaticString  {
     StaticStringArray<N> data;
     template <std::size_t... I>
     constexpr StaticString(StaticStringArray<N> &d, std::index_sequence<I...>) : data{ (d[I])... } { }
-    constexpr StaticString(StaticStringArray<N> &d) : StaticString(d, std::make_index_sequence<N>()) {}
+    constexpr StaticString(StaticStringArray<N> &d) : StaticString(d, simple::make_index_sequence<N>()) {}
     static constexpr int size = N;
     constexpr char operator[](int p) const { return data[p]; }
 };
@@ -188,7 +207,7 @@ template<std::size_t... I1, std::size_t... I2> struct concatenate_helper<std::in
 constexpr StaticString<1> concatenate(const StaticStringList<>) { return {""}; }
 template<int H,  int... T> constexpr auto concatenate(const StaticStringList<H, T...> &s) {
     auto tail = concatenate(tuple_tail(s));
-    return concatenate_helper<std::make_index_sequence<H>, std::make_index_sequence<tail.size>>::concatenate(simple::get<0>(s), tail);
+    return concatenate_helper<simple::make_index_sequence<H>, simple::make_index_sequence<tail.size>>::concatenate(simple::get<0>(s), tail);
 }
 
 /** Add a string in a StaticStringList */

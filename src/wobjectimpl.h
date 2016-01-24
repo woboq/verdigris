@@ -202,7 +202,7 @@ namespace MetaObjectBuilder {
         constexpr int constructorOffset = propertyOffset + CI::propertyCount * 3 ;
         constexpr int paramIndex = constructorOffset + CI::constructorCount * 5 ;
         constexpr int constructorParamIndex = paramIndex +
-            paramOffset<decltype(classInfo.methods)>(std::make_index_sequence<CI::methodCount>{});
+            paramOffset<decltype(classInfo.methods)>(simple::make_index_sequence<CI::methodCount>{});
         using header = std::index_sequence<
                 7,       // revision
                 0,       // classname
@@ -236,7 +236,7 @@ namespace MetaObjectBuilder {
     };
 
     /** Builds the string data
-     * \param S: a index_sequence that goes from 0 to the fill size of the strings
+     * \param S: a index_sequence that goes from 0 to the full size of the strings
      * \param I: a index_sequence that goes from 0 to the number of string
      * \param O: a index_sequence of the offsets
      * \param N: a index_sequence of the size of each strings
@@ -275,8 +275,8 @@ namespace MetaObjectBuilder {
      */
     template<typename T, int... N>
     constexpr const QByteArrayData *build_string_data(StaticStringList<N...>)  {
-        return BuildStringDataHelper<std::make_index_sequence<sums(N...)>,
-                                     std::make_index_sequence<sizeof...(N)>,
+        return BuildStringDataHelper<simple::make_index_sequence<sums(N...)>,
+                                     simple::make_index_sequence<sizeof...(N)>,
                                      typename ComputeOffsets<N...>::Result,
                                      std::index_sequence<N...>,
                                       T>
@@ -396,7 +396,7 @@ template<typename T, int I>
 static void createInstance(int _id, void** _a) {
     if (_id == I) {
         constexpr auto m = simple::get<I>(T::MetaObjectCreatorHelper::classInfo.constructors);
-        m.template createInstance<T>(_a, std::make_index_sequence<decltype(m)::argCount>{});
+        m.template createInstance<T>(_a, simple::make_index_sequence<decltype(m)::argCount>{});
     }
 }
 
@@ -432,9 +432,9 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
 {
     using CI = decltype(T::MetaObjectCreatorHelper::classInfo);
     return FriendHelper2::qt_static_metacall_impl<T>(std::forward<Ts>(args)...,
-                                                     std::make_index_sequence<CI::methodCount>{},
-                                                     std::make_index_sequence<CI::constructorCount>{},
-                                                     std::make_index_sequence<CI::propertyCount>{});
+                                                     simple::make_index_sequence<CI::methodCount>{},
+                                                     simple::make_index_sequence<CI::constructorCount>{},
+                                                     simple::make_index_sequence<CI::propertyCount>{});
 }
 
 
