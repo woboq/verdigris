@@ -151,7 +151,7 @@ namespace MetaObjectBuilder {
         auto e = simple::get<0>(t);
         auto r = generateSingleEnumValues(s, e.values, e.names);
         auto next = generateEnumsValues(r.first, tuple_tail(t));
-        return std::make_pair(next.first, next.second + r.second);
+        return std::make_pair(next.first,  r.second + next.second);
     }
 
     //Helper class for generateSingleMethodParameter:  generate the parametter array
