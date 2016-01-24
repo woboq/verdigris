@@ -149,7 +149,7 @@ namespace MetaObjectBuilder {
     template<typename Strings, typename Enum, typename... Tail>
     constexpr auto generateEnumsValues(const Strings &s, const simple::tuple<Enum, Tail...> &t) {
         auto e = simple::get<0>(t);
-        auto r = generateSingleEnumValues(s, e.values, e.names);
+        auto r = generateSingleEnumValues(s, typename Enum::Values{}, e.names);
         auto next = generateEnumsValues(r.first, tuple_tail(t));
         return std::make_pair(next.first,  r.second + next.second);
     }
