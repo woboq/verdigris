@@ -1,5 +1,8 @@
+#pragma once
+
 #include <QtCore/qobjectdefs.h>
 #include <QtCore/qmetatype.h>
+#include <QtCore/qobject.h> // move to impl header
 #include <tuple>
 #include <utility>
 
@@ -79,6 +82,12 @@ template<typename> struct ones_helper;
 template<std::size_t...I> struct ones_helper<std::index_sequence<I...>>
 { using result = std::index_sequence<(void(I),1)...>; };
 template<int N> using ones = typename ones_helper<std::make_index_sequence<N>>::result;
+
+/* Compute the sum of many integers */
+constexpr int sums() { return 0; }
+template<typename... Args>
+constexpr int sums(int i, Args... args) { return i + sums(args...);  }
+
 
 /*
  * Helpers to play with static strings
@@ -230,6 +239,13 @@ namespace MetaObjectBuilder {
     { return { f, {name}, paramTypes, paramNames }; }
 
 
+    template<typename... Args> struct MetaConstructorInfo {
+        static constexpr int argCount = sizeof...(Args);
+        static constexpr int flags = W_MethodType::Constructor.value | W_Access::Public.value;
+    };
+    template<typename...  Args> constexpr MetaConstructorInfo<Args...> makeMetaConstructorInfo()
+    { return { }; }
+
     /** Holds information about a property */
     template<typename Type, int NameLength, int TypeLength, typename Getter, typename Setter, typename Member, typename Notify>
     struct MetaPropertyInfo {
@@ -302,13 +318,15 @@ namespace MetaObjectBuilder {
     }
 
     /** Holds information about a class,  includeing all the properties and methods */
-    template<int NameLength, typename Methods, typename Properties, int SignalCount>
+    template<int NameLength, typename Methods, typename Constructors, typename Properties, int SignalCount>
     struct ClassInfo {
         StaticString<NameLength> name;
         Methods methods;
+        Constructors constructors;
         Properties properties;
 
         static constexpr int methodCount = std::tuple_size<Methods>::value;
+        static constexpr int constructorCount = std::tuple_size<Constructors>::value;
         static constexpr int propertyCount = std::tuple_size<Properties>::value;
         static constexpr int signalCount = SignalCount;
     };
@@ -319,9 +337,11 @@ struct FriendHelper1 { /* FIXME */
     static constexpr auto makeClassInfo(StaticStringArray<N> &name) {
         const auto sigState = T::w_SignalState(w_number<>{});
         const auto methodInfo = std::tuple_cat(sigState, T::w_SlotState(w_number<>{}), T::w_MethodState(w_number<>{}));
+        const auto constructorInfo = T::w_ConstructorState(w_number<>{});
         const auto propertyInfo = T::w_PropertyState(w_number<>{});
         constexpr int sigCount = std::tuple_size<decltype(sigState)>::value;
-        return ClassInfo<N, decltype(methodInfo), decltype(propertyInfo), sigCount>{ {name}, methodInfo, propertyInfo };
+        return ClassInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo), sigCount>
+            { {name}, methodInfo, constructorInfo, propertyInfo };
     }
 };
 
@@ -358,6 +378,7 @@ struct FriendHelper1 { /* FIXME */
 
     template <typename T, typename = void> struct MetaTypeIdIsBuiltIn : std::false_type {};
     template <typename T> struct MetaTypeIdIsBuiltIn<T, typename std::enable_if<QMetaTypeId2<T>::IsBuiltIn>::type> : std::true_type{};
+    enum { IsUnresolvedType = 0x80000000 };
 
     template<typename T, bool Builtin = MetaTypeIdIsBuiltIn<T>::value>
     struct HandleType {
@@ -367,7 +388,6 @@ struct FriendHelper1 { /* FIXME */
     };
     template<typename T>
     struct HandleType<T, false> {
-        enum { IsUnresolvedType = 0x80000000 };
         template<typename Strings, typename TypeStr = int>
         static constexpr auto result(const Strings &ss, TypeStr = {}) {
             static_assert(W_TypeRegistery<T>::registered, "Please Register T with W_DECLARE_METATYPE");
@@ -499,13 +519,32 @@ struct FriendHelper1 { /* FIXME */
         return std::make_pair(next.first, thisMethod.second + next.second);
     }
 
+    template<typename Strings>
+    constexpr auto generateConstructorParameters(const Strings &s, const std::tuple<>&) {
+        return std::make_pair(s, std::index_sequence<>());
+    }
+    template<typename Strings, typename... Args, typename... Tail>
+    constexpr auto generateConstructorParameters(const Strings &ss, const std::tuple<MetaConstructorInfo<Args...>, Tail...> &t) {
+        auto returnT = std::index_sequence<IsUnresolvedType | 1>{};
+        auto types = HandleArgsHelper<Args...>::result(ss, std::tuple<>{});
+        auto names = ones<sizeof...(Args)>::result;
+        auto next = generateConstructorParameters(types.first, tuple_tail(t));
+        return std::make_pair(next.first, returnT +types + next.second);
+    }
+
+    template<typename Methods, std::size_t... I>
+    constexpr int paramOffset(std::index_sequence<I...>)
+    { return sums(int(1 + std::tuple_element_t<I, Methods>::argCount * 2)...); }
 
     // generate the integer array and the lists of string
     template<typename CI>
     constexpr auto generateDataArray(const CI &classInfo) {
         constexpr int methodOffset = 14;
         constexpr int propertyOffset = methodOffset + CI::methodCount * 5;
-        constexpr int paramIndex = propertyOffset + CI::propertyCount * 3 ;
+        constexpr int constructorOffset = propertyOffset + CI::propertyCount * 3 ;
+        constexpr int paramIndex = constructorOffset + CI::constructorCount * 5 ;
+        constexpr int constructorParamIndex = paramIndex +
+            paramOffset<decltype(classInfo.methods)>(std::make_index_sequence<CI::methodCount>{});
         using header = std::index_sequence<
                 7,       // revision
                 0,       // classname
@@ -513,15 +552,18 @@ struct FriendHelper1 { /* FIXME */
                 CI::methodCount,   methodOffset, // methods
                 CI::propertyCount,    propertyOffset, // properties
                 0,    0, // enums/sets
-                0,    0, // constructors
+                CI::constructorCount, constructorOffset, // constructors
                 0,       // flags
                 CI::signalCount
         >;
         auto stringData = std::make_tuple(classInfo.name, StaticString<1>(""));
         auto methods = generateMethods<paramIndex>(stringData , classInfo.methods);
         auto properties = generateProperties(methods.first , classInfo.properties);
-        auto parametters = generateMethodsParameters(properties.first, classInfo.methods);
-        return std::make_pair(parametters.first,  header()  + methods.second + properties.second + parametters.second);
+        auto constructors = generateMethods<constructorParamIndex>(properties.first, classInfo.constructors);
+        auto parametters = generateMethodsParameters(constructors.first, classInfo.methods);
+        auto parametters2 = generateConstructorParameters(parametters.first, classInfo.constructors);
+        return std::make_pair(parametters2.first,  header()  + methods.second + properties.second +
+                    parametters.second + parametters2.second);
     }
 
 
@@ -575,12 +617,6 @@ struct FriendHelper1 { /* FIXME */
         { concatenate(T::string_data)[S]...     }
     };
 
-
-
-    /* Compute the sum of many integers */
-    constexpr int sums() { return 0; }
-    template<typename... Args>
-    constexpr int sums(int i, Args... args) { return i + sums(args...);  }
 
     /**
      * Given N a list of string sizes, compute the list offsets to each of the strings.
@@ -762,6 +798,7 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
         static constexpr std::tuple<> w_SlotState(w_number<0>) { return {}; } \
         static constexpr std::tuple<> w_SignalState(w_number<0>) { return {}; } \
         static constexpr std::tuple<> w_MethodState(w_number<0>) { return {}; } \
+        static constexpr std::tuple<> w_ConstructorState(w_number<0>) { return {}; } \
         static constexpr std::tuple<> w_PropertyState(w_number<0>) { return {}; } \
     public: \
         struct MetaObjectCreatorHelper; \
@@ -803,8 +840,9 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
             W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa)))
 
 #define W_SIGNAL_1(...) \
-    __VA_ARGS__ {
+    __VA_ARGS__
 #define W_SIGNAL_2(NAME, ...) \
+    { \
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
         return SignalImplementation<w_SignalType, w_signalIndex_##NAME>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
     } \
@@ -814,8 +852,13 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))))
 
+#define W_CONSTRUCTOR(...) \
+    static constexpr auto w_ConstructorState(w_number<std::tuple_size<decltype(w_MethodState(w_number<>{}))>::value+1> counter) \
+        W_RETURN(tuple_append(w_ConstructorState(counter.prev()), MetaObjectBuilder::makeMetaConstructorInfo<__VA_ARGS__>()))
+
+
+
 #define W_PROPERTY(TYPE, NAME, ...) \
     static constexpr auto w_PropertyState(w_number<std::tuple_size<decltype(w_PropertyState(w_number<>{}))>::value+1> counter) \
         W_RETURN(tuple_append(w_PropertyState(counter.prev()), \
                               MetaObjectBuilder::makeMetaPropertyInfo<TYPE>(#NAME, #TYPE, __VA_ARGS__)))
-
