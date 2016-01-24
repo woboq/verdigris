@@ -319,7 +319,8 @@ namespace MetaObjectBuilder {
     { return { {""} }; }
 
     /** Holds information about a property */
-    template<typename Type, int NameLength, int TypeLength, typename Getter, typename Setter, typename Member, typename Notify>
+    template<typename Type, int NameLength, int TypeLength, typename Getter, typename Setter,
+             typename Member, typename Notify>
     struct MetaPropertyInfo {
         using PropertyType = Type;
         StaticString<NameLength> name;
@@ -387,7 +388,7 @@ namespace MetaObjectBuilder {
 
     /** Holds information about a class,  includeing all the properties and methods */
     template<int NameLength, typename Methods, typename Constructors, typename Properties, typename Enums, int SignalCount>
-    struct ClassInfo {
+    struct ObjectInfo {
         StaticString<NameLength> name;
         Methods methods;
         Constructors constructors;
@@ -402,22 +403,22 @@ namespace MetaObjectBuilder {
     };
 
 struct FriendHelper1 { /* FIXME */
-    /** Construct a ClassInfo with just the name */
+    /** Construct a ObjectInfo with just the name */
     template<typename T, int N>
-    static constexpr auto makeClassInfo(StaticStringArray<N> &name) {
+    static constexpr auto makeObjectInfo(StaticStringArray<N> &name) {
         const auto sigState = T::w_SignalState(w_number<>{});
         const auto methodInfo = simple::tuple_cat(sigState, T::w_SlotState(w_number<>{}), T::w_MethodState(w_number<>{}));
         const auto constructorInfo = T::w_ConstructorState(w_number<>{});
         const auto propertyInfo = T::w_PropertyState(w_number<>{});
         const auto enumInfo = T::w_EnumState(w_number<>{});
         constexpr int sigCount = simple::tuple_size<decltype(sigState)>::value;
-        return ClassInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo), decltype(enumInfo), sigCount>
+        return ObjectInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo), decltype(enumInfo), sigCount>
             { {name}, methodInfo, constructorInfo, propertyInfo, enumInfo };
     }
 };
 
     template<typename T, int N>
-    constexpr auto makeClassInfo(StaticStringArray<N> &name) { return FriendHelper1::makeClassInfo<T>(name); }
+    constexpr auto makeObjectInfo(StaticStringArray<N> &name) { return FriendHelper1::makeObjectInfo<T>(name); }
 
 }
 

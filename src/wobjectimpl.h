@@ -240,36 +240,36 @@ namespace MetaObjectBuilder {
     { return sums(int(1 + simple::tuple_element_t<I, Methods>::argCount * 2)...); }
 
     // generate the integer array and the lists of string
-    template<typename CI>
-    constexpr auto generateDataArray(const CI &classInfo) {
+    template<typename ObjI>
+    constexpr auto generateDataArray(const ObjI &objectInfo) {
         constexpr int methodOffset = 14;
-        constexpr int propertyOffset = methodOffset + CI::methodCount * 5;
-        constexpr int enumOffset = propertyOffset + CI::propertyCount * 3;
-        constexpr int constructorOffset = enumOffset + CI::enumCount* 4;
-        constexpr int paramIndex = constructorOffset + CI::constructorCount * 5 ;
+        constexpr int propertyOffset = methodOffset + ObjI::methodCount * 5;
+        constexpr int enumOffset = propertyOffset + ObjI::propertyCount * 3;
+        constexpr int constructorOffset = enumOffset + ObjI::enumCount* 4;
+        constexpr int paramIndex = constructorOffset + ObjI::constructorCount * 5 ;
         constexpr int constructorParamIndex = paramIndex +
-            paramOffset<decltype(classInfo.methods)>(simple::make_index_sequence<CI::methodCount>{});
+            paramOffset<decltype(objectInfo.methods)>(simple::make_index_sequence<ObjI::methodCount>{});
         constexpr int enumValueOffset = constructorParamIndex +
-            paramOffset<decltype(classInfo.constructors)>(simple::make_index_sequence<CI::constructorCount>{});
+            paramOffset<decltype(objectInfo.constructors)>(simple::make_index_sequence<ObjI::constructorCount>{});
         using header = std::index_sequence<
                 7,       // revision
                 0,       // classname
                 0,    0, // classinfo
-                CI::methodCount,   methodOffset, // methods
-                CI::propertyCount,    propertyOffset, // properties
-                CI::enumCount,    enumOffset, // enums/sets
-                CI::constructorCount, constructorOffset, // constructors
+                ObjI::methodCount,   methodOffset, // methods
+                ObjI::propertyCount,    propertyOffset, // properties
+                ObjI::enumCount,    enumOffset, // enums/sets
+                ObjI::constructorCount, constructorOffset, // constructors
                 0,       // flags
-                CI::signalCount
+                ObjI::signalCount
         >;
-        auto stringData = simple::make_tuple(classInfo.name, StaticString<1>(""));
-        auto methods = generateMethods<paramIndex>(stringData , classInfo.methods);
-        auto properties = generateProperties(methods.first , classInfo.properties);
-        auto enums = generateEnums<enumValueOffset>(properties.first, classInfo.enums);
-        auto constructors = generateMethods<constructorParamIndex>(enums.first, classInfo.constructors);
-        auto parametters = generateMethodsParameters(constructors.first, classInfo.methods);
-        auto parametters2 = generateConstructorParameters(parametters.first, classInfo.constructors);
-        auto enumValues = generateEnumsValues(parametters2.first, classInfo.enums);
+        auto stringData = simple::make_tuple(objectInfo.name, StaticString<1>(""));
+        auto methods = generateMethods<paramIndex>(stringData , objectInfo.methods);
+        auto properties = generateProperties(methods.first , objectInfo.properties);
+        auto enums = generateEnums<enumValueOffset>(properties.first, objectInfo.enums);
+        auto constructors = generateMethods<constructorParamIndex>(enums.first, objectInfo.constructors);
+        auto parametters = generateMethodsParameters(constructors.first, objectInfo.methods);
+        auto parametters2 = generateConstructorParameters(parametters.first, objectInfo.constructors);
+        auto enumValues = generateEnumsValues(parametters2.first, objectInfo.enums);
         return std::make_pair(enumValues.first,  header()  + methods.second + properties.second
             + enums.second + constructors.second + parametters.second + parametters2.second
             + enumValues.second);
@@ -366,13 +366,13 @@ template<typename T> static int qt_metacall_impl(T *_o, QMetaObject::Call _c, in
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod || _c == QMetaObject::RegisterMethodArgumentMetaType) {
-        constexpr int methodCount = Creator::classInfo.methodCount;
+        constexpr int methodCount = Creator::objectInfo.methodCount;
         if (_id < methodCount)
             T::qt_static_metacall(_o, _c, _id, _a);
         _id -= methodCount;
     } else if ((_c >= QMetaObject::ReadProperty && _c <= QMetaObject::QueryPropertyUser)
                 || _c == QMetaObject::RegisterPropertyMetaType) {
-        constexpr int propertyCount = Creator::classInfo.propertyCount;
+        constexpr int propertyCount = Creator::objectInfo.propertyCount;
         if (_id < propertyCount)
             T::qt_static_metacall(_o, _c, _id, _a);
         _id -= propertyCount;
@@ -387,8 +387,8 @@ template<typename T> static int qt_metacall_impl(T *_o, QMetaObject::Call _c, in
  */
 template<typename T, int I>
 static int indexOfMethod(void **func) {
-    constexpr auto f = simple::get<I>(T::MetaObjectCreatorHelper::classInfo.methods).func;
-    using Ms = decltype(T::MetaObjectCreatorHelper::classInfo.methods);
+    constexpr auto f = simple::get<I>(T::MetaObjectCreatorHelper::objectInfo.methods).func;
+    using Ms = decltype(T::MetaObjectCreatorHelper::objectInfo.methods);
     if ((simple::tuple_element_t<I,Ms>::flags & 0xc) == W_MethodType::Signal.value
         && f == *reinterpret_cast<decltype(f)*>(func))
         return I;
@@ -398,7 +398,7 @@ static int indexOfMethod(void **func) {
 template <typename T, int I>
 static void invokeMethod(T *_o, int _id, void **_a) {
     if (_id == I) {
-        constexpr auto f = simple::get<I>(T::MetaObjectCreatorHelper::classInfo.methods).func;
+        constexpr auto f = simple::get<I>(T::MetaObjectCreatorHelper::objectInfo.methods).func;
         using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
         P::template call<typename P::Arguments, typename P::ReturnType>(f, _o, _a);
     }
@@ -407,7 +407,7 @@ static void invokeMethod(T *_o, int _id, void **_a) {
 template <typename T, int I>
 static void registerMethodArgumentType(int _id, void **_a) {
     if (_id == I) {
-        constexpr auto f = simple::get<I>(T::MetaObjectCreatorHelper::classInfo.methods).func;
+        constexpr auto f = simple::get<I>(T::MetaObjectCreatorHelper::objectInfo.methods).func;
         using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
         auto _t = QtPrivate::ConnectionTypes<typename P::Arguments>::types();
         uint arg = *reinterpret_cast<int*>(_a[1]);
@@ -420,7 +420,7 @@ template<typename T, int I>
 static void propertyOp(T *_o, QMetaObject::Call _c, int _id, void **_a) {
     if (_id != I)
         return;
-    constexpr auto p = simple::get<I>(T::MetaObjectCreatorHelper::classInfo.properties);
+    constexpr auto p = simple::get<I>(T::MetaObjectCreatorHelper::objectInfo.properties);
     using Type = typename decltype(p)::PropertyType;
     switch(+_c) {
         case QMetaObject::ReadProperty:
@@ -446,7 +446,7 @@ static void propertyOp(T *_o, QMetaObject::Call _c, int _id, void **_a) {
 template<typename T, int I>
 static void createInstance(int _id, void** _a) {
     if (_id == I) {
-        constexpr auto m = simple::get<I>(T::MetaObjectCreatorHelper::classInfo.constructors);
+        constexpr auto m = simple::get<I>(T::MetaObjectCreatorHelper::objectInfo.constructors);
         m.template createInstance<T>(_a, simple::make_index_sequence<decltype(m)::argCount>{});
     }
 }
@@ -481,18 +481,18 @@ template<typename T, typename... Ts> auto qt_metacall_impl(Ts &&...args)
 {  return FriendHelper2::qt_metacall_impl<T>(std::forward<Ts>(args)...); }
 template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
 {
-    using CI = decltype(T::MetaObjectCreatorHelper::classInfo);
+    using ObjI = decltype(T::MetaObjectCreatorHelper::objectInfo);
     return FriendHelper2::qt_static_metacall_impl<T>(std::forward<Ts>(args)...,
-                                                     simple::make_index_sequence<CI::methodCount>{},
-                                                     simple::make_index_sequence<CI::constructorCount>{},
-                                                     simple::make_index_sequence<CI::propertyCount>{});
+                                                     simple::make_index_sequence<ObjI::methodCount>{},
+                                                     simple::make_index_sequence<ObjI::constructorCount>{},
+                                                     simple::make_index_sequence<ObjI::propertyCount>{});
 }
 
 
 #define W_OBJECT_IMPL(TYPE) \
     struct TYPE::MetaObjectCreatorHelper { \
-        static constexpr auto classInfo = MetaObjectBuilder::makeClassInfo<TYPE>(#TYPE); \
-        static constexpr auto data = generateDataArray(classInfo); \
+        static constexpr auto objectInfo = MetaObjectBuilder::makeObjectInfo<TYPE>(#TYPE); \
+        static constexpr auto data = generateDataArray(objectInfo); \
         static constexpr auto string_data = data.first; \
         static constexpr auto int_data = data.second; \
     }; \
