@@ -38,7 +38,7 @@
 #include <qabstractproxymodel.h>
 #include <private/qmetaobject_p.h>
 
-#include <nickelspace.h>
+#include <wobjectdefs.h>
 
 #define WRITE , &W_ThisType::
 #define READ , &W_ThisType::

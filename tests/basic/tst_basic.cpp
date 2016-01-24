@@ -1,5 +1,5 @@
+#include <wobjectdefs.h>
 #include <QtTest/QtTest>
-#include <nickelspace.h>
 
 class tst_Basic : public QObject
 {
