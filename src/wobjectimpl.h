@@ -44,7 +44,7 @@ constexpr auto generate(State s, const simple::tuple<>&)
 template<typename Generator, int Ofst, typename State, typename Head, typename... Tail>
 constexpr auto generate(const State &s, const simple::tuple<Head, Tail...> &t) {
     return generate<Generator, Ofst + Generator::template offset<Head>()>(
-        Generator::template generate<Ofst>(s, simple::get<0>(t)), tuple_tail(t));
+        Generator::template generate<Ofst>(s, simple::tuple_head(t)), tuple_tail(t));
 }
 
 
@@ -184,7 +184,7 @@ struct EnumValuesGenerator {
 
     template<typename Strings, std::size_t Value, std::size_t... I, typename Names>
     static constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<Value, I...>, Names names) {
-        auto s2 = s.addString(simple::get<0>(names)).template add<uint(Value)>();
+        auto s2 = s.addString(simple::tuple_head(names)).template add<uint(Value)>();
         return generateSingleEnumValues(s2, std::index_sequence<I...>{}, tuple_tail(names));
     }
 
@@ -220,7 +220,7 @@ struct EnumValuesGenerator {
         template<typename Strings, int S, int...T>
         static constexpr auto result(const Strings &ss, StaticStringList<S, T...> pn)
         {
-            auto s2 = ss.addString(simple::get<0>(pn));
+            auto s2 = ss.addString(simple::tuple_head(pn));
             auto tail = tuple_tail(pn);
             return HandleArgNames<N-1>::result(s2, tail);
         }

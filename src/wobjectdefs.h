@@ -66,6 +66,17 @@ namespace simple {
     { return tuple_cat(t1, tuple_cat(t2, t...)); }
 
     template<int I, typename T> using tuple_element_t = decltype(get<I>(std::declval<T>()));
+
+    /**
+     * tuple_head()  same as get<O> but return something in case the tuple is too small
+     */
+    template<typename T, typename... Ts>
+    constexpr T tuple_head(const simple::tuple<T, Ts...> &t)
+    { return t.data; }
+    constexpr auto tuple_head(const simple::tuple<> &) {
+        struct _{};
+        return _{};
+    }
 }
 
 
@@ -139,17 +150,18 @@ constexpr auto tuple_append(const T1 &tuple, const T &t) {
     return tuple_append_helper(tuple, t, simple::make_index_sequence<simple::tuple_size<T1>::value>());
 }
 
+#if 0
 /**
  * tuple_head()  same as get<O> but return something in case the tuple is too small
  */
 template<typename T, typename... Ts>
 constexpr auto tuple_head(const simple::tuple<T, Ts...> &t)
-{ return simple::get<0>(t); }
+{ return simple::tuple_head(t); }
 constexpr auto tuple_head(const simple::tuple<> &) {
     struct _{};
     return _{};
 }
-
+#endif
 
 /**
  * ones()
@@ -207,7 +219,7 @@ template<std::size_t... I1, std::size_t... I2> struct concatenate_helper<std::in
 constexpr StaticString<1> concatenate(const StaticStringList<>) { return {""}; }
 template<int H,  int... T> constexpr auto concatenate(const StaticStringList<H, T...> &s) {
     auto tail = concatenate(tuple_tail(s));
-    return concatenate_helper<simple::make_index_sequence<H>, simple::make_index_sequence<tail.size>>::concatenate(simple::get<0>(s), tail);
+    return concatenate_helper<simple::make_index_sequence<H>, simple::make_index_sequence<tail.size>>::concatenate(simple::tuple_head(s), tail);
 }
 
 /** Add a string in a StaticStringList */
