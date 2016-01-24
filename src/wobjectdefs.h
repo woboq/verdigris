@@ -387,13 +387,15 @@ namespace MetaObjectBuilder {
     }
 
     /** Holds information about a class,  includeing all the properties and methods */
-    template<int NameLength, typename Methods, typename Constructors, typename Properties, typename Enums, int SignalCount>
+    template<int NameLength, typename Methods, typename Constructors, typename Properties,
+             typename Enums, typename ClassInfos, int SignalCount>
     struct ObjectInfo {
         StaticString<NameLength> name;
         Methods methods;
         Constructors constructors;
         Properties properties;
         Enums enums;
+        ClassInfos classInfos;
 
         static constexpr int methodCount = simple::tuple_size<Methods>::value;
         static constexpr int constructorCount = simple::tuple_size<Constructors>::value;
@@ -411,9 +413,11 @@ struct FriendHelper1 { /* FIXME */
         const auto constructorInfo = T::w_ConstructorState(w_number<>{});
         const auto propertyInfo = T::w_PropertyState(w_number<>{});
         const auto enumInfo = T::w_EnumState(w_number<>{});
+        const auto classInfo = T::w_ClassInfoState(w_number<>{});
         constexpr int sigCount = simple::tuple_size<decltype(sigState)>::value;
-        return ObjectInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo), decltype(enumInfo), sigCount>
-            { {name}, methodInfo, constructorInfo, propertyInfo, enumInfo };
+        return ObjectInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo),
+                          decltype(enumInfo), decltype(classInfo), sigCount>
+            { {name}, methodInfo, constructorInfo, propertyInfo, enumInfo, classInfo };
     }
 };
 
@@ -490,6 +494,7 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
         static constexpr simple::tuple<> w_ConstructorState(w_number<0>) { return {}; } \
         static constexpr simple::tuple<> w_PropertyState(w_number<0>) { return {}; } \
         static constexpr simple::tuple<> w_EnumState(w_number<0>) { return {}; } \
+        static constexpr simple::tuple<> w_ClassInfoState(w_number<0>) { return {}; } \
     public: \
         struct MetaObjectCreatorHelper; \
         using W_BaseType = decltype(getParentObjectHelper(&W_ThisType::qt_metacast)); \
@@ -527,8 +532,6 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
         W_RETURN(tuple_append(w_ConstructorState(counter.prev()), \
             MetaObjectBuilder::makeMetaConstructorInfo<__VA_ARGS__>().setName(W_UnscopedName)))
 
-
-
 #define W_PROPERTY(TYPE, NAME, ...) \
     static constexpr auto w_PropertyState(w_number<simple::tuple_size<decltype(w_PropertyState(w_number<>{}))>::value+1> counter) \
         W_RETURN(tuple_append(w_PropertyState(counter.prev()), \
@@ -548,3 +551,8 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
         W_RETURN(tuple_append(w_EnumState(counter.prev()), MetaObjectBuilder::makeMetaEnumInfo<QEnumOrQFlags<NAME>::Type,true>( \
             #NAME, std::integer_sequence<QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__)))) \
     Q_FLAG(NAME)
+
+#define W_CLASSINFO(A, B) \
+    static constexpr auto w_ClassInfoState(w_number<simple::tuple_size<decltype(w_ClassInfoState(w_number<>{}))>::value+1> counter) \
+        W_RETURN(tuple_append(w_ClassInfoState(counter.prev()), \
+            std::pair<StaticString<sizeof(A)>, StaticString<sizeof(B)>>{ {A}, {B} }))

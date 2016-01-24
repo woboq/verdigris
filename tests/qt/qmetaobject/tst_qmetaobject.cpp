@@ -165,7 +165,7 @@ class tst_QMetaObject : public QObject
 
 public:
     enum EnumType { EnumType1 };
-    Q_ENUM(EnumType);
+    W_ENUM(EnumType,EnumType1);
 
     void setValue(EnumType) {}
     EnumType getValue() const { return EnumType1; }
@@ -1296,7 +1296,7 @@ void tst_QMetaObject::propertyFinal()
 class ClassInfoTestObjectA : public QObject
 {
     W_OBJECT(ClassInfoTestObjectA)
-    Q_CLASSINFO("Author", "Christopher Pike")
+    W_CLASSINFO("Author", "Christopher Pike")
 };
 
 W_OBJECT_IMPL(ClassInfoTestObjectA)
