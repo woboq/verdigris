@@ -47,6 +47,7 @@ void tst_Basic::firstTest()
 
 class BTestObj  : public QObject
 {   W_OBJECT(BTestObj)
+    W_CONSTRUCTOR()
     QString value;
 public:
     void setValue(const QString &s) { value = s; emit valueChanged(s); }

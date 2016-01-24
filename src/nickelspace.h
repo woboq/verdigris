@@ -152,13 +152,6 @@ constexpr auto addString(const StaticStringList<N...> &l, const StaticString<L> 
     return tuple_append(l, s);
 }
 
-// this variant does nothing
-template<int ...N >
-constexpr auto addString(const StaticStringList<N...> &l, int) {
-    return l;
-}
-
-
 
 /*-----------*/
 
@@ -245,18 +238,21 @@ namespace MetaObjectBuilder {
     { return { f, {name}, paramTypes, paramNames }; }
 
 
-    template<typename... Args> struct MetaConstructorInfo {
+    template<int NameLength, typename... Args> struct MetaConstructorInfo {
         static constexpr int argCount = sizeof...(Args);
         static constexpr int flags = W_MethodType::Constructor.value | W_Access::Public.value;
-        static constexpr int name = 0;
+        StaticString<NameLength> name;
+        template<int N>
+        constexpr MetaConstructorInfo<N, Args...> setName(StaticStringArray<N> &name)
+        { return { { name } }; }
         template<typename T, std::size_t... I>
         void createInstance(void **_a, std::index_sequence<I...>) const {
             *reinterpret_cast<T**>(_a[0]) =
                 new T(*reinterpret_cast<typename std::remove_reference<Args>::type *>(_a[I+1])...);
         }
     };
-    template<typename...  Args> constexpr MetaConstructorInfo<Args...> makeMetaConstructorInfo()
-    { return { }; }
+    template<typename...  Args> constexpr MetaConstructorInfo<1,Args...> makeMetaConstructorInfo()
+    { return { {""} }; }
 
     /** Holds information about a property */
     template<typename Type, int NameLength, int TypeLength, typename Getter, typename Setter, typename Member, typename Notify>
@@ -358,10 +354,9 @@ struct FriendHelper1 { /* FIXME */
         auto method = std::get<0>(t);
         auto s2 = addString(s, method.name);
 
-        constexpr bool isConstructor = (Method::flags & 0xc) == W_MethodType::Constructor.value;
 
         using thisMethod = std::index_sequence<
-            isConstructor ? 0 : std::tuple_size<Strings>::value, //name
+            std::tuple_size<Strings>::value, //name
             Method::argCount,
             ParamIndex, //parametters
             1, //tag, always \0
@@ -519,8 +514,8 @@ struct FriendHelper1 { /* FIXME */
     constexpr auto generateConstructorParameters(const Strings &s, const std::tuple<>&) {
         return std::make_pair(s, std::index_sequence<>());
     }
-    template<typename Strings, typename... Args, typename... Tail>
-    constexpr auto generateConstructorParameters(const Strings &ss, const std::tuple<MetaConstructorInfo<Args...>, Tail...> &t) {
+    template<typename Strings, int N, typename... Args, typename... Tail>
+    constexpr auto generateConstructorParameters(const Strings &ss, const std::tuple<MetaConstructorInfo<N,Args...>, Tail...> &t) {
         auto returnT = std::index_sequence<IsUnresolvedType | 1>{};
         auto types = HandleArgsHelper<Args...>::result(ss, std::tuple<>{});
         auto names = ones<sizeof...(Args)>{};
@@ -765,6 +760,7 @@ template<typename...Ts> static constexpr void nop(Ts...) {}
 template<typename T, size_t...MethI, size_t ...ConsI, size_t...PropI>
 static void qt_static_metacall_impl(QObject *_o, QMetaObject::Call _c, int _id, void** _a,
                         std::index_sequence<MethI...>, std::index_sequence<ConsI...>, std::index_sequence<PropI...>) {
+    Q_UNUSED(_id)
     if (_c == QMetaObject::InvokeMetaMethod) {
         Q_ASSERT(T::staticMetaObject.cast(_o));
         nop((invokeMethod<T, MethI>(static_cast<T*>(_o), _id, _a),0)...);
@@ -853,6 +849,7 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
 // public macros
 #define W_OBJECT(TYPE) \
         using W_ThisType = TYPE; /* This is the only reason why we need TYPE */ \
+        static constexpr auto &W_UnscopedName = #TYPE; /* so we don't repeat it in W_CONSTRUCTOR */ \
         friend struct MetaObjectBuilder::FriendHelper1; \
         friend struct ::FriendHelper2; \
         static constexpr std::tuple<> w_SlotState(w_number<0>) { return {}; } \
@@ -914,7 +911,8 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
 
 #define W_CONSTRUCTOR(...) \
     static constexpr auto w_ConstructorState(w_number<std::tuple_size<decltype(w_ConstructorState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(tuple_append(w_ConstructorState(counter.prev()), MetaObjectBuilder::makeMetaConstructorInfo<__VA_ARGS__>()))
+        W_RETURN(tuple_append(w_ConstructorState(counter.prev()), \
+            MetaObjectBuilder::makeMetaConstructorInfo<__VA_ARGS__>().setName(W_UnscopedName)))
 
 
 
