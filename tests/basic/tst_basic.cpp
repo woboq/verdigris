@@ -1,6 +1,5 @@
 #include <wobjectdefs.h>
-#include <QtTest/QtTest>
-
+#include <QtCore/QObject>
 class tst_Basic : public QObject
 {
     W_OBJECT(tst_Basic)
@@ -25,6 +24,10 @@ private /*slots*/:
     void overloadForm();
     W_SLOT(overloadForm,(), W_Access::Private)
 };
+
+#include <wobjectimpl.h>
+
+#include <QtTest/QtTest>
 
 W_OBJECT_IMPL(tst_Basic)
 

@@ -38,7 +38,7 @@
 #include <qabstractproxymodel.h>
 #include <private/qmetaobject_p.h>
 
-#include <wobjectdefs.h>
+#include <wobjectimpl.h>
 
 #define WRITE , &W_ThisType::
 #define READ , &W_ThisType::
