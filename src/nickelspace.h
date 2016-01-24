@@ -227,20 +227,6 @@ namespace MetaObjectBuilder {
         ParamNames paramNames;
         static constexpr int argCount = QtPrivate::FunctionPointer<F>::ArgumentCount;
         static constexpr int flags = Flags;
-        using ReturnType = typename QtPrivate::FunctionPointer<F>::ReturnType;
-
-        template<typename T>
-        void metacall(T *_o, QMetaObject::Call _c, void **_a) const {
-            using P = QtPrivate::FunctionPointer<F>;
-            if (_c == QMetaObject::InvokeMetaMethod) {
-                P::template call<typename P::Arguments, ReturnType>(func, _o, _a);
-            } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-                auto _t = QtPrivate::ConnectionTypes<typename P::Arguments>::types();
-                uint arg = *reinterpret_cast<int*>(_a[1]);
-                *reinterpret_cast<int*>(_a[0]) = _t && arg < QtPrivate::FunctionPointer<F>::ArgumentCount ?
-                    _t[arg] : -1;
-            }
-        }
     };
 
     template<typename F, int N, typename ParamTypes, int Flags = W_Access::Public.value>
@@ -292,25 +278,6 @@ namespace MetaObjectBuilder {
         { return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, S, Notify> {name, typeStr, getter, setter, s, notify, flags}; }
         template <typename S> constexpr auto setNotify(const S&s) const
         { return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, Member, S> {name, typeStr, getter, setter, member, s, flags}; }
-
-        template<typename T>
-        void metacall(T *_o, QMetaObject::Call _c, void **_a) const {
-            switch(+_c) {
-            case QMetaObject::ReadProperty:
-                if (getter) {
-                    *reinterpret_cast<Type*>(_a[0]) = (_o->*getter)();
-                } else if (member) {
-                    *reinterpret_cast<Type*>(_a[0]) = _o->*member;
-                }
-                break;
-            case QMetaObject::WriteProperty:
-                if (setter) {
-                    (_o->*setter)(*reinterpret_cast<Type*>(_a[0]));
-                } else if (member) {
-                    _o->*member = *reinterpret_cast<Type*>(_a[0]);
-                }
-            }
-        }
     };
 
     /** Parse a property and fill a MetaPropertyInfo */
@@ -434,7 +401,7 @@ struct FriendHelper1 { /* FIXME */
     };
 
     template<typename Strings>
-    constexpr auto generateProperties(const Strings &s, const std::tuple<>&) {
+    constexpr auto generateProperties(const Strings &s, const std::tuple<>) {
         return std::make_pair(s, std::index_sequence<>());
     }
     template<typename Strings, typename Prop, typename... Tail>
@@ -592,7 +559,7 @@ struct FriendHelper1 { /* FIXME */
         auto parametters = generateMethodsParameters(constructors.first, classInfo.methods);
         auto parametters2 = generateConstructorParameters(parametters.first, classInfo.constructors);
         return std::make_pair(parametters2.first,  header()  + methods.second + properties.second +
-                    parametters.second + parametters2.second);
+                    constructors.second + parametters.second + parametters2.second);
     }
 
 
@@ -682,47 +649,6 @@ struct FriendHelper1 { /* FIXME */
     };
     template<std::size_t... I> const uint build_int_data<std::index_sequence<I...>>::data[sizeof...(I)] = { uint(I)... };
 
-
-    /**
-     * calls metacall on each element of the tuple
-     */
-    template<typename T> void metacall(T *, QMetaObject::Call, int , void** , const std::tuple<> &) {}
-    template<typename T, typename Ms> void metacall(T *_o, QMetaObject::Call _c, int _id, void** _a, const Ms &ms) {
-        if (_id == 0) {
-            std::get<0>(ms).metacall(_o, _c, _a);
-        } else {
-           metacall(_o, _c, _id-1, _a, tuple_tail(ms));
-        }
-    }
-
-    /**
-     * Helper for QMetaObject::IndexOfMethod
-     */
-    void indexOfMethod (int *, void **, int, const std::tuple<> &) {}
-    template<typename Ms> void indexOfMethod (int *result, void **func, int _id, const Ms &ms) {
-        auto f = std::get<0>(ms).func;
-        if (std::get<0>(ms).flags & W_MethodType::Signal.value
-                &&  f == *reinterpret_cast<decltype(f)*>(func)) {
-            *result = _id;
-        } else {
-            indexOfMethod(result, func, _id+1, tuple_tail(ms));
-        }
-    }
-
-    /**
-     * helper for QMetaObject::createInstance
-     */
-    template<typename T> void createInstance(int, void** , const std::tuple<> &) {}
-    template<typename T, typename Ms> void createInstance(int _id, void** _a, const Ms &ms) {
-        if (_id == 0) {
-            auto m = std::get<0>(ms);
-            m.template createInstance<T>(_a, std::make_index_sequence<decltype(m)::argCount>{});
-        } else {
-            createInstance<T>(_id-1, _a, tuple_tail(ms));
-        }
-    }
-
-
 }
 
 
@@ -753,22 +679,104 @@ template<typename T> static int qt_metacall_impl(T *_o, QMetaObject::Call _c, in
         _id -= methodCount;
     } else if ((_c >= QMetaObject::ReadProperty && _c <= QMetaObject::QueryPropertyUser)
                 || _c == QMetaObject::RegisterPropertyMetaType) {
-        constexpr auto ps = Creator::classInfo.properties;
-        MetaObjectBuilder::metacall(_o, _c, _id, _a, ps);
+        constexpr int propertyCount = Creator::classInfo.propertyCount;
+        if (_id < propertyCount)
+            T::qt_static_metacall(_o, _c, _id, _a);
+        _id -= propertyCount;
     }
     return _id;
 }
 
-template<typename T> static void qt_static_metacall_impl(QObject *_o, QMetaObject::Call _c, int _id, void** _a) {
-    constexpr auto ms = T::MetaObjectCreatorHelper::classInfo.methods;
-    if (_c == QMetaObject::InvokeMetaMethod || _c == QMetaObject::RegisterMethodArgumentMetaType) {
+
+
+/**
+ * Helper for QMetaObject::IndexOfMethod
+ */
+template<typename T, int I>
+static int indexOfMethod(void **func) {
+    constexpr auto f = std::get<I>(T::MetaObjectCreatorHelper::classInfo.methods).func;
+    using Ms = decltype(T::MetaObjectCreatorHelper::classInfo.methods);
+    if ((std::tuple_element_t<I,Ms>::flags & 0xc) == W_MethodType::Signal.value
+        && f == *reinterpret_cast<decltype(f)*>(func))
+        return I;
+    return -1;
+}
+
+template <typename T, int I>
+static void invokeMethod(T *_o, int _id, void **_a) {
+    if (_id == I) {
+        constexpr auto f = std::get<I>(T::MetaObjectCreatorHelper::classInfo.methods).func;
+        using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
+        P::template call<typename P::Arguments, typename P::ReturnType>(f, _o, _a);
+    }
+}
+
+template <typename T, int I>
+static void registerMethodArgumentType(int _id, void **_a) {
+    if (_id == I) {
+        constexpr auto f = std::get<I>(T::MetaObjectCreatorHelper::classInfo.methods).func;
+        using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
+        auto _t = QtPrivate::ConnectionTypes<typename P::Arguments>::types();
+        uint arg = *reinterpret_cast<int*>(_a[1]);
+        *reinterpret_cast<int*>(_a[0]) = _t && arg < P::ArgumentCount ?
+                _t[arg] : -1;
+    }
+}
+
+template<typename T, int I>
+static void propertyOp(T *_o, QMetaObject::Call _c, int _id, void **_a) {
+    if (_id != I)
+        return;
+    constexpr auto p = std::get<I>(T::MetaObjectCreatorHelper::classInfo.properties);
+    using Type = typename decltype(p)::PropertyType;
+    switch(+_c) {
+        case QMetaObject::ReadProperty:
+            if (p.getter) {
+                *reinterpret_cast<Type*>(_a[0]) = (_o->*(p.getter))();
+            } else if (p.member) {
+                *reinterpret_cast<Type*>(_a[0]) = _o->*(p.member);
+            }
+            break;
+        case QMetaObject::WriteProperty:
+            if (p.setter) {
+                (_o->*(p.setter))(*reinterpret_cast<Type*>(_a[0]));
+            } else if (p.member) {
+                _o->*(p.member) = *reinterpret_cast<Type*>(_a[0]);
+            }
+    }
+}
+
+
+/**
+ * helper for QMetaObject::createInstance
+ */
+template<typename T, int I>
+static void createInstance(int _id, void** _a) {
+    if (_id == I) {
+        constexpr auto m = std::get<I>(T::MetaObjectCreatorHelper::classInfo.constructors);
+        m.template createInstance<T>(_a, std::make_index_sequence<decltype(m)::argCount>{});
+    }
+}
+
+
+
+template<typename...Ts> static constexpr void nop(Ts...) {}
+
+template<typename T, size_t...MethI, size_t ...ConsI, size_t...PropI>
+static void qt_static_metacall_impl(QObject *_o, QMetaObject::Call _c, int _id, void** _a,
+                        std::index_sequence<MethI...>, std::index_sequence<ConsI...>, std::index_sequence<PropI...>) {
+    if (_c == QMetaObject::InvokeMetaMethod) {
         Q_ASSERT(T::staticMetaObject.cast(_o));
-        MetaObjectBuilder::metacall(static_cast<T*>(_o), _c, _id, _a, ms);
+        nop((invokeMethod<T, MethI>(static_cast<T*>(_o), _id, _a),0)...);
+    } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
+        nop((registerMethodArgumentType<T,MethI>(_id, _a),0)...);
     } else if (_c == QMetaObject::IndexOfMethod) {
-        MetaObjectBuilder::indexOfMethod(reinterpret_cast<int *>(_a[0]), reinterpret_cast<void **>(_a[1]), 0, ms);
+        *reinterpret_cast<int *>(_a[0]) = sums((1+indexOfMethod<T,MethI>(reinterpret_cast<void **>(_a[1])))...)-1;
     } else if (_c == QMetaObject::CreateInstance) {
-        constexpr auto cs = T::MetaObjectCreatorHelper::classInfo.constructors;
-        MetaObjectBuilder::createInstance<T>(_id, _a, cs);
+        nop((createInstance<T, ConsI>(_id, _a),0)...);
+    } else if ((_c >= QMetaObject::ReadProperty && _c <= QMetaObject::QueryPropertyUser)
+            || _c == QMetaObject::RegisterPropertyMetaType) {
+        nop((propertyOp<T,PropI>(static_cast<T*>(_o), _c, _id, _a),0)...);
     }
 }
 
@@ -778,7 +786,13 @@ template<typename T> constexpr auto createMetaObject() {  return FriendHelper2::
 template<typename T, typename... Ts> auto qt_metacall_impl(Ts &&...args)
 {  return FriendHelper2::qt_metacall_impl<T>(std::forward<Ts>(args)...); }
 template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
-{  return FriendHelper2::qt_static_metacall_impl<T>(std::forward<Ts>(args)...); }
+{
+    using CI = decltype(T::MetaObjectCreatorHelper::classInfo);
+    return FriendHelper2::qt_static_metacall_impl<T>(std::forward<Ts>(args)...,
+                                                     std::make_index_sequence<CI::methodCount>{},
+                                                     std::make_index_sequence<CI::constructorCount>{},
+                                                     std::make_index_sequence<CI::propertyCount>{});
+}
 
 
 
@@ -899,7 +913,7 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))))
 
 #define W_CONSTRUCTOR(...) \
-    static constexpr auto w_ConstructorState(w_number<std::tuple_size<decltype(w_MethodState(w_number<>{}))>::value+1> counter) \
+    static constexpr auto w_ConstructorState(w_number<std::tuple_size<decltype(w_ConstructorState(w_number<>{}))>::value+1> counter) \
         W_RETURN(tuple_append(w_ConstructorState(counter.prev()), MetaObjectBuilder::makeMetaConstructorInfo<__VA_ARGS__>()))
 
 
