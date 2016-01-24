@@ -93,9 +93,9 @@ namespace MyNamespace {
               m_flags(MyFlag1|MyFlag2)
                 { }
     private:
-        Q_ENUM(MyEnum)
-        Q_ENUM(MyAnotherEnum)
-        Q_FLAG(MyFlags)
+        W_ENUM(MyEnum, MyEnum1, MyEnum2, MyEnum3)
+        W_ENUM(MyAnotherEnum,MyAnotherEnum1,MyAnotherEnum2,MyAnotherEnum3)
+        W_FLAG(MyFlags,MyFlag1,MyFlag2,MyFlag3)
 
         MyEnum m_enum;
         MyFlags m_flags;
@@ -143,8 +143,10 @@ namespace MyNamespace {
               m_flags(MyFlag1|MyFlag2)
         { }
     private:
-        Q_ENUMS(MyEnum MyAnotherEnum)
-        Q_FLAGS(MyFlags)
+
+        W_ENUM(MyEnum, MyEnum1, MyEnum2, MyEnum3)
+        W_ENUM(MyAnotherEnum,MyAnotherEnum1,MyAnotherEnum2,MyAnotherEnum3)
+        W_FLAG(MyFlags,MyFlag1,MyFlag2,MyFlag3)
 
         MyEnum m_enum;
         MyFlags m_flags;

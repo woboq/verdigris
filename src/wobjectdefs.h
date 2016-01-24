@@ -376,6 +376,7 @@ namespace MetaObjectBuilder {
         Values values;
         Names names;
         static constexpr uint flags = Flags;
+        static constexpr uint count = Values::size();
     };
 
     template<int Flag, int NameLength, typename Values, typename Names>
@@ -535,11 +536,11 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
 #define W_ENUM(NAME, ...) \
     static constexpr auto w_EnumState(w_number<simple::tuple_size<decltype(w_EnumState(w_number<>{}))>::value+1> counter) \
         W_RETURN(tuple_append(w_EnumState(counter.prev()), MetaObjectBuilder::makeMetaEnumInfo<false>( \
-            #NAME, simple::make_tuple(__VA_ARGS__), W_PARAM_TOSTRING(__VA_ARGS__)))) \
+            #NAME, std::index_sequence<__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__)))) \
     Q_ENUM(NAME)
 
 #define W_FLAG(NAME, ...) \
     static constexpr auto w_EnumState(w_number<simple::tuple_size<decltype(w_EnumState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(tuple_append(w_EnumState(counter.prev()), MetaObjectBuilder::makeMetaEnumInfo<false>( \
-            #NAME, simple::make_tuple(__VA_ARGS__), W_PARAM_TOSTRING(__VA_ARGS__)))) \
+        W_RETURN(tuple_append(w_EnumState(counter.prev()), MetaObjectBuilder::makeMetaEnumInfo<true>( \
+            #NAME, std::index_sequence<__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__)))) \
     Q_FLAG(NAME)

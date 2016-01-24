@@ -118,33 +118,7 @@ namespace MetaObjectBuilder {
 
         auto enum_ = simple::get<0>(t);
         auto s2 = addString(s, enum_.name);
-        auto next = generateProperties<DataIndex + Enum::count*2>(s2, tuple_tail(t));
-
-        // From qmetaobject_p.h
-        enum PropertyFlags  {
-            Invalid = 0x00000000,
-            Readable = 0x00000001,
-            Writable = 0x00000002,
-            Resettable = 0x00000004,
-            EnumOrFlag = 0x00000008,
-            StdCppSet = 0x00000100,
-            //     Override = 0x00000200,
-            Constant = 0x00000400,
-            Final = 0x00000800,
-            Designable = 0x00001000,
-            ResolveDesignable = 0x00002000,
-            Scriptable = 0x00004000,
-            ResolveScriptable = 0x00008000,
-            Stored = 0x00010000,
-            ResolveStored = 0x00020000,
-            Editable = 0x00040000,
-            ResolveEditable = 0x00080000,
-            User = 0x00100000,
-            ResolveUser = 0x00200000,
-            Notify = 0x00400000,
-            Revisioned = 0x00800000
-        };
-
+        auto next = generateEnums<DataIndex + Enum::count*2>(s2, tuple_tail(t));
 
         auto thisProp = std::index_sequence<
                 simple::tuple_size<Strings>::value, //name
@@ -153,8 +127,31 @@ namespace MetaObjectBuilder {
                 DataIndex
             >{};
 
-        return std::make_pair(next.first, thisProp + next.second());
+        return std::make_pair(next.first, thisProp + next.second);
+    }
 
+    template<typename Strings>
+    constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<> e, simple::tuple<>)
+    { return std::make_pair(s, e); }
+
+    template<typename Strings, std::size_t Value, std::size_t... I, typename Names>
+    constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<Value, I...>, Names names) {
+        auto s2 = addString(s, simple::get<0>(names));
+        auto next = generateSingleEnumValues(s2, std::index_sequence<I...>{}, tuple_tail(names));
+        return std::make_pair(next.first, std::index_sequence<
+            simple::tuple_size<Strings>::value, Value>{} + next.second);
+    }
+
+    template<typename Strings>
+    constexpr auto generateEnumsValues(const Strings &s, const simple::tuple<> &)
+    { return std::make_pair(s, std::index_sequence<>{}); }
+
+    template<typename Strings, typename Enum, typename... Tail>
+    constexpr auto generateEnumsValues(const Strings &s, const simple::tuple<Enum, Tail...> &t) {
+        auto e = simple::get<0>(t);
+        auto r = generateSingleEnumValues(s, e.values, e.names);
+        auto next = generateEnumsValues(r.first, tuple_tail(t));
+        return std::make_pair(next.first, next.second + r.second);
     }
 
     //Helper class for generateSingleMethodParameter:  generate the parametter array
@@ -272,8 +269,10 @@ namespace MetaObjectBuilder {
         auto constructors = generateMethods<constructorParamIndex>(enums.first, classInfo.constructors);
         auto parametters = generateMethodsParameters(constructors.first, classInfo.methods);
         auto parametters2 = generateConstructorParameters(parametters.first, classInfo.constructors);
-        return std::make_pair(parametters2.first,  header()  + methods.second + properties.second +
-                    enums.second + constructors.second + parametters.second + parametters2.second);
+        auto enumValues = generateEnumsValues(parametters2.first, classInfo.enums);
+        return std::make_pair(enumValues.first,  header()  + methods.second + properties.second
+            + enums.second + constructors.second + parametters.second + parametters2.second
+            + enumValues.second);
     }
 
 

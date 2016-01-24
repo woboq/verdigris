@@ -23,6 +23,9 @@ private /*slots*/:
 
     void overloadForm();
     W_SLOT(overloadForm,(), W_Access::Private)
+
+    void enumBase();
+    W_SLOT(enumBase, W_Access::Private)
 };
 
 #include <wobjectimpl.h>
@@ -60,6 +63,9 @@ public:
     W_SLOT(resetValue)
 
     QString getValue() const { return value; }
+
+    enum XXX { X1, X2, X3 = 45 };
+    W_ENUM(XXX, X1, X2, X3)
 
 public: /*signals*/
     W_SIGNAL_1(void valueChanged(const QString &s))
@@ -157,6 +163,14 @@ void tst_Basic::overloadForm()
     QCOMPARE(result, 23);
     QVERIFY(QMetaObject::invokeMethod(&obj, "over1", Q_RETURN_ARG(int, result)));
     QCOMPARE(result, 34);
+}
+
+void tst_Basic::enumBase()
+{
+    QMetaEnum em = BTestObj::staticMetaObject.enumerator(
+        BTestObj::staticMetaObject.indexOfEnumerator("XXX"));
+    QVERIFY(em.isValid());
+    QCOMPARE(em.keyCount(), 3);
 }
 
 
