@@ -59,6 +59,9 @@ template<typename T, std::size_t...I> constexpr auto tuple_tail_helper(const T&t
 template<typename T> constexpr auto tuple_tail(const T& tuple) {
     return tuple_tail_helper(tuple, std::make_index_sequence<std::tuple_size<T>::value-1>());
 }
+constexpr auto tuple_tail(std::tuple<>)
+{ return std::tuple<>{}; }
+
 
 /**
  * tuple_append() Appends one element to the tuple (faster than tuple_cat)
@@ -72,6 +75,16 @@ constexpr auto tuple_append(const T1 &tuple, const T &t) {
     return tuple_append_helper(tuple, t, std::make_index_sequence<std::tuple_size<T1>::value>());
 }
 
+/**
+ * tuple_head()  same as get<O> but return something in case the tuple is too small
+ */
+template<typename T, typename... Ts>
+constexpr auto tuple_head(const std::tuple<T, Ts...> &t)
+{ return std::get<0>(t); }
+constexpr auto tuple_head(const std::tuple<> &) {
+    struct _{};
+    return _{};
+}
 
 
 /**
@@ -138,6 +151,13 @@ template<int L, int...N >
 constexpr auto addString(const StaticStringList<N...> &l, const StaticString<L> & s) {
     return tuple_append(l, s);
 }
+
+// this variant does nothing
+template<int ...N >
+constexpr auto addString(const StaticStringList<N...> &l, int) {
+    return l;
+}
+
 
 
 /*-----------*/
@@ -242,6 +262,12 @@ namespace MetaObjectBuilder {
     template<typename... Args> struct MetaConstructorInfo {
         static constexpr int argCount = sizeof...(Args);
         static constexpr int flags = W_MethodType::Constructor.value | W_Access::Public.value;
+        static constexpr int name = 0;
+        template<typename T, std::size_t... I>
+        void createInstance(void **_a, std::index_sequence<I...>) const {
+            *reinterpret_cast<T**>(_a[0]) =
+                new T(*reinterpret_cast<typename std::remove_reference<Args>::type *>(_a[I+1])...);
+        }
     };
     template<typename...  Args> constexpr MetaConstructorInfo<Args...> makeMetaConstructorInfo()
     { return { }; }
@@ -365,12 +391,15 @@ struct FriendHelper1 { /* FIXME */
         auto method = std::get<0>(t);
         auto s2 = addString(s, method.name);
 
-        using thisMethod = std::index_sequence<std::tuple_size<Strings>::value, //name
-                                          Method::argCount,
-                                          ParamIndex, //parametters
-                                          1, //tag, always \0
-                                          Method::flags
-                                        >;
+        constexpr bool isConstructor = (Method::flags & 0xc) == W_MethodType::Constructor.value;
+
+        using thisMethod = std::index_sequence<
+            isConstructor ? 0 : std::tuple_size<Strings>::value, //name
+            Method::argCount,
+            ParamIndex, //parametters
+            1, //tag, always \0
+            Method::flags
+        >;
 
         auto next = generateMethods<ParamIndex + 1 + Method::argCount * 2>(s2, tuple_tail(t));
         return std::make_pair(next.first, thisMethod() + next.second);
@@ -463,7 +492,7 @@ struct FriendHelper1 { /* FIXME */
         template<typename Strings, typename ParamTypes>
         static constexpr auto result(const Strings &ss, const ParamTypes &paramTypes) {
             using Type = typename QtPrivate::RemoveConstRef<A>::Type;
-            auto typeStr = std::get<0>(paramTypes);
+            auto typeStr = tuple_head(paramTypes);
             using ts_t = decltype(typeStr);
             // This way, the overload of result will not pick the StaticString one if it is a tuple (because registered types have the priority)
             auto typeStr2 = std::conditional_t<std::is_same<A, Type>::value, ts_t, std::tuple<ts_t>>{typeStr};
@@ -527,9 +556,9 @@ struct FriendHelper1 { /* FIXME */
     constexpr auto generateConstructorParameters(const Strings &ss, const std::tuple<MetaConstructorInfo<Args...>, Tail...> &t) {
         auto returnT = std::index_sequence<IsUnresolvedType | 1>{};
         auto types = HandleArgsHelper<Args...>::result(ss, std::tuple<>{});
-        auto names = ones<sizeof...(Args)>::result;
+        auto names = ones<sizeof...(Args)>{};
         auto next = generateConstructorParameters(types.first, tuple_tail(t));
-        return std::make_pair(next.first, returnT +types + next.second);
+        return std::make_pair(next.first, returnT + types.second + names + next.second);
     }
 
     template<typename Methods, std::size_t... I>
@@ -680,6 +709,20 @@ struct FriendHelper1 { /* FIXME */
         }
     }
 
+    /**
+     * helper for QMetaObject::createInstance
+     */
+    template<typename T> void createInstance(int, void** , const std::tuple<> &) {}
+    template<typename T, typename Ms> void createInstance(int _id, void** _a, const Ms &ms) {
+        if (_id == 0) {
+            auto m = std::get<0>(ms);
+            m.template createInstance<T>(_a, std::make_index_sequence<decltype(m)::argCount>{});
+        } else {
+            createInstance<T>(_id-1, _a, tuple_tail(ms));
+        }
+    }
+
+
 }
 
 
@@ -723,6 +766,9 @@ template<typename T> static void qt_static_metacall_impl(QObject *_o, QMetaObjec
         MetaObjectBuilder::metacall(static_cast<T*>(_o), _c, _id, _a, ms);
     } else if (_c == QMetaObject::IndexOfMethod) {
         MetaObjectBuilder::indexOfMethod(reinterpret_cast<int *>(_a[0]), reinterpret_cast<void **>(_a[1]), 0, ms);
+    } else if (_c == QMetaObject::CreateInstance) {
+        constexpr auto cs = T::MetaObjectCreatorHelper::classInfo.constructors;
+        MetaObjectBuilder::createInstance<T>(_id, _a, cs);
     }
 }
 

@@ -444,7 +444,8 @@ class QtTestObject: public QObject
 
 public:
     QtTestObject();
-    Q_INVOKABLE QtTestObject(QObject *parent);
+    QtTestObject(QObject *parent);
+    W_CONSTRUCTOR(QObject*)
 
 public slots:
     void sl0();
@@ -978,8 +979,9 @@ class ConstructibleClass : public QObject
 {
     W_OBJECT(ConstructibleClass)
 public:
-    Q_INVOKABLE ConstructibleClass(QObject *parent = 0)
+    ConstructibleClass(QObject *parent = 0)
         : QObject(parent) {}
+    W_CONSTRUCTOR(QObject*)
 };
 
 }
