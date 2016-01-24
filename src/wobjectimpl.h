@@ -5,6 +5,48 @@
 
 namespace MetaObjectBuilder {
 
+
+        /** Holds information about a class,  includeing all the properties and methods */
+    template<int NameLength, typename Methods, typename Constructors, typename Properties,
+             typename Enums, typename ClassInfos, int SignalCount>
+    struct ObjectInfo {
+        StaticString<NameLength> name;
+        Methods methods;
+        Constructors constructors;
+        Properties properties;
+        Enums enums;
+        ClassInfos classInfos;
+
+        static constexpr int methodCount = simple::tuple_size<Methods>::value;
+        static constexpr int constructorCount = simple::tuple_size<Constructors>::value;
+        static constexpr int propertyCount = simple::tuple_size<Properties>::value;
+        static constexpr int enumCount = simple::tuple_size<Enums>::value;
+        static constexpr int signalCount = SignalCount;
+    };
+
+struct FriendHelper1 { /* FIXME */
+    /** Construct a ObjectInfo with just the name */
+    template<typename T, int N>
+    static constexpr auto makeObjectInfo(StaticStringArray<N> &name) {
+        const auto sigState = T::w_SignalState(w_number<>{});
+        const auto methodInfo = simple::tuple_cat(sigState, T::w_SlotState(w_number<>{}), T::w_MethodState(w_number<>{}));
+        const auto constructorInfo = T::w_ConstructorState(w_number<>{});
+        const auto propertyInfo = T::w_PropertyState(w_number<>{});
+        const auto enumInfo = T::w_EnumState(w_number<>{});
+        const auto classInfo = T::w_ClassInfoState(w_number<>{});
+        constexpr int sigCount = simple::tuple_size<decltype(sigState)>::value;
+        return ObjectInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo),
+                          decltype(enumInfo), decltype(classInfo), sigCount>
+            { {name}, methodInfo, constructorInfo, propertyInfo, enumInfo, classInfo };
+    }
+};
+
+    template<typename T, int N>
+    constexpr auto makeObjectInfo(StaticStringArray<N> &name) { return FriendHelper1::makeObjectInfo<T>(name); }
+
+
+
+
     /**
      * generate...
      *  Create the metaobject's integer data array
