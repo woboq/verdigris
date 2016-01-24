@@ -63,6 +63,7 @@ constexpr auto generate(const State &s, const simple::tuple<Head, Tail...> &t) {
         static constexpr int constructorCount = simple::tuple_size<Constructors>::value;
         static constexpr int propertyCount = simple::tuple_size<Properties>::value;
         static constexpr int enumCount = simple::tuple_size<Enums>::value;
+        static constexpr int classInfoCount = simple::tuple_size<ClassInfos>::value;
         static constexpr int signalCount = SignalCount;
     };
 
@@ -87,6 +88,14 @@ struct FriendHelper1 { /* FIXME */
     constexpr auto makeObjectInfo(StaticStringArray<N> &name) { return FriendHelper1::makeObjectInfo<T>(name); }
 
 
+
+struct ClassInfoGenerator {
+    template<typename> static constexpr int offset() { return 0; }
+    template<int, typename State, typename CI>
+    static constexpr auto generate(State s, CI ci) {
+        return s.addString(ci.first).addString(ci.second);
+    }
+};
 
 
 struct MethodGenerator {
@@ -276,7 +285,8 @@ struct ConstructorParametersGenerator {
     // generate the integer array and the lists of string
     template<typename ObjI>
     constexpr auto generateDataArray(const ObjI &objectInfo) {
-        constexpr int methodOffset = 14;
+        constexpr int classInfoOffstet = 14;
+        constexpr int methodOffset = classInfoOffstet + ObjI::classInfoCount * 2;
         constexpr int propertyOffset = methodOffset + ObjI::methodCount * 5;
         constexpr int enumOffset = propertyOffset + ObjI::propertyCount * 3;
         constexpr int constructorOffset = enumOffset + ObjI::enumCount* 4;
@@ -290,7 +300,7 @@ struct ConstructorParametersGenerator {
         IntermediateState<decltype(stringData),
                 7,       // revision
                 0,       // classname
-                0,    0, // classinfo
+                ObjI::classInfoCount,  classInfoOffstet, // classinfo
                 ObjI::methodCount,   methodOffset, // methods
                 ObjI::propertyCount,    propertyOffset, // properties
                 ObjI::enumCount,    enumOffset, // enums/sets
@@ -299,7 +309,8 @@ struct ConstructorParametersGenerator {
                 ObjI::signalCount
             > header = { stringData };
 
-        auto methods = generate<MethodGenerator, paramIndex>(header , objectInfo.methods);
+        auto classInfos = generate<ClassInfoGenerator, paramIndex>(header , objectInfo.classInfos);
+        auto methods = generate<MethodGenerator, paramIndex>(classInfos , objectInfo.methods);
         auto properties = generate<PropertyGenerator, 0>(methods, objectInfo.properties);
         auto enums = generate<EnumGenerator, enumValueOffset>(properties, objectInfo.enums);
         auto constructors = generate<MethodGenerator, constructorParamIndex>(enums, objectInfo.constructors);
