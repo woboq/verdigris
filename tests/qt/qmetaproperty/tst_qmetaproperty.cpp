@@ -37,6 +37,7 @@
 
 #include <qobject.h>
 #include <qmetaobject.h>
+#include <wobjectimpl.h>
 
 struct CustomType
 {
@@ -52,15 +53,7 @@ Q_DECLARE_METATYPE(CustomType)
 
 class tst_QMetaProperty : public QObject
 {
-    Q_OBJECT
-    Q_PROPERTY(EnumType value WRITE setValue READ getValue)
-    Q_PROPERTY(EnumType value2 WRITE set_value READ get_value)
-    Q_PROPERTY(QString value7 MEMBER value7 RESET resetValue7)
-    Q_PROPERTY(int value8 READ value8)
-    Q_PROPERTY(int value9 READ value9 CONSTANT)
-    Q_PROPERTY(int value10 READ value10 FINAL)
-    Q_PROPERTY(QMap<int, int> map MEMBER map)
-    Q_PROPERTY(CustomType custom MEMBER custom)
+    W_OBJECT(tst_QMetaProperty)
 
 private slots:
     void hasStdCppSet();
@@ -70,6 +63,15 @@ private slots:
     void readAndWriteWithLazyRegistration();
     void mapProperty();
     void conversion();
+
+    W_SLOT(hasStdCppSet, W_Access::Private)
+    W_SLOT(isConstant, W_Access::Private)
+    W_SLOT(isFinal, W_Access::Private)
+    W_SLOT(gadget, W_Access::Private)
+    W_SLOT(readAndWriteWithLazyRegistration, W_Access::Private)
+    W_SLOT(mapProperty, W_Access::Private)
+    W_SLOT(conversion, W_Access::Private)
+
 
 public:
     enum EnumType { EnumType1 };
@@ -87,10 +89,23 @@ public:
     QString value7;
     QMap<int, int> map;
     CustomType custom;
+
+    W_PROPERTY(EnumType, value WRITE setValue READ getValue)
+    W_PROPERTY(EnumType, value2 WRITE set_value READ get_value)
+ //   W_PROPERTY(QString, value7 MEMBER value7 RESET resetValue7)
+    W_PROPERTY(int, value8 READ value8)
+    W_PROPERTY(int, value9 READ value9 CONSTANT)
+    W_PROPERTY(int, value10 READ value10 FINAL)
+ //   W_PROPERTY((QMap<int, int>), map MEMBER map)
+    W_PROPERTY(CustomType, custom MEMBER custom)
+
 };
+
+W_OBJECT_IMPL(tst_QMetaProperty)
 
 void tst_QMetaProperty::hasStdCppSet()
 {
+    QSKIP("Not supported by W_PROPERTY");
     const QMetaObject *mo = metaObject();
 
     QMetaProperty prop = mo->property(mo->indexOfProperty("value"));
@@ -129,13 +144,14 @@ void tst_QMetaProperty::isFinal()
 }
 
 class MyGadget {
-    Q_GADGET
-    Q_PROPERTY(QString value READ getValue WRITE setValue RESET resetValue)
 public:
     QString m_value;
     void setValue(const QString &value) { m_value = value; }
     QString getValue() { return m_value; }
     void resetValue() { m_value = QLatin1Literal("reset"); }
+    //Q_GADGET
+    //W_PROPERTY(QString, value READ getValue WRITE setValue RESET resetValue)
+    static constexpr auto &staticMetaObject  = QObject::staticMetaObject;
 };
 
 void tst_QMetaProperty::gadget()
@@ -156,34 +172,38 @@ void tst_QMetaProperty::gadget()
 
 struct CustomReadObject : QObject
 {
-    Q_OBJECT
+    W_OBJECT(CustomReadObject)
 };
 
 struct CustomWriteObject : QObject
 {
-    Q_OBJECT
+    W_OBJECT(CustomWriteObject)
 };
 
 struct CustomWriteObjectChild : CustomWriteObject
 {
-    Q_OBJECT
+    W_OBJECT(CustomWriteObjectChild)
 };
 
 struct TypeLazyRegistration : QObject
 {
-    Q_OBJECT
-    Q_PROPERTY(CustomReadObject *read MEMBER _read)
-    Q_PROPERTY(CustomWriteObject *write MEMBER _write)
-
+    W_OBJECT(TypeLazyRegistration)
     CustomReadObject *_read;
     CustomWriteObject *_write;
-
+    W_PROPERTY(CustomReadObject *,read MEMBER _read)
+    W_PROPERTY(CustomWriteObject *,write MEMBER _write)
 public:
     TypeLazyRegistration()
         : _read()
         , _write()
     {}
 };
+
+W_OBJECT_IMPL(CustomReadObject)
+W_OBJECT_IMPL(CustomWriteObject)
+W_OBJECT_IMPL(CustomWriteObjectChild)
+W_OBJECT_IMPL(TypeLazyRegistration)
+
 
 void tst_QMetaProperty::readAndWriteWithLazyRegistration()
 {
@@ -251,4 +271,3 @@ void tst_QMetaProperty::conversion()
 }
 
 QTEST_MAIN(tst_QMetaProperty)
-#include "tst_qmetaproperty.moc"
