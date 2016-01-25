@@ -303,6 +303,8 @@ W_OBJECT_IMPL(tst_QMetaObject)
 
 void tst_QMetaObject::stdSet()
 {
+    QSKIP("Not supported by W_PROPERTY");
+
     const QMetaObject *mo = metaObject();
 
     QMetaProperty prop = mo->property(mo->indexOfProperty("value"));
