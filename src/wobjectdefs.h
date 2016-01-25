@@ -558,7 +558,8 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
         W_RETURN(tuple_append(w_ConstructorState(counter.prev()), \
             MetaObjectBuilder::makeMetaConstructorInfo<__VA_ARGS__>().setName(W_UnscopedName)))
 
-#define W_PROPERTY(TYPE, NAME, ...) \
+#define W_PROPERTY(...) W_PROPERTY2(__VA_ARGS__) // expands the READ, WRITE, and other sub marcos
+#define W_PROPERTY2(TYPE, NAME, ...) \
     static constexpr auto w_PropertyState(w_number<simple::tuple_size<decltype(w_PropertyState(w_number<>{}))>::value+1> counter) \
         W_RETURN(tuple_append(w_PropertyState(counter.prev()), \
                               MetaObjectBuilder::makeMetaPropertyInfo<TYPE>(#NAME, #TYPE, __VA_ARGS__)))
@@ -582,3 +583,12 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
     static constexpr auto w_ClassInfoState(w_number<simple::tuple_size<decltype(w_ClassInfoState(w_number<>{}))>::value+1> counter) \
         W_RETURN(tuple_append(w_ClassInfoState(counter.prev()), \
             std::pair<StaticString<sizeof(A)>, StaticString<sizeof(B)>>{ {A}, {B} }))
+
+
+
+#define WRITE , &W_ThisType::
+#define READ , &W_ThisType::
+#define NOTIFY , W_Notify, &W_ThisType::
+#define MEMBER , &W_ThisType::
+#define CONSTANT , W_Constant
+#define FINAL , W_Final

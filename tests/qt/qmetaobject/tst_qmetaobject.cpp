@@ -40,14 +40,6 @@
 
 #include <wobjectimpl.h>
 
-#define WRITE , &W_ThisType::
-#define READ , &W_ThisType::
-#define NOTIFY , W_Notify, &W_ThisType::
-#define MEMBER , &W_ThisType::
-#define CONSTANT , W_Constant
-#define FINAL , W_Final
-#define W_PROPERTY2(...) W_PROPERTY(__VA_ARGS__)
-
 Q_DECLARE_METATYPE(const QMetaObject *)
 
 W_DECLARE_METATYPE(QList<QString>)
@@ -100,8 +92,8 @@ namespace MyNamespace {
         MyEnum m_enum;
         MyFlags m_flags;
 
-        W_PROPERTY2(MyEnum, myEnum READ myEnum WRITE setMyEnum)
-        W_PROPERTY2(MyFlags, myFlags READ myFlags WRITE setMyFlags)
+        W_PROPERTY(MyEnum, myEnum READ myEnum WRITE setMyEnum)
+        W_PROPERTY(MyFlags, myFlags READ myFlags WRITE setMyFlags)
 
 
     };
@@ -151,8 +143,8 @@ namespace MyNamespace {
         MyEnum m_enum;
         MyFlags m_flags;
 
-        W_PROPERTY2(MyEnum, myEnum READ myEnum WRITE setMyEnum)
-        W_PROPERTY2(MyFlags, myFlags READ myFlags WRITE setMyFlags)
+        W_PROPERTY(MyEnum, myEnum READ myEnum WRITE setMyEnum)
+        W_PROPERTY(MyFlags, myFlags READ myFlags WRITE setMyFlags)
 
     };
 }
@@ -285,16 +277,16 @@ signals:
     W_SIGNAL_2(value7Changed,_)
 
 
-    W_PROPERTY2(EnumType, value WRITE setValue READ getValue)
-    W_PROPERTY2(EnumType, value2 WRITE set_value READ get_value)
-    W_PROPERTY2(MyStruct, value3 WRITE setVal3 READ val3)
-    W_PROPERTY2(QList<QVariant>, value4 WRITE setVal4 READ val4)
-    W_PROPERTY2(QVariantList, value5 WRITE setVal5 READ val5)
-    W_PROPERTY2(int, value6 READ value6 NOTIFY value6Changed)
-    W_PROPERTY2(MyStruct, value7 READ value7 WRITE setVal7 NOTIFY value7Changed)
-    W_PROPERTY2(int, value8 READ value8)
-    W_PROPERTY2(int, value9 READ value9 CONSTANT)
-    W_PROPERTY2(int, value10 READ value10 FINAL)
+    W_PROPERTY(EnumType, value WRITE setValue READ getValue)
+    W_PROPERTY(EnumType, value2 WRITE set_value READ get_value)
+    W_PROPERTY(MyStruct, value3 WRITE setVal3 READ val3)
+    W_PROPERTY(QList<QVariant>, value4 WRITE setVal4 READ val4)
+    W_PROPERTY(QVariantList, value5 WRITE setVal5 READ val5)
+    W_PROPERTY(int, value6 READ value6 NOTIFY value6Changed)
+    W_PROPERTY(MyStruct, value7 READ value7 WRITE setVal7 NOTIFY value7Changed)
+    W_PROPERTY(int, value8 READ value8)
+    W_PROPERTY(int, value9 READ value9 CONSTANT)
+    W_PROPERTY(int, value10 READ value10 FINAL)
 
 };
 
