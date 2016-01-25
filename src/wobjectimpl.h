@@ -3,6 +3,11 @@
 #include "wobjectdefs.h"
 #include <QtCore/qobject.h>
 
+ template<typename T>   struct assert{
+     static_assert(!sizeof(T), "");
+ };
+
+
 namespace MetaObjectBuilder {
 
 enum { IsUnresolvedType = 0x80000000 };
@@ -35,8 +40,6 @@ struct IntermediateState {
     static constexpr std::index_sequence<Ints ...> sequence = {};
 };
 
-
-
 /** Iterate over all the items of a tuple and call the Generator::generate function */
 template<typename Generator, int, typename State>
 constexpr auto generate(State s, const simple::tuple<>&)
@@ -45,6 +48,20 @@ template<typename Generator, int Ofst, typename State, typename Head, typename..
 constexpr auto generate(const State &s, const simple::tuple<Head, Tail...> &t) {
     return generate<Generator, Ofst + Generator::template offset<Head>()>(
         Generator::template generate<Ofst>(s, simple::tuple_head(t)), tuple_tail(t));
+}
+
+template <typename T1, typename T2> constexpr bool getSignalIndexHelperCompare(T1, T2) { return false; }
+template <typename T> constexpr bool getSignalIndexHelperCompare(T f1, T f2) { return f1 == f2; }
+
+//////
+// Helper to get the signal index
+template <typename F> constexpr int getSignalIndex(F,simple::tuple<>) { return -1; }
+template <typename F, typename Ms>
+constexpr int getSignalIndex(F func, Ms ms) {
+    if (getSignalIndexHelperCompare(func,tuple_head(ms).func))
+        return 0;
+    auto x = getSignalIndex(func,tuple_tail(ms));
+    return x >= 0 ? x + 1 : x;
 }
 
 
@@ -68,15 +85,26 @@ constexpr auto generate(const State &s, const simple::tuple<Head, Tail...> &t) {
     };
 
 struct FriendHelper1 { /* FIXME */
+
+    template<typename T, int I>
+    struct ResolveNotifySignal {
+        static constexpr auto propertyInfo = T::w_PropertyState(w_number<>{});
+        static constexpr auto property = simple::get<I>(propertyInfo);
+        static constexpr bool hasNotify = !getSignalIndexHelperCompare(property.notify, 0);
+        static constexpr int signalIndex = !hasNotify ? -1 :
+        getSignalIndex(property.notify, T::w_SignalState(w_number<>{}));
+        static_assert(signalIndex >= 0 || !hasNotify, "NOTIFY signal not registered as a signal");
+    };
+
     /** Construct a ObjectInfo with just the name */
     template<typename T, int N>
     static constexpr auto makeObjectInfo(StaticStringArray<N> &name) {
-        const auto sigState = T::w_SignalState(w_number<>{});
-        const auto methodInfo = simple::tuple_cat(sigState, T::w_SlotState(w_number<>{}), T::w_MethodState(w_number<>{}));
-        const auto constructorInfo = T::w_ConstructorState(w_number<>{});
-        const auto propertyInfo = T::w_PropertyState(w_number<>{});
-        const auto enumInfo = T::w_EnumState(w_number<>{});
-        const auto classInfo = T::w_ClassInfoState(w_number<>{});
+        constexpr auto sigState = T::w_SignalState(w_number<>{});
+        constexpr auto methodInfo = simple::tuple_cat(sigState, T::w_SlotState(w_number<>{}), T::w_MethodState(w_number<>{}));
+        constexpr auto constructorInfo = T::w_ConstructorState(w_number<>{});
+        constexpr auto propertyInfo = T::w_PropertyState(w_number<>{});
+        constexpr auto enumInfo = T::w_EnumState(w_number<>{});
+        constexpr auto classInfo = T::w_ClassInfoState(w_number<>{});
         constexpr int sigCount = simple::tuple_size<decltype(sigState)>::value;
         return ObjectInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo),
                           decltype(enumInfo), decltype(classInfo), sigCount>
@@ -86,6 +114,17 @@ struct FriendHelper1 { /* FIXME */
 
     template<typename T, int N>
     constexpr auto makeObjectInfo(StaticStringArray<N> &name) { return FriendHelper1::makeObjectInfo<T>(name); }
+
+template <typename T, typename State, std::size_t... I>
+static constexpr auto generateNotifySignals(State s, std::true_type, std::index_sequence<I...>)
+{ return s.template add<std::max(0, FriendHelper1::ResolveNotifySignal<T, I>::signalIndex)...>(); }
+template <typename T, typename State, std::size_t... I>
+static constexpr auto generateNotifySignals(State s, std::false_type, std::index_sequence<I...>)
+{ return s; }
+
+template <typename T, std::size_t... I>
+static constexpr bool hasNotifySignal(std::index_sequence<I...>)
+{ return sums(FriendHelper1::ResolveNotifySignal<T, I>::hasNotify...); }
 
 
 
@@ -136,40 +175,12 @@ struct MethodGenerator {
     };
 
 struct PropertyGenerator {
-
-    // From qmetaobject_p.h
-    enum PropertyFlags  {
-        Invalid = 0x00000000,
-        Readable = 0x00000001,
-        Writable = 0x00000002,
-        Resettable = 0x00000004,
-        EnumOrFlag = 0x00000008,
-        StdCppSet = 0x00000100,
-        //     Override = 0x00000200,
-        Constant = 0x00000400,
-        Final = 0x00000800,
-        Designable = 0x00001000,
-        ResolveDesignable = 0x00002000,
-        Scriptable = 0x00004000,
-        ResolveScriptable = 0x00008000,
-        Stored = 0x00010000,
-        ResolveStored = 0x00020000,
-        Editable = 0x00040000,
-        ResolveEditable = 0x00080000,
-        User = 0x00100000,
-        ResolveUser = 0x00200000,
-        Notify = 0x00400000,
-        Revisioned = 0x00800000
-    };
-
-    static constexpr std::size_t flags = (Writable|Readable); // FIXME
-
     template<typename> static constexpr int offset() { return 0; }
     template<int, typename State, typename Prop>
     static constexpr auto generate(State s, Prop prop) {
         auto s2 = s.addString(prop.name);
         auto s3 = HandleType<typename Prop::PropertyType>::result(s2, prop.typeStr);
-        return s3.template add<flags>();
+        return s3.template add<Prop::flags>();
     }
 };
 
@@ -273,9 +284,6 @@ struct ConstructorParametersGenerator {
     }
 };
 
-// template<typename T>   struct assert{
-//     static_assert(!sizeof(T), "");
-// };
 
 
     template<typename Methods, std::size_t... I>
@@ -283,12 +291,14 @@ struct ConstructorParametersGenerator {
     { return sums(int(1 + simple::tuple_element_t<I, Methods>::argCount * 2)...); }
 
     // generate the integer array and the lists of string
-    template<typename ObjI>
+    template<typename T, typename ObjI>
     constexpr auto generateDataArray(const ObjI &objectInfo) {
+
+        constexpr bool hasNotify = hasNotifySignal<T>(simple::make_index_sequence<ObjI::propertyCount>{});
         constexpr int classInfoOffstet = 14;
         constexpr int methodOffset = classInfoOffstet + ObjI::classInfoCount * 2;
         constexpr int propertyOffset = methodOffset + ObjI::methodCount * 5;
-        constexpr int enumOffset = propertyOffset + ObjI::propertyCount * 3;
+        constexpr int enumOffset = propertyOffset + ObjI::propertyCount * (hasNotify ? 4: 3);
         constexpr int constructorOffset = enumOffset + ObjI::enumCount* 4;
         constexpr int paramIndex = constructorOffset + ObjI::constructorCount * 5 ;
         constexpr int constructorParamIndex = paramIndex +
@@ -312,7 +322,9 @@ struct ConstructorParametersGenerator {
         auto classInfos = generate<ClassInfoGenerator, paramIndex>(header , objectInfo.classInfos);
         auto methods = generate<MethodGenerator, paramIndex>(classInfos , objectInfo.methods);
         auto properties = generate<PropertyGenerator, 0>(methods, objectInfo.properties);
-        auto enums = generate<EnumGenerator, enumValueOffset>(properties, objectInfo.enums);
+        auto notify = generateNotifySignals<T>(properties, std::integral_constant<bool, hasNotify>{},
+                                               simple::make_index_sequence<ObjI::propertyCount>{});
+        auto enums = generate<EnumGenerator, enumValueOffset>(notify, objectInfo.enums);
         auto constructors = generate<MethodGenerator, constructorParamIndex>(enums, objectInfo.constructors);
         auto parametters = generate<MethodParametersGenerator, 0>(constructors, objectInfo.methods);
         auto parametters2 = generate<ConstructorParametersGenerator, 0>(parametters, objectInfo.constructors);
@@ -534,7 +546,7 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
 #define W_OBJECT_IMPL(TYPE) \
     struct TYPE::MetaObjectCreatorHelper { \
         static constexpr auto objectInfo = MetaObjectBuilder::makeObjectInfo<TYPE>(#TYPE); \
-        static constexpr auto data = generateDataArray(objectInfo); \
+        static constexpr auto data = MetaObjectBuilder::generateDataArray<TYPE>(objectInfo); \
         static constexpr auto string_data = data.first; \
         static constexpr auto int_data = data.second; \
     }; \

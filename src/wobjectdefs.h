@@ -330,9 +330,34 @@ namespace MetaObjectBuilder {
     template<typename...  Args> constexpr MetaConstructorInfo<1,Args...> makeMetaConstructorInfo()
     { return { {""} }; }
 
+    // From qmetaobject_p.h
+    enum PropertyFlags  {
+        Invalid = 0x00000000,
+        Readable = 0x00000001,
+        Writable = 0x00000002,
+        Resettable = 0x00000004,
+        EnumOrFlag = 0x00000008,
+        StdCppSet = 0x00000100,
+        //     Override = 0x00000200,
+        Constant = 0x00000400,
+        Final = 0x00000800,
+        Designable = 0x00001000,
+        ResolveDesignable = 0x00002000,
+        Scriptable = 0x00004000,
+        ResolveScriptable = 0x00008000,
+        Stored = 0x00010000,
+        ResolveStored = 0x00020000,
+        Editable = 0x00040000,
+        ResolveEditable = 0x00080000,
+        User = 0x00100000,
+        ResolveUser = 0x00200000,
+        Notify = 0x00400000,
+        Revisioned = 0x00800000
+    };
+
     /** Holds information about a property */
     template<typename Type, int NameLength, int TypeLength, typename Getter, typename Setter,
-             typename Member, typename Notify>
+             typename Member, typename Notify, int Flags = 0>
     struct MetaPropertyInfo {
         using PropertyType = Type;
         StaticString<NameLength> name;
@@ -341,16 +366,28 @@ namespace MetaObjectBuilder {
         Setter setter;
         Member member;
         Notify notify;
-        uint flags = 0;
+        static constexpr uint flags = Flags;
 
-        template <typename S> constexpr auto setGetter(const S&s) const
-        { return MetaPropertyInfo<Type, NameLength, TypeLength, S, Setter, Member, Notify> {name, typeStr, s, setter, member, notify, flags}; }
-        template <typename S> constexpr auto setSetter(const S&s) const
-        { return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, S, Member, Notify> {name, typeStr, getter, s, member, notify, flags}; }
-        template <typename S> constexpr auto setMember(const S&s) const
-        { return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, S, Notify> {name, typeStr, getter, setter, s, notify, flags}; }
-        template <typename S> constexpr auto setNotify(const S&s) const
-        { return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, Member, S> {name, typeStr, getter, setter, member, s, flags}; }
+        template <typename S> constexpr auto setGetter(const S&s) const {
+            return MetaPropertyInfo<Type, NameLength, TypeLength, S, Setter, Member, Notify,
+                                    Flags | PropertyFlags::Readable>
+            {name, typeStr, s, setter, member, notify};
+        }
+        template <typename S> constexpr auto setSetter(const S&s) const {
+            return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, S, Member, Notify,
+                                    Flags | PropertyFlags::Writable>
+            {name, typeStr, getter, s, member, notify};
+        }
+        template <typename S> constexpr auto setMember(const S&s) const {
+            return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, S, Notify,
+                                    Flags | PropertyFlags::Writable | PropertyFlags::Readable>
+            {name, typeStr, getter, setter, s, notify};
+        }
+        template <typename S> constexpr auto setNotify(const S&s) const {
+            return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, Member, S,
+                                    Flags | PropertyFlags::Notify>
+            { name, typeStr, getter, setter, member, s};
+        }
     };
 
     /** Parse a property and fill a MetaPropertyInfo */
