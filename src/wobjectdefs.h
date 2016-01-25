@@ -266,12 +266,42 @@ namespace W_MethodType {
     constexpr w_number<0x0c> Constructor{};
 }
 
+namespace MetaObjectBuilder {
+// From qmetaobject_p.h
+enum PropertyFlags  {
+    Invalid = 0x00000000,
+    Readable = 0x00000001,
+    Writable = 0x00000002,
+    Resettable = 0x00000004,
+    EnumOrFlag = 0x00000008,
+    StdCppSet = 0x00000100,
+    //     Override = 0x00000200,
+    Constant = 0x00000400,
+    Final = 0x00000800,
+    Designable = 0x00001000,
+    ResolveDesignable = 0x00002000,
+    Scriptable = 0x00004000,
+    ResolveScriptable = 0x00008000,
+    Stored = 0x00010000,
+    ResolveStored = 0x00020000,
+    Editable = 0x00040000,
+    ResolveEditable = 0x00080000,
+    User = 0x00100000,
+    ResolveUser = 0x00200000,
+    Notify = 0x00400000,
+    Revisioned = 0x00800000
+};
+}
+
+constexpr struct {} W_Notify{};
+constexpr std::integral_constant<int, MetaObjectBuilder::Constant> W_Constant{};
+constexpr std::integral_constant<int, MetaObjectBuilder::Final> W_Final{};
+
+
 // workaround to avoid leading coma in macro that can optionaly take a flag
 struct W_RemoveLeadingComa { constexpr w_number<0> operator+() const { return {}; } };
 template <typename T> constexpr T operator+(T &&t, W_RemoveLeadingComa) { return t; }
 constexpr W_RemoveLeadingComa W_removeLeadingComa{};
-
-constexpr struct {} W_Notify{};
 
 template<typename T> struct W_TypeRegistery { enum { registered = false }; };
 #define W_DECLARE_METATYPE(T) template<> struct W_TypeRegistery<T> { \
@@ -330,31 +360,6 @@ namespace MetaObjectBuilder {
     template<typename...  Args> constexpr MetaConstructorInfo<1,Args...> makeMetaConstructorInfo()
     { return { {""} }; }
 
-    // From qmetaobject_p.h
-    enum PropertyFlags  {
-        Invalid = 0x00000000,
-        Readable = 0x00000001,
-        Writable = 0x00000002,
-        Resettable = 0x00000004,
-        EnumOrFlag = 0x00000008,
-        StdCppSet = 0x00000100,
-        //     Override = 0x00000200,
-        Constant = 0x00000400,
-        Final = 0x00000800,
-        Designable = 0x00001000,
-        ResolveDesignable = 0x00002000,
-        Scriptable = 0x00004000,
-        ResolveScriptable = 0x00008000,
-        Stored = 0x00010000,
-        ResolveStored = 0x00020000,
-        Editable = 0x00040000,
-        ResolveEditable = 0x00080000,
-        User = 0x00100000,
-        ResolveUser = 0x00200000,
-        Notify = 0x00400000,
-        Revisioned = 0x00800000
-    };
-
     /** Holds information about a property */
     template<typename Type, int NameLength, int TypeLength, typename Getter, typename Setter,
              typename Member, typename Notify, int Flags = 0>
@@ -388,6 +393,11 @@ namespace MetaObjectBuilder {
                                     Flags | PropertyFlags::Notify>
             { name, typeStr, getter, setter, member, s};
         }
+        template <int Flag> constexpr auto addFlag() const {
+            return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, Member, Notify,
+                                    Flags | Flag>
+            { name, typeStr, getter, setter, member, notify};
+        }
     };
 
     /** Parse a property and fill a MetaPropertyInfo */
@@ -412,6 +422,10 @@ namespace MetaObjectBuilder {
     template <typename PropInfo, typename F, typename... Tail>
     constexpr auto parseProperty(const PropInfo &p, decltype(W_Notify), F f, Tail... t)
     { return parseProperty(p.setNotify(f) ,t...); }
+    // other flags flags
+    template <typename PropInfo, int Flag, typename... Tail>
+    constexpr auto parseProperty(const PropInfo &p, std::integral_constant<int, Flag>, Tail... t)
+    { return parseProperty(p.template addFlag<Flag>() ,t...); }
 
     template<typename T, int N1, int N2, typename ... Args>
     constexpr auto makeMetaPropertyInfo(StaticStringArray<N1> &name, StaticStringArray<N2> &type, Args... args) {

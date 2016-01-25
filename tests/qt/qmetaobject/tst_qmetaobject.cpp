@@ -42,10 +42,10 @@
 
 #define WRITE , &W_ThisType::
 #define READ , &W_ThisType::
-#define NOTIFY ,W_Notify, &W_ThisType::
+#define NOTIFY , W_Notify, &W_ThisType::
 #define MEMBER , &W_ThisType::
-#define CONSTANT //TODO
-#define FINAL //TODO
+#define CONSTANT , W_Constant
+#define FINAL , W_Final
 #define W_PROPERTY2(...) W_PROPERTY(__VA_ARGS__)
 
 Q_DECLARE_METATYPE(const QMetaObject *)
