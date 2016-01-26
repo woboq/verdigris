@@ -96,7 +96,7 @@ public:
     W_PROPERTY(int, value8 READ value8)
     W_PROPERTY(int, value9 READ value9 CONSTANT)
     W_PROPERTY(int, value10 READ value10 FINAL)
- //   W_PROPERTY((QMap<int, int>), map MEMBER map)
+    W_PROPERTY((QMap<int, int>), map MEMBER map)
     W_PROPERTY(CustomType, custom MEMBER custom)
 
 };
@@ -232,6 +232,7 @@ void tst_QMetaProperty::mapProperty()
     QVariant v = property("map");
     QVERIFY(v.isValid());
     QCOMPARE(map, (v.value<QMap<int,int> >()));
+    QCOMPARE(v.typeName(), "QMap<int,int>");
 }
 
 void tst_QMetaProperty::conversion()

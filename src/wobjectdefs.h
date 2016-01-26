@@ -501,6 +501,15 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
 #define W_MACRO_DELAY(X,...) X(__VA_ARGS__)
 #define W_MACRO_DELAY2(X,...) X(__VA_ARGS__)
 #define W_MACRO_TAIL(A, ...) __VA_ARGS__
+#define W_MACRO_STRIGNIFY(...) W_MACRO_STRIGNIFY2(__VA_ARGS__)
+#define W_MACRO_STRIGNIFY2(...) #__VA_ARGS__
+
+// remove the surrounding parentheses
+#define W_MACRO_REMOVEPAREN(A) W_MACRO_DELAY(W_MACRO_REMOVEPAREN2, W_MACRO_REMOVEPAREN_HELPER A)
+#define W_MACRO_REMOVEPAREN2(...) W_MACRO_DELAY2(W_MACRO_TAIL, W_MACRO_REMOVEPAREN_HELPER_##__VA_ARGS__)
+#define W_MACRO_REMOVEPAREN_HELPER(...) _ , __VA_ARGS__
+#define W_MACRO_REMOVEPAREN_HELPER_W_MACRO_REMOVEPAREN_HELPER ,
+
 
 // if __VA_ARGS__ is "(types), foobar"   then return just the types, otherwise return nothing
 #define W_OVERLOAD_TYPES(A, ...) W_MACRO_DELAY(W_MACRO_TAIL,W_OVERLOAD_TYPES_HELPER A)
@@ -516,6 +525,7 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
 
 #define W_OVERLOAD_REMOVE_HELPER(...) _
 #define W_OVERLOAD_REMOVE_HELPER_W_OVERLOAD_REMOVE_HELPER ,
+
 
 #define W_RETURN(R) -> decltype(R) { return R; }
 
@@ -583,7 +593,8 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
 #define W_PROPERTY2(TYPE, NAME, ...) \
     static constexpr auto w_PropertyState(w_number<simple::tuple_size<decltype(w_PropertyState(w_number<>{}))>::value+1> counter) \
         W_RETURN(tuple_append(w_PropertyState(counter.prev()), \
-                              MetaObjectBuilder::makeMetaPropertyInfo<TYPE>(#NAME, #TYPE, __VA_ARGS__)))
+                              MetaObjectBuilder::makeMetaPropertyInfo<W_MACRO_REMOVEPAREN(TYPE)>(\
+                                    #NAME, W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE)), __VA_ARGS__)))
 
 #define W_ENUM(NAME, ...) \
     static constexpr auto w_EnumState(w_number<simple::tuple_size<decltype(w_EnumState(w_number<>{}))>::value+1> counter) \
