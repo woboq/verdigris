@@ -266,6 +266,13 @@ struct MethodParametersGenerator {
         auto types = HandleArgsHelper<Ret, Args...>::result(ss, simple::tuple_cat(simple::tuple<int>{}, paramTypes));
         return HandleArgNames<sizeof...(Args)>::result(types, paramNames);
     }
+    // static member functions
+    template<typename Strings, typename ParamTypes, typename ParamNames, typename Ret, typename... Args>
+    static constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (*)(Args...),
+                                                 const ParamTypes &paramTypes, const ParamNames &paramNames ) {
+        auto types = HandleArgsHelper<Ret, Args...>::result(ss, simple::tuple_cat(simple::tuple<int>{}, paramTypes));
+        return HandleArgNames<sizeof...(Args)>::result(types, paramNames);
+    }
 
     template<typename> static constexpr int offset() { return 0; }
     template<int, typename State, typename Method>
