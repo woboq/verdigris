@@ -36,6 +36,12 @@
 #include <qcoreapplication.h>
 #include <qstring.h>
 
+#include <wobjectimpl.h>
+
+W_OBJECT_IMPL(Receiver)
+W_OBJECT_IMPL(Sender)
+W_OBJECT_IMPL(Disconnector)
+
 #include <stdio.h>
 
 static int Step = 0;

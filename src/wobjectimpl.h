@@ -554,7 +554,7 @@ template<typename...Ts> static constexpr void nop(Ts...) {}
 template<typename T, size_t...MethI, size_t ...ConsI, size_t...PropI>
 static void qt_static_metacall_impl(QObject *_o, QMetaObject::Call _c, int _id, void** _a,
                         std::index_sequence<MethI...>, std::index_sequence<ConsI...>, std::index_sequence<PropI...>) {
-    Q_UNUSED(_id)
+    Q_UNUSED(_id) Q_UNUSED(_o) Q_UNUSED(_a)
     if (_c == QMetaObject::InvokeMetaMethod) {
         Q_ASSERT(T::staticMetaObject.cast(_o));
         nop((invokeMethod<T, MethI>(static_cast<T*>(_o), _id, _a),0)...);
@@ -574,7 +574,7 @@ static void qt_static_metacall_impl(QObject *_o, QMetaObject::Call _c, int _id, 
 template<typename T, size_t...MethI, size_t ...ConsI, size_t...PropI>
 static void qt_static_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void** _a,
                         std::index_sequence<MethI...>, std::index_sequence<ConsI...>, std::index_sequence<PropI...>) {
-    Q_UNUSED(_id)
+    Q_UNUSED(_id) Q_UNUSED(_o) Q_UNUSED(_a)
     if (_c == QMetaObject::InvokeMetaMethod) {
         nop((invokeMethod<T, MethI>(_o, _id, _a),0)...);
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {

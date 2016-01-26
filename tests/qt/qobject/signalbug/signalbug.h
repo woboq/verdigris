@@ -36,14 +36,14 @@
 
 
 #include <QObject>
-
+#include <wobjectdefs.h>
 
 class Sender;
 
 
 class Receiver : public QObject
 {
-Q_OBJECT
+    W_OBJECT(Receiver)
 
 public:
     Receiver ();
@@ -51,6 +51,7 @@ public:
 
 protected slots:
     void received ();
+    W_SLOT(received)
 
 public:
     Sender *s;
@@ -58,7 +59,7 @@ public:
 
 class Disconnector : public QObject
 {
-Q_OBJECT
+    W_OBJECT(Disconnector)
 
 public:
     Disconnector ();
@@ -66,6 +67,7 @@ public:
 
 protected slots:
     void received ();
+    W_SLOT(received)
 
 public:
     Sender *s;
@@ -73,16 +75,18 @@ public:
 
 class Sender : public QObject
 {
-Q_OBJECT
+    W_OBJECT(Sender)
 
 public:
     Sender (Receiver *r, Disconnector *d);
     virtual ~Sender () {}
 
     void fire ();
+    W_SLOT(fire)
 
 signals:
-    void fired ();
+    W_SIGNAL_1(void fired ())
+    W_SIGNAL_2(fired)
 
 public:
     Receiver *r;

@@ -5,3 +5,6 @@ SOURCES = ../tst_qobject.cpp
 
 !winrt: TEST_HELPER_INSTALLS = ../signalbug/signalbug
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0
+
+CONFIG+=c++14
+INCLUDEPATH += ../../../../src

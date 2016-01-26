@@ -12,3 +12,6 @@ SOURCES += signalbug.cpp
 # This app is testdata for tst_qobject
 target.path = $$[QT_INSTALL_TESTS]/tst_qobject/$$TARGET
 INSTALLS += target
+
+CONFIG+=c++14
+INCLUDEPATH += ../../../../src

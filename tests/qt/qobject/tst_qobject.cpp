@@ -55,9 +55,11 @@
 
 #include <math.h>
 
+#include <wobjectimpl.h>
+
 class tst_QObject : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(tst_QObject)
 private slots:
     void initTestCase();
     void disconnect();
@@ -161,7 +163,7 @@ static QObjectCreatedOnShutdown s_qobjectCreatedOnShutdown;
 
 class SenderObject : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(SenderObject)
 
 public:
     SenderObject() : aPublicSlotCalled(0), recursionCount(0) {}
@@ -208,7 +210,7 @@ private:
 
 class ReceiverObject : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(ReceiverObject)
 
 public:
     ReceiverObject()
@@ -387,7 +389,7 @@ void tst_QObject::disconnect()
 
 class AutoConnectSender : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(AutoConnectSender)
 
 public:
     AutoConnectSender(QObject *parent)
@@ -414,7 +416,7 @@ signals:
 
 class AutoConnectReceiver : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(AutoConnectReceiver)
 
 public:
     QList<int> called_slots;
@@ -970,7 +972,7 @@ void tst_QObject::disconnectNotify_receiverDestroyed()
 
 class ConnectByNameNotifySenderObject : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(ConnectByNameNotifySenderObject)
 public:
     QList<QMetaMethod> connectedSignals;
     QList<QMetaMethod> disconnectedSignals;
@@ -990,7 +992,7 @@ Q_SIGNALS:
 
 class ConnectByNameNotifyReceiverObject : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(ConnectByNameNotifyReceiverObject)
     void createNotifyChild(const char *name)
     {
         QObject *o = new ConnectByNameNotifySenderObject;
@@ -1035,7 +1037,7 @@ void tst_QObject::connectNotify_connectSlotsByName()
 class ConnectDisconnectNotifyShadowObject
         : public ConnectByNameNotifySenderObject
 {
-    Q_OBJECT
+    W_OBJECT(ConnectDisconnectNotifyShadowObject)
 public Q_SLOTS:
     void slot1() {}
 Q_SIGNALS:
@@ -1103,7 +1105,7 @@ void tst_QObject::connectDisconnectNotify_shadowing()
 
 class SequenceObject : public ReceiverObject
 {
-    Q_OBJECT
+    W_OBJECT(SequenceObject)
 
 public:
     QObject *next;
@@ -1391,7 +1393,7 @@ Q_DECLARE_METATYPE(CustomType)
 
 class QCustomTypeChecker: public QObject
 {
-    Q_OBJECT
+    W_OBJECT(QCustomTypeChecker)
 
 public:
     QCustomTypeChecker(QObject *parent = 0): QObject(parent) {}
@@ -1503,7 +1505,7 @@ typedef QString CustomString;
 
 class PropertyObject : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(PropertyObject)
 
     Q_PROPERTY(Alpha alpha READ alpha WRITE setAlpha)
     Q_PROPERTY(Priority priority READ priority WRITE setPriority)
@@ -1587,7 +1589,7 @@ void tst_QObject::threadSignalEmissionCrash()
 
 class TestThread : public QThread
 {
-    Q_OBJECT
+    W_OBJECT(TestThread)
 public:
     inline void run()
     {
@@ -1662,7 +1664,7 @@ void tst_QObject::thread()
 
 class MoveToThreadObject : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(MoveToThreadObject)
 public:
     QThread *timerEventThread;
     QThread *customEventThread;
@@ -2116,7 +2118,7 @@ namespace QObjectTest
 {
     class TestObject: public QObject
     {
-    Q_OBJECT
+        W_OBJECT(TestObject)
     public:
         TestObject(): QObject(), i(0) {}
         void doEmit() { emit aSignal(); }
@@ -2139,7 +2141,7 @@ void tst_QObject::namespaces()
 
 class SuperObject : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(SuperObject)
 public:
     QObject *theSender;
     int theSignalId;
@@ -2288,7 +2290,7 @@ QT_END_NAMESPACE
 
 class FooObject: public QObject, public Foo::Bar
 {
-    Q_OBJECT
+    W_OBJECT(FooObject)
     Q_INTERFACES(Foo::Bar)
 public:
     int rtti() const { return 42; }
@@ -2296,7 +2298,7 @@ public:
 
 class BlehObject : public QObject, public Foo::Bleh
 {
-    Q_OBJECT
+    W_OBJECT(BlehObject)
     Q_INTERFACES(Foo::Bleh)
 public:
     int rtti() const { return 43; }
@@ -2366,7 +2368,7 @@ void tst_QObject::testUserData()
 
 class DestroyedListener : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(DestroyedListener)
 public:
     inline DestroyedListener() : pointerWasZero(false) {}
 
@@ -2392,7 +2394,7 @@ void tst_QObject::qpointerResetBeforeDestroyedSignal()
 
 class DefaultArguments : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(DefaultArguments)
 
 public slots:
 
@@ -2450,7 +2452,7 @@ template <typename T> class Template { };
 
 class NormalizeObject : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(NormalizeObject)
 
 public:
 
@@ -3052,7 +3054,7 @@ void tst_QObject::blockingQueuedConnection()
 
 class EventSpy : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(EventSpy)
 
 public:
     typedef QList<QPair<QObject *, QEvent::Type> > EventList;
@@ -3207,7 +3209,7 @@ void tst_QObject::installEventFilter()
 }
 
 class EmitThread : public QThread
-{   Q_OBJECT
+{   W_OBJECT(EmitThread)
 public:
     void run(void) {
         emit work();
@@ -3219,7 +3221,7 @@ signals:
 namespace QObjectTest { // Do not clash with WinAPI 'DeleteObject'
 class DeleteObject : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(DeleteObject)
 
 public slots:
     void deleteSelf()
@@ -3297,7 +3299,7 @@ void tst_QObject::deleteSelfInSlot()
 
 class DisconnectObject : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(DisconnectObject)
 
 public slots:
     void disconnectSelf()
@@ -3393,7 +3395,7 @@ void tst_QObject::dumpObjectInfo()
 }
 
 class ConnectToSender : public QObject
-{ Q_OBJECT
+{ W_OBJECT(ConnectToSender)
     public slots:
         void uselessSlot() { count++; }
 
@@ -3591,7 +3593,7 @@ void tst_QObject::deleteQObjectWhenDeletingEvent()
 class OverloadObject : public QObject
 {
     friend class tst_QObject;
-    Q_OBJECT
+    W_OBJECT(OverloadObject)
     signals:
         void sig(int i, char c, qreal m = 12);
         void sig(int i, int j = 12);
@@ -3677,7 +3679,7 @@ void tst_QObject::overloads()
 }
 
 class ManySignals : public QObject
-{   Q_OBJECT
+{   W_OBJECT(ManySignals)
     friend class tst_QObject;
 signals:
     void sig00(); void sig01(); void sig02(); void sig03(); void sig04();
@@ -4025,7 +4027,7 @@ void tst_QObject::qMetaObjectDisconnectOne()
 }
 
 class ConfusingObject : public SenderObject
-{ Q_OBJECT
+{ W_OBJECT(ConfusingObject)
 public slots:
     void signal1() { s++; }
 signals:
@@ -4105,7 +4107,7 @@ void tst_QObject::connectByMetaMethodSlotInsteadOfSignal()
 
 class Constructable: public QObject
 {
-    Q_OBJECT
+    W_OBJECT(Constructable)
 
 public:
     Q_INVOKABLE Constructable(){}
@@ -4337,7 +4339,7 @@ void tst_QObject::autoConnectionBehavior()
 }
 
 class BaseDestroyed : public QObject
-{ Q_OBJECT
+{ W_OBJECT(BaseDestroyed)
     QList<QString> fooList;
     bool destroyed;
 public:
@@ -4732,7 +4734,7 @@ void tst_QObject::connectToStaticCxx0x()
 
 class LotsOfSignalsAndSlots: public QObject
 {
-    Q_OBJECT
+    W_OBJECT(LotsOfSignalsAndSlots)
     typedef void (*fptr)();
 
     public slots:
@@ -4924,7 +4926,7 @@ void tst_QObject::connectCxx0xTypeMatching()
 }
 
 class StringVariant : public QObject
-{ Q_OBJECT
+{ W_OBJECT(StringVariant)
 signals:
     void stringSignal(const QString &str);
 public slots:
@@ -4962,7 +4964,7 @@ void tst_QObject::connectConvert()
 }
 
 class ConnectWithReferenceObject : public QObject {
-    Q_OBJECT
+    W_OBJECT(ConnectWithReferenceObject)
     friend class tst_QObject;
 signals:
     void boolRef(bool &, bool);
@@ -5036,7 +5038,7 @@ void tst_QObject::connectWithReference()
 }
 
 class ManyArgumentObject : public QObject {
-    Q_OBJECT
+    W_OBJECT(ManyArgumentObject)
 signals:
     void signal1(const QString &);
     void signal2(const QString &, const QString &);
@@ -5216,7 +5218,7 @@ class ForwardDeclared;
 
 class ForwardDeclareArguments : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(ForwardDeclareArguments)
 signals:
     void mySignal(const ForwardDeclared&);
 public slots:
@@ -5232,14 +5234,14 @@ void tst_QObject::connectForwardDeclare()
 
 class NoDefaultConstructor
 {
-    Q_GADGET
+    W_GADGET(NoDefaultConstructor)
 public:
     NoDefaultConstructor(int) {}
 };
 
 class NoDefaultContructorArguments : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(NoDefaultContructorArguments)
 signals:
     void mySignal(const NoDefaultConstructor&);
 public slots:
@@ -5255,7 +5257,7 @@ void tst_QObject::connectNoDefaultConstructorArg()
 
 class ReturnValue : public QObject {
 friend class tst_QObject;
-Q_OBJECT
+W_OBJECT(ReturnValue)
 signals:
     QVariant returnVariant(int);
     QString returnString(int);
@@ -5558,7 +5560,7 @@ void tst_QObject::returnValue2()
 }
 
 class VirtualSlotsObjectBase : public QObject {
-    Q_OBJECT
+    W_OBJECT(VirtualSlotsObjectBase)
 public slots:
     virtual void slot1() {
         base_counter1++;
@@ -5571,7 +5573,7 @@ signals:
 };
 
 class VirtualSlotsObject : public VirtualSlotsObjectBase {
-    Q_OBJECT
+    W_OBJECT(VirtualSlotsObject)
 public slots:
     virtual void slot1() {
         derived_counter1++;
@@ -5611,7 +5613,7 @@ void tst_QObject::connectPrivateSlots()
 class ConnectToPrivateSlotPrivate;
 
 class ConnectToPrivateSlot :public QObject {
-    Q_OBJECT
+    W_OBJECT(ConnectToPrivateSlot)
 public:
     ConnectToPrivateSlot();
     void test(SenderObject *obj1) ;
@@ -5707,7 +5709,7 @@ void tst_QObject::connectFunctorArgDifference()
 
 class ContextObject : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(ContextObject)
 public:
     void compareSender(QObject *s) { QCOMPARE(s, sender()); }
 };
@@ -5829,7 +5831,7 @@ static int s_static_slot_checker = 1;
 
 class StaticSlotChecker : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(StaticSlotChecker)
 public Q_SLOTS:
     static void staticSlot() { s_static_slot_checker = 2; }
 };
@@ -5910,7 +5912,7 @@ private:
 
 class FunctorArgDifferenceObject : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(FunctorArgDifferenceObject)
 signals:
     void signal_ii(int,int);
     void signal_iiS(int,int, const QString &);
@@ -5985,7 +5987,7 @@ void tst_QObject::connectFunctorOverloads()
 
 class GetSenderObject : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(GetSenderObject)
 public:
     QObject *accessSender() { return sender(); }
 
@@ -6196,7 +6198,7 @@ void tst_QObject::contextDoesNotLeakFunctor()
 }
 
 class SubSender : public SenderObject {
-    Q_OBJECT
+    W_OBJECT(SubSender)
 };
 
 void tst_QObject::connectBase()
@@ -6297,7 +6299,7 @@ struct ThrowFunctor
 
 class ExceptionThrower : public QObject
 {
-  Q_OBJECT
+    W_OBJECT(ExceptionThrower)
 public slots:
     CountedStruct throwException(const CountedStruct &, CountedStruct s2)
     {
@@ -6419,4 +6421,55 @@ Q_STATIC_ASSERT(QtPrivate::HasQ_OBJECT_Macro<tst_QObject>::Value);
 Q_STATIC_ASSERT(!QtPrivate::HasQ_OBJECT_Macro<SiblingDeleter>::Value);
 
 QTEST_MAIN(tst_QObject)
-#include "tst_qobject.moc"
+
+
+W_OBJECT_IMPL(tst_QObject)
+W_OBJECT_IMPL(SenderObject)
+W_OBJECT_IMPL(ReceiverObject)
+W_OBJECT_IMPL(AutoConnectSender)
+W_OBJECT_IMPL(AutoConnectReceiver)
+W_OBJECT_IMPL(ConnectByNameNotifySenderObject)
+W_OBJECT_IMPL(ConnectByNameNotifyReceiverObject)
+W_OBJECT_IMPL(ConnectDisconnectNotifyShadowObject)
+W_OBJECT_IMPL(SequenceObject)
+W_OBJECT_IMPL(QCustomTypeChecker)
+W_OBJECT_IMPL(PropertyObject)
+W_OBJECT_IMPL(TestThread)
+W_OBJECT_IMPL(MoveToThreadObject)
+W_OBJECT_IMPL(QObjectTest::TestObject)
+W_OBJECT_IMPL(SuperObject)
+W_OBJECT_IMPL(FooObject)
+W_OBJECT_IMPL(BlehObject)
+W_OBJECT_IMPL(DestroyedListener)
+W_OBJECT_IMPL(DefaultArguments)
+W_OBJECT_IMPL(NormalizeObject)
+W_OBJECT_IMPL(EventSpy)
+W_OBJECT_IMPL(EmitThread)
+W_OBJECT_IMPL(QObjectTest::DeleteObject)
+W_OBJECT_IMPL(DisconnectObject)
+W_OBJECT_IMPL(ConnectToSender)
+W_OBJECT_IMPL(OverloadObject)
+W_OBJECT_IMPL(ManySignals)
+W_OBJECT_IMPL(ConfusingObject)
+W_OBJECT_IMPL(Constructable)
+W_OBJECT_IMPL(BaseDestroyed)
+W_OBJECT_IMPL(LotsOfSignalsAndSlots)
+W_OBJECT_IMPL(StringVariant)
+W_OBJECT_IMPL(ConnectWithReferenceObject)
+W_OBJECT_IMPL(ManyArgumentObject)
+W_OBJECT_IMPL(ForwardDeclareArguments)
+W_GADGET_IMPL(NoDefaultConstructor)
+W_OBJECT_IMPL(NoDefaultContructorArguments)
+W_OBJECT_IMPL(ReturnValue)
+W_OBJECT_IMPL(VirtualSlotsObjectBase)
+W_OBJECT_IMPL(VirtualSlotsObject)
+#ifdef QT_BUILD_INTERNAL
+W_OBJECT_IMPL(ConnectToPrivateSlot)
+#endif
+W_OBJECT_IMPL(ContextObject)
+W_OBJECT_IMPL(StaticSlotChecker)
+W_OBJECT_IMPL(FunctorArgDifferenceObject)
+W_OBJECT_IMPL(GetSenderObject)
+W_OBJECT_IMPL(SubSender)
+W_OBJECT_IMPL(ExceptionThrower)
+
