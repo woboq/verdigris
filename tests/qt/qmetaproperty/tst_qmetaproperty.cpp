@@ -92,7 +92,7 @@ public:
 
     W_PROPERTY(EnumType, value WRITE setValue READ getValue)
     W_PROPERTY(EnumType, value2 WRITE set_value READ get_value)
- //   W_PROPERTY(QString, value7 MEMBER value7 RESET resetValue7)
+    W_PROPERTY(QString, value7 MEMBER value7 RESET resetValue7)
     W_PROPERTY(int, value8 READ value8)
     W_PROPERTY(int, value9 READ value9 CONSTANT)
     W_PROPERTY(int, value10 READ value10 FINAL)
@@ -150,7 +150,7 @@ public:
     QString getValue() { return m_value; }
     void resetValue() { m_value = QLatin1Literal("reset"); }
     W_GADGET(MyGadget)
-    W_PROPERTY(QString, value READ getValue WRITE setValue /*RESET resetValue*/)
+    W_PROPERTY(QString, value READ getValue WRITE setValue RESET resetValue)
 };
 
 W_GADGET_IMPL(MyGadget)
@@ -236,6 +236,10 @@ void tst_QMetaProperty::mapProperty()
 
 void tst_QMetaProperty::conversion()
 {
+    if (qVersion() < QByteArray("5.6.0"))
+        QSKIP("this is a test for a bug in 5.5");
+
+
     QMetaType::registerConverter<QString, CustomType>();
     QMetaType::registerConverter<CustomType, QString>();
 

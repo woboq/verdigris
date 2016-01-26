@@ -418,6 +418,11 @@ struct ConstructorParametersGenerator {
     inline auto propNotify(F f, M, O *o) W_RETURN(((o->*f)(),0))
     template <typename... T>
     inline void propNotify(T...) {}
+
+    template <typename F, typename O>
+    inline auto propReset(F f, O *o) W_RETURN(((o->*f)(),0))
+    template <typename... T>
+    inline void propReset(T...) {}
 }
 
 struct FriendHelper2 {
@@ -505,20 +510,27 @@ static void propertyOp(T *_o, QMetaObject::Call _c, int _id, void **_a) {
     constexpr auto p = simple::get<I>(T::MetaObjectCreatorHelper::objectInfo.properties);
     using Type = typename decltype(p)::PropertyType;
     switch(+_c) {
-        case QMetaObject::ReadProperty:
-            if (p.getter != nullptr) {
-                MetaObjectBuilder::propGet(p.getter, _o, *reinterpret_cast<Type*>(_a[0]));
-            } else if (p.member != nullptr) {
-                MetaObjectBuilder::propGet(p.member, _o, *reinterpret_cast<Type*>(_a[0]));
-            }
-            break;
-        case QMetaObject::WriteProperty:
-            if (p.setter != nullptr) {
-                MetaObjectBuilder::propSet(p.setter, _o, *reinterpret_cast<Type*>(_a[0]));
-            } else if (p.member != nullptr) {
-                MetaObjectBuilder::propSet(p.member, _o, *reinterpret_cast<Type*>(_a[0]));
-                MetaObjectBuilder::propNotify(p.notify, p.member, _o);
-            }
+    case QMetaObject::ReadProperty:
+        if (p.getter != nullptr) {
+            MetaObjectBuilder::propGet(p.getter, _o, *reinterpret_cast<Type*>(_a[0]));
+        } else if (p.member != nullptr) {
+            MetaObjectBuilder::propGet(p.member, _o, *reinterpret_cast<Type*>(_a[0]));
+        }
+        break;
+    case QMetaObject::WriteProperty:
+        if (p.setter != nullptr) {
+            MetaObjectBuilder::propSet(p.setter, _o, *reinterpret_cast<Type*>(_a[0]));
+        } else if (p.member != nullptr) {
+            MetaObjectBuilder::propSet(p.member, _o, *reinterpret_cast<Type*>(_a[0]));
+            MetaObjectBuilder::propNotify(p.notify, p.member, _o);
+        }
+        break;
+    case QMetaObject::ResetProperty:
+        if (p.reset != nullptr) {
+            MetaObjectBuilder::propReset(p.reset, _o);
+        }
+        break;
+
     }
 }
 

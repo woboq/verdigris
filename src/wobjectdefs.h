@@ -294,6 +294,7 @@ enum PropertyFlags  {
 }
 
 constexpr struct {} W_Notify{};
+constexpr struct {} W_Reset{};
 constexpr std::integral_constant<int, MetaObjectBuilder::Constant> W_Constant{};
 constexpr std::integral_constant<int, MetaObjectBuilder::Final> W_Final{};
 
@@ -363,7 +364,7 @@ namespace MetaObjectBuilder {
     /** Holds information about a property */
     template<typename Type, int NameLength, int TypeLength, typename Getter = std::nullptr_t,
              typename Setter = std::nullptr_t, typename Member = std::nullptr_t,
-             typename Notify = std::nullptr_t, int Flags = 0>
+             typename Notify = std::nullptr_t, typename Reset = std::nullptr_t, int Flags = 0>
     struct MetaPropertyInfo {
         using PropertyType = Type;
         StaticString<NameLength> name;
@@ -372,32 +373,38 @@ namespace MetaObjectBuilder {
         Setter setter;
         Member member;
         Notify notify;
+        Reset reset;
         static constexpr uint flags = Flags;
 
         template <typename S> constexpr auto setGetter(const S&s) const {
-            return MetaPropertyInfo<Type, NameLength, TypeLength, S, Setter, Member, Notify,
+            return MetaPropertyInfo<Type, NameLength, TypeLength, S, Setter, Member, Notify, Reset,
                                     Flags | PropertyFlags::Readable>
-            {name, typeStr, s, setter, member, notify};
+            {name, typeStr, s, setter, member, notify, reset};
         }
         template <typename S> constexpr auto setSetter(const S&s) const {
-            return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, S, Member, Notify,
+            return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, S, Member, Notify, Reset,
                                     Flags | PropertyFlags::Writable>
-            {name, typeStr, getter, s, member, notify};
+            {name, typeStr, getter, s, member, notify, reset};
         }
         template <typename S> constexpr auto setMember(const S&s) const {
-            return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, S, Notify,
+            return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, S, Notify, Reset,
                                     Flags | PropertyFlags::Writable | PropertyFlags::Readable>
-            {name, typeStr, getter, setter, s, notify};
+            {name, typeStr, getter, setter, s, notify, reset};
         }
         template <typename S> constexpr auto setNotify(const S&s) const {
-            return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, Member, S,
+            return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, Member, S, Reset,
                                     Flags | PropertyFlags::Notify>
-            { name, typeStr, getter, setter, member, s};
+            { name, typeStr, getter, setter, member, s, reset};
+        }
+        template <typename S> constexpr auto setReset(const S&s) const {
+            return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, Member, Notify, S,
+                                    Flags | PropertyFlags::Resettable>
+            { name, typeStr, getter, setter, member, notify, s};
         }
         template <int Flag> constexpr auto addFlag() const {
-            return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, Member, Notify,
+            return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, Member, Notify, Reset,
                                     Flags | Flag>
-            { name, typeStr, getter, setter, member, notify};
+            { name, typeStr, getter, setter, member, notify, reset};
         }
     };
 
@@ -423,6 +430,10 @@ namespace MetaObjectBuilder {
     template <typename PropInfo, typename F, typename... Tail>
     constexpr auto parseProperty(const PropInfo &p, decltype(W_Notify), F f, Tail... t)
     { return parseProperty(p.setNotify(f) ,t...); }
+    // reset
+    template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
+    constexpr auto parseProperty(const PropInfo &p, decltype(W_Reset), Ret (Obj::*s)(), Tail... t)
+    { return parseProperty(p.setReset(s) ,t...); }
     // other flags flags
     template <typename PropInfo, int Flag, typename... Tail>
     constexpr auto parseProperty(const PropInfo &p, std::integral_constant<int, Flag>, Tail... t)
@@ -431,7 +442,7 @@ namespace MetaObjectBuilder {
     template<typename T, int N1, int N2, typename ... Args>
     constexpr auto makeMetaPropertyInfo(StaticStringArray<N1> &name, StaticStringArray<N2> &type, Args... args) {
         MetaPropertyInfo<T, N1, N2> meta
-        { {name}, {type}, {}, {}, {}, {} };
+        { {name}, {type}, {}, {}, {}, {}, {} };
         return parseProperty(meta, args...);
     }
 
@@ -597,6 +608,7 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 #define WRITE , &W_ThisType::
 #define READ , &W_ThisType::
 #define NOTIFY , W_Notify, &W_ThisType::
+#define RESET , W_Reset, &W_ThisType::
 #define MEMBER , &W_ThisType::
 #define CONSTANT , W_Constant
 #define FINAL , W_Final
