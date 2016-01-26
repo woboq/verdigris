@@ -315,7 +315,7 @@ struct ConstructorParametersGenerator {
                 ObjI::propertyCount,    propertyOffset, // properties
                 ObjI::enumCount,    enumOffset, // enums/sets
                 ObjI::constructorCount, constructorOffset, // constructors
-                0,       // flags
+                0x4 /* PropertyAccessInStaticMetaCall */,   // flags
                 ObjI::signalCount
             > header = { stringData };
 
