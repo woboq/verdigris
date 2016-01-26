@@ -57,6 +57,13 @@
 
 #include <wobjectimpl.h>
 
+W_DECLARE_METATYPE(int&)
+W_DECLARE_METATYPE(short&)
+W_DECLARE_METATYPE(bool&)
+W_DECLARE_METATYPE(QObject)
+W_DECLARE_METATYPE(QObject&)
+
+
 class tst_QObject : public QObject
 {
     W_OBJECT(tst_QObject)
@@ -182,13 +189,13 @@ public:
     void emitSignal4() { emit signal4(); }
 
 signals:
-    void signal1();
-    void signal2();
-    void signal3();
-    void signal4();
-    QT_MOC_COMPAT void signal5();
-    void signal6(void);
-    void signal7(int, const QString &);
+    void signal1() W_SIGNAL_2(signal1)
+    void signal2() W_SIGNAL_2(signal2)
+    void signal3() W_SIGNAL_2(signal3)
+    void signal4() W_SIGNAL_2(signal4)
+    QT_MOC_COMPAT void signal5() W_SIGNAL_2(signal5)
+    void signal6(void) W_SIGNAL_2(signal6)
+    void signal7(int a, const QString &b) W_SIGNAL_2(signal7,a,b)
 
 public slots:
     void aPublicSlot() { aPublicSlotCalled++; }
@@ -405,13 +412,16 @@ public:
     void emitSignalLoopBack() { emit signalLoopBack(); }
 
 signals:
-    void signalNoParams();
-    void signalWithParams(int i);
-    void signalWithParams(int i, QString string);
-    void signalManyParams(int i1, int i2, int i3, QString string, bool onoff);
-    void signalManyParams(int i1, int i2, int i3, QString string, bool onoff, bool);
-    void signalManyParams2(int i1, int i2, int i3, QString string, bool onoff);
-    void signalLoopBack();
+    void signalNoParams() W_SIGNAL_2(signalNoParams)
+    void signalWithParams(int i) W_SIGNAL_2(signalWithParams,(int),i)
+    void signalWithParams(int i, QString string) W_SIGNAL_2(signalWithParams,(int,QString),i, string)
+    void signalManyParams(int i1, int i2, int i3, QString string, bool onoff)
+        W_SIGNAL_2(signalManyParams,(int,int,int,QString,bool),i1,i2,i3,string,onoff)
+    void signalManyParams(int i1, int i2, int i3, QString string, bool onoff, bool _)
+        W_SIGNAL_2(signalManyParams,(int,int,int,QString,bool,bool),i1,i2,i3,string,onoff,_)
+    void signalManyParams2(int i1, int i2, int i3, QString string, bool onoff)
+        W_SIGNAL_2(signalManyParams2, i1,i2,i3,string,onoff)
+    void signalLoopBack() W_SIGNAL_2(signalLoopBack)
 };
 
 class AutoConnectReceiver : public QObject
@@ -452,9 +462,9 @@ protected slots:
     void on_child_signal() { called_slots << -1; }
 
 signals:
-    void on_Sender_signalLoopBack();
-    void signalNoParams();
-    void signal_with_underscore();
+    void on_Sender_signalLoopBack() W_SIGNAL_2(on_Sender_signalLoopBack)
+    void signalNoParams() W_SIGNAL_2(signalNoParams)
+    void signal_with_underscore() W_SIGNAL_2(signal_with_underscore)
 };
 
 void tst_QObject::connectSlotsByName()
@@ -987,7 +997,7 @@ protected:
     void disconnectNotify(const QMetaMethod &signal)
     { disconnectedSignals.append(signal); }
 Q_SIGNALS:
-    void signal1();
+    void signal1() W_SIGNAL_2(signal1)
 };
 
 class ConnectByNameNotifyReceiverObject : public QObject
@@ -1041,7 +1051,7 @@ class ConnectDisconnectNotifyShadowObject
 public Q_SLOTS:
     void slot1() {}
 Q_SIGNALS:
-    void signal1();
+    void signal1() W_SIGNAL_2(signal1)
 };
 
 void tst_QObject::connectDisconnectNotify_shadowing()
@@ -1389,7 +1399,11 @@ struct CustomType
 };
 
 Q_DECLARE_METATYPE(CustomType*)
+W_DECLARE_METATYPE(CustomType*)
 Q_DECLARE_METATYPE(CustomType)
+W_DECLARE_METATYPE(CustomType)
+
+W_DECLARE_METATYPE(QList<CustomType>)
 
 class QCustomTypeChecker: public QObject
 {
@@ -1405,8 +1419,8 @@ public slots:
     void slot2(const QList<CustomType> &ct);
 
 signals:
-    void signal1(CustomType ct);
-    void signal2(const QList<CustomType> &ct);
+    void signal1(CustomType ct) W_SIGNAL_2(signal1,ct)
+    void signal2(const QList<CustomType> &ct) W_SIGNAL_2(signal2,ct)
 
 public:
     CustomType received;
@@ -1700,7 +1714,7 @@ public slots:
     }
 
 signals:
-    void theSignal();
+    void theSignal() W_SIGNAL_2(theSignal)
 };
 
 class MoveToThreadThread : public QThread
@@ -2126,7 +2140,7 @@ namespace QObjectTest
     public slots:
         void aSlot() { ++i; }
     signals:
-        void aSignal();
+        void aSignal() W_SIGNAL_2(aSignal)
     };
 }
 
@@ -2169,8 +2183,8 @@ public slots:
         rememberSender();
     }
 signals:
-    void anotherSignal();
-    void theSignal();
+    void anotherSignal() W_SIGNAL_2(anotherSignal)
+    void theSignal() W_SIGNAL_2(theSignal)
 };
 
 void tst_QObject::senderTest()
@@ -2401,8 +2415,8 @@ public slots:
     void theSlot(const QString &s) { result = s; }
 
 signals:
-    void theOriginalSignal();
-    void theSecondSignal(const QString &s = QString("secondDefault"));
+    void theOriginalSignal() W_SIGNAL_2(theOriginalSignal)
+    void theSecondSignal(const QString &s = QString("secondDefault")) W_SIGNAL_2(theSecondSignal,s)
 
 public:
 
@@ -2450,6 +2464,29 @@ struct Struct { };
 class Class { };
 template <typename T> class Template { };
 
+W_DECLARE_METATYPE(uint*)
+W_DECLARE_METATYPE(ulong*)
+W_DECLARE_METATYPE(const uint*)
+W_DECLARE_METATYPE(const ulong*)
+W_DECLARE_METATYPE(Struct)
+W_DECLARE_METATYPE(Class)
+W_DECLARE_METATYPE(Enum)
+W_DECLARE_METATYPE(Struct*)
+W_DECLARE_METATYPE(Class*)
+W_DECLARE_METATYPE(Enum*)
+W_DECLARE_METATYPE(const Struct*)
+W_DECLARE_METATYPE(const Class*)
+W_DECLARE_METATYPE(const Enum*)
+W_DECLARE_METATYPE(const Struct*const*)
+W_DECLARE_METATYPE(const Class*const*)
+W_DECLARE_METATYPE(const Enum*const*)
+W_DECLARE_METATYPE(Template<Class &> &)
+W_DECLARE_METATYPE(Template<Class const &>)
+W_DECLARE_METATYPE(Class * const &)
+W_DECLARE_METATYPE(Template<int >)
+W_DECLARE_METATYPE(Template<const int >)
+
+
 class NormalizeObject : public QObject
 {
     W_OBJECT(NormalizeObject)
@@ -2457,43 +2494,43 @@ class NormalizeObject : public QObject
 public:
 
 signals:
-    void uintPointerSignal(uint *);
-    void ulongPointerSignal(ulong *);
-    void constUintPointerSignal(const uint *);
-    void constUlongPointerSignal(const ulong *);
+    void uintPointerSignal(uint * a) W_SIGNAL_2(uintPointerSignal,a)
+    void ulongPointerSignal(ulong * a) W_SIGNAL_2(ulongPointerSignal,a)
+    void constUintPointerSignal(const uint * a) W_SIGNAL_2(constUintPointerSignal,a)
+    void constUlongPointerSignal(const ulong * a) W_SIGNAL_2(constUlongPointerSignal,a)
 
-    void structSignal(Struct s);
-    void classSignal(Class c);
-    void enumSignal(Enum e);
+    void structSignal(Struct s) W_SIGNAL_2(structSignal,s)
+    void classSignal(Class c) W_SIGNAL_2(classSignal,c)
+    void enumSignal(Enum e) W_SIGNAL_2(enumSignal,e)
 
-    void structPointerSignal(Struct *s);
-    void classPointerSignal(Class *c);
-    void enumPointerSignal(Enum *e);
+    void structPointerSignal(Struct *s) W_SIGNAL_2(structPointerSignal,s)
+    void classPointerSignal(Class *c) W_SIGNAL_2(classPointerSignal,c)
+    void enumPointerSignal(Enum *e) W_SIGNAL_2(enumPointerSignal,e)
 
-    void constStructPointerSignal(const Struct *s);
-    void constClassPointerSignal(const Class *c);
-    void constEnumPointerSignal(const Enum *e);
+    void constStructPointerSignal(const Struct *s) W_SIGNAL_2(constStructPointerSignal,s)
+    void constClassPointerSignal(const Class *c) W_SIGNAL_2(constClassPointerSignal,c)
+    void constEnumPointerSignal(const Enum *e) W_SIGNAL_2(constEnumPointerSignal,e)
 
-    void constStructPointerConstPointerSignal(const Struct * const *s);
-    void constClassPointerConstPointerSignal(const Class * const *c);
-    void constEnumPointerConstPointerSignal(const Enum * const *e);
+    void constStructPointerConstPointerSignal(const Struct * const *s) W_SIGNAL_2(constStructPointerConstPointerSignal,s)
+    void constClassPointerConstPointerSignal(const Class * const *c) W_SIGNAL_2(constClassPointerConstPointerSignal,c)
+    void constEnumPointerConstPointerSignal(const Enum * const *e) W_SIGNAL_2(constEnumPointerConstPointerSignal,e)
 
-    void unsignedintSignal(unsigned int);
-    void unsignedSignal(unsigned);
-    void unsignedlongSignal(unsigned long);
-    void unsignedlonglongSignal(quint64);
-    void unsignedlongintSignal(unsigned long int);
-    void unsignedshortSignal(unsigned short);
-    void unsignedcharSignal(unsigned char);
+    void unsignedintSignal(unsigned int a) W_SIGNAL_2(unsignedintSignal,a)
+    void unsignedSignal(unsigned a) W_SIGNAL_2(unsignedSignal,a)
+    void unsignedlongSignal(unsigned long a) W_SIGNAL_2(unsignedlongSignal,a)
+    void unsignedlonglongSignal(quint64 a) W_SIGNAL_2(unsignedlonglongSignal,a)
+    void unsignedlongintSignal(unsigned long int a) W_SIGNAL_2(unsignedlongintSignal,a)
+    void unsignedshortSignal(unsigned short a) W_SIGNAL_2(unsignedshortSignal,a)
+    void unsignedcharSignal(unsigned char a) W_SIGNAL_2(unsignedcharSignal,a)
 
-    void typeRefSignal(Template<Class &> &ref);
-    void constTypeRefSignal(const Template<Class const &> &ref);
-    void typeConstRefSignal(Template<Class const &> const &ref);
+    void typeRefSignal(Template<Class &> &ref) W_SIGNAL_2(typeRefSignal,ref)
+    void constTypeRefSignal(const Template<Class const &> &ref) W_SIGNAL_2(constTypeRefSignal,ref)
+    void typeConstRefSignal(Template<Class const &> const &ref) W_SIGNAL_2(typeConstRefSignal,ref)
 
-    void typePointerConstRefSignal(Class * const &);
+    void typePointerConstRefSignal(Class * const &a) W_SIGNAL_2(typePointerConstRefSignal,a)
 
-    void constTemplateSignal1( Template<int > );
-    void constTemplateSignal2( Template< const int >);
+    void constTemplateSignal1( Template<int > a) W_SIGNAL_2(constTemplateSignal1,a)
+    void constTemplateSignal2( Template< const int >a) W_SIGNAL_2(constTemplateSignal2,a)
 
 public slots:
     void uintPointerSlot(uint *) { }
@@ -3215,7 +3252,7 @@ public:
         emit work();
     }
 signals:
-    void work();
+    void work() W_SIGNAL_2(work)
 };
 
 namespace QObjectTest { // Do not clash with WinAPI 'DeleteObject'
@@ -3236,7 +3273,7 @@ public slots:
     }
 
 signals:
-    void relayedSignal();
+    void relayedSignal() W_SIGNAL_2(relayedSignal)
 };
 } // namespace QObjectTest
 
@@ -3314,7 +3351,7 @@ public slots:
     }
 
 signals:
-    void relayedSignal();
+    void relayedSignal() W_SIGNAL_2(relayedSignal)
 };
 
 void tst_QObject::disconnectSelfInSlotAndDeleteAfterEmit()
@@ -3595,12 +3632,14 @@ class OverloadObject : public QObject
     friend class tst_QObject;
     W_OBJECT(OverloadObject)
     signals:
-        void sig(int i, char c, qreal m = 12);
-        void sig(int i, int j = 12);
-        void sig(QObject *o, QObject *p, QObject *q = 0, QObject *r = 0) const;
-        void other(int a = 0);
-        void sig(QObject *o, OverloadObject *p = 0, QObject *q = 0, QObject *r = 0);
-        void sig(double r = 0.5);
+        void sig(int i, char c, qreal m = 12) W_SIGNAL_2(sig,(int, char, qreal),i,c,m)
+        void sig(int i, int j = 12) W_SIGNAL_2(sig,(int,int),i,j)
+        void sig(QObject *o, QObject *p, QObject *q = 0, QObject *r = 0) const
+            W_SIGNAL_2(sig,(QObject*,QObject*,QObject*,QObject*),o,p,q,r)
+        void other(int a = 0) W_SIGNAL_2(other,(int),a)
+        void sig(QObject *o, OverloadObject *p = 0, QObject *q = 0, QObject *r = 0)
+            W_SIGNAL_2(sig,(QObject*,OverloadObject*,QObject*,QObject*),o,p,q,r)
+        void sig(double r = 0.5) W_SIGNAL_2(sig,(double),r)
     public slots:
         void slo(int i, int j = 43)
         {
@@ -3682,20 +3721,20 @@ class ManySignals : public QObject
 {   W_OBJECT(ManySignals)
     friend class tst_QObject;
 signals:
-    void sig00(); void sig01(); void sig02(); void sig03(); void sig04();
-    void sig05(); void sig06(); void sig07(); void sig08(); void sig09();
-    void sig10(); void sig11(); void sig12(); void sig13(); void sig14();
-    void sig15(); void sig16(); void sig17(); void sig18(); void sig19();
-    void sig20(); void sig21(); void sig22(); void sig23(); void sig24();
-    void sig25(); void sig26(); void sig27(); void sig28(); void sig29();
-    void sig30(); void sig31(); void sig32(); void sig33(); void sig34();
-    void sig35(); void sig36(); void sig37(); void sig38(); void sig39();
-    void sig40(); void sig41(); void sig42(); void sig43(); void sig44();
-    void sig45(); void sig46(); void sig47(); void sig48(); void sig49();
-    void sig50(); void sig51(); void sig52(); void sig53(); void sig54();
-    void sig55(); void sig56(); void sig57(); void sig58(); void sig59();
-    void sig60(); void sig61(); void sig62(); void sig63(); void sig64();
-    void sig65(); void sig66(); void sig67(); void sig68(); void sig69();
+    void sig00() W_SIGNAL_2(sig00) void sig01() W_SIGNAL_2(sig01) void sig02() W_SIGNAL_2(sig02) void sig03() W_SIGNAL_2(sig03) void sig04() W_SIGNAL_2(sig04)
+    void sig05() W_SIGNAL_2(sig05) void sig06() W_SIGNAL_2(sig06) void sig07() W_SIGNAL_2(sig07) void sig08() W_SIGNAL_2(sig08) void sig09() W_SIGNAL_2(sig09)
+    void sig10() W_SIGNAL_2(sig10) void sig11() W_SIGNAL_2(sig11) void sig12() W_SIGNAL_2(sig12) void sig13() W_SIGNAL_2(sig13) void sig14() W_SIGNAL_2(sig14)
+    void sig15() W_SIGNAL_2(sig15) void sig16() W_SIGNAL_2(sig16) void sig17() W_SIGNAL_2(sig17) void sig18() W_SIGNAL_2(sig18) void sig19() W_SIGNAL_2(sig19)
+    void sig20() W_SIGNAL_2(sig20) void sig21() W_SIGNAL_2(sig21) void sig22() W_SIGNAL_2(sig22) void sig23() W_SIGNAL_2(sig23) void sig24() W_SIGNAL_2(sig24)
+    void sig25() W_SIGNAL_2(sig25) void sig26() W_SIGNAL_2(sig26) void sig27() W_SIGNAL_2(sig27) void sig28() W_SIGNAL_2(sig28) void sig29() W_SIGNAL_2(sig29)
+    void sig30() W_SIGNAL_2(sig30) void sig31() W_SIGNAL_2(sig31) void sig32() W_SIGNAL_2(sig32) void sig33() W_SIGNAL_2(sig33) void sig34() W_SIGNAL_2(sig34)
+    void sig35() W_SIGNAL_2(sig35) void sig36() W_SIGNAL_2(sig36) void sig37() W_SIGNAL_2(sig37) void sig38() W_SIGNAL_2(sig38) void sig39() W_SIGNAL_2(sig39)
+    void sig40() W_SIGNAL_2(sig40) void sig41() W_SIGNAL_2(sig41) void sig42() W_SIGNAL_2(sig42) void sig43() W_SIGNAL_2(sig43) void sig44() W_SIGNAL_2(sig44)
+    void sig45() W_SIGNAL_2(sig45) void sig46() W_SIGNAL_2(sig46) void sig47() W_SIGNAL_2(sig47) void sig48() W_SIGNAL_2(sig48) void sig49() W_SIGNAL_2(sig49)
+    void sig50() W_SIGNAL_2(sig50) void sig51() W_SIGNAL_2(sig51) void sig52() W_SIGNAL_2(sig52) void sig53() W_SIGNAL_2(sig53) void sig54() W_SIGNAL_2(sig54)
+    void sig55() W_SIGNAL_2(sig55) void sig56() W_SIGNAL_2(sig56) void sig57() W_SIGNAL_2(sig57) void sig58() W_SIGNAL_2(sig58) void sig59() W_SIGNAL_2(sig59)
+    void sig60() W_SIGNAL_2(sig60) void sig61() W_SIGNAL_2(sig61) void sig62() W_SIGNAL_2(sig62) void sig63() W_SIGNAL_2(sig63) void sig64() W_SIGNAL_2(sig64)
+    void sig65() W_SIGNAL_2(sig65) void sig66() W_SIGNAL_2(sig66) void sig67() W_SIGNAL_2(sig67) void sig68() W_SIGNAL_2(sig68) void sig69() W_SIGNAL_2(sig69)
 
 public slots:
     void received() { rec++; }
@@ -4031,7 +4070,7 @@ class ConfusingObject : public SenderObject
 public slots:
     void signal1() { s++; }
 signals:
-    void aPublicSlot();
+    void aPublicSlot() W_SIGNAL_2(aPublicSlot)
 public:
     int s;
     ConfusingObject() : s(0) {}
@@ -4779,27 +4818,27 @@ class LotsOfSignalsAndSlots: public QObject
         void slot_vRQObject(QObject &) {}
 
     signals:
-        void signal_v();
-        void signal_vi(int);
-        void signal_vii(int, int);
-        void signal_viii(int, int, int);
-        void signal_vRi(int &);
-        void signal_vs(short);
-        void signal_vRs(short &);
+        void signal_v() W_SIGNAL_2(signal_v)
+        void signal_vi(int a) W_SIGNAL_2(signal_vi, a)
+        void signal_vii(int a, int b) W_SIGNAL_2(signal_vii, a,b)
+        void signal_viii(int a, int b, int c) W_SIGNAL_2(signal_viii, a,b,c)
+        void signal_vRi(int &a) W_SIGNAL_2(signal_vRi, a)
+        void signal_vs(short a) W_SIGNAL_2(signal_vs, a)
+        void signal_vRs(short &a) W_SIGNAL_2(signal_vRs, a)
 /*        #if defined(Q_COMPILER_RVALUE_REFS) || defined(QT_ENABLE_CXX0X)
-        void signal_vOi(int &&);
-        void signal_vOs(short &&);
+        void signal_vOi(int &&) W_SIGNAL_2()
+        void signal_vOs(short &&) W_SIGNAL_2()
         #endif*/
-        void signal_vPFvvE(fptr);
+        void signal_vPFvvE(fptr a) W_SIGNAL_2(signal_vPFvvE,(fptr), a)
 
-        void const_signal_v() const;
-        void const_signal_vi(int) const;
+        void const_signal_v() const W_SIGNAL_2(const_signal_v)
+        void const_signal_vi(int a) const W_SIGNAL_2(const_signal_vi, a)
 
-        void signal_vcRQObject(const QObject &);
-        void signal_vRQObject(QObject &);
+        void signal_vcRQObject(const QObject &a) W_SIGNAL_2(signal_vcRQObject, a)
+        void signal_vRQObject(QObject &a) W_SIGNAL_2(signal_vRQObject, a)
 
-        void signal(short&, short, long long, short);
-        void otherSignal(const char *);
+        void signal(short&a, short b, long long c, short d) W_SIGNAL_2(signal, a,b,c,d)
+        void otherSignal(const char *a) W_SIGNAL_2(otherSignal, a)
 };
 
 void tst_QObject::connectCxx0xTypeMatching()
@@ -4928,7 +4967,7 @@ void tst_QObject::connectCxx0xTypeMatching()
 class StringVariant : public QObject
 { W_OBJECT(StringVariant)
 signals:
-    void stringSignal(const QString &str);
+    void stringSignal(const QString &str) W_SIGNAL_2(stringSignal, str)
 public slots:
     void variantSlot(const QVariant &v) { var = v; }
 public:
@@ -4963,14 +5002,19 @@ void tst_QObject::connectConvert()
     QCOMPARE(var, obj.var);
 }
 
+W_DECLARE_METATYPE(QString&)
+W_DECLARE_METATYPE(bool*)
+W_DECLARE_METATYPE(QString*)
+
+
 class ConnectWithReferenceObject : public QObject {
     W_OBJECT(ConnectWithReferenceObject)
     friend class tst_QObject;
 signals:
-    void boolRef(bool &, bool);
-    void stringRef(QString &, const QString &);
-    void boolPtr(bool *, bool);
-    void stringPtr(QString *, const QString &);
+    void boolRef(bool &a, bool b) W_SIGNAL_2(boolRef,a,b)
+    void stringRef(QString &a, const QString & b) W_SIGNAL_2(stringRef,a,b)
+    void boolPtr(bool *a, bool b) W_SIGNAL_2(boolPtr,a,b)
+    void stringPtr(QString *a, const QString & b) W_SIGNAL_2(stringPtr,a,b)
 public slots:
     void boolRefSlot(bool &b1, bool b2) {  b1 = b2; }
     void stringRefSlot(QString &s1, const QString &s2) {  s1 = s2; }
@@ -5040,12 +5084,12 @@ void tst_QObject::connectWithReference()
 class ManyArgumentObject : public QObject {
     W_OBJECT(ManyArgumentObject)
 signals:
-    void signal1(const QString &);
-    void signal2(const QString &, const QString &);
-    void signal3(const QString &, const QString &, const QString &);
-    void signal4(const QString &, const QString &, const QString &, const QString&);
-    void signal5(const QString &, const QString &, const QString &, const QString&, const QString&);
-    void signal6(const QString &, const QString &, const QString &, const QString&, const QString&, const QString&);
+    void signal1(const QString &a) W_SIGNAL_2(signal1,a)
+    void signal2(const QString &a, const QString &b) W_SIGNAL_2(signal2,a,b)
+    void signal3(const QString &a, const QString &b, const QString &c) W_SIGNAL_2(signal3,a,b,c)
+    void signal4(const QString &a, const QString &b, const QString &c, const QString&d) W_SIGNAL_2(signal4,a,b,c,d)
+    void signal5(const QString &a, const QString &b, const QString &c, const QString&d, const QString&e) W_SIGNAL_2(signal5,a,b,c,d,e)
+    void signal6(const QString &a, const QString &b, const QString &c, const QString&d, const QString&e, const QString&f) W_SIGNAL_2(signal6,a,b,c,d,e,f)
 
 public slots:
 #define MANYARGUMENT_COMPARE(L) QCOMPARE(L, QString(#L))
@@ -5215,12 +5259,13 @@ void tst_QObject::connectManyArguments()
 }
 
 class ForwardDeclared;
+W_DECLARE_METATYPE(ForwardDeclared)
 
 class ForwardDeclareArguments : public QObject
 {
     W_OBJECT(ForwardDeclareArguments)
 signals:
-    void mySignal(const ForwardDeclared&);
+    void mySignal(const ForwardDeclared&a) W_SIGNAL_2(mySignal,a)
 public slots:
     void mySlot(const ForwardDeclared&) {}
 };
@@ -5239,11 +5284,13 @@ public:
     NoDefaultConstructor(int) {}
 };
 
+W_DECLARE_METATYPE(NoDefaultConstructor)
+
 class NoDefaultContructorArguments : public QObject
 {
     W_OBJECT(NoDefaultContructorArguments)
 signals:
-    void mySignal(const NoDefaultConstructor&);
+    void mySignal(const NoDefaultConstructor&a) W_SIGNAL_2(mySignal,a)
 public slots:
     void mySlot(const NoDefaultConstructor&) {}
 };
@@ -5259,13 +5306,13 @@ class ReturnValue : public QObject {
 friend class tst_QObject;
 W_OBJECT(ReturnValue)
 signals:
-    QVariant returnVariant(int);
-    QString returnString(int);
-    int returnInt(int);
-    void returnVoid(int);
-    CustomType returnCustomType(int);
+    QVariant returnVariant(int a) W_SIGNAL_2(returnVariant,a)
+    QString returnString(int a) W_SIGNAL_2(returnString,a)
+    int returnInt(int a) W_SIGNAL_2(returnInt,a)
+    void returnVoid(int a) W_SIGNAL_2(returnVoid,a)
+    CustomType returnCustomType(int a) W_SIGNAL_2(returnCustomType,a)
 
-    QObject *returnPointer();
+    QObject *returnPointer() W_SIGNAL_2(returnPointer)
 public slots:
     QVariant returnVariantSlot(int i) { return i; }
     QString returnStringSlot(int i) { return QString::number(i); }
@@ -5569,7 +5616,7 @@ public:
     VirtualSlotsObjectBase() : base_counter1(0) {}
     int base_counter1;
 signals:
-    void signal1();
+    void signal1() W_SIGNAL_2(signal1)
 };
 
 class VirtualSlotsObject : public VirtualSlotsObjectBase {
@@ -5914,14 +5961,14 @@ class FunctorArgDifferenceObject : public QObject
 {
     W_OBJECT(FunctorArgDifferenceObject)
 signals:
-    void signal_ii(int,int);
-    void signal_iiS(int,int, const QString &);
-    void signal_dd(double,double);
-    void signal_ddS(double,double, const QString &);
-    void signal_S(const QString &);
-    void signal_SSSS(const QString &, const QString &, const QString &, const QString &);
-    void signal_iiSS(int, int, const QString &, const QString &);
-    void signal_VV(const QVariant &, const QVariant &);
+    void signal_ii(int a,int b) W_SIGNAL_2(signal_ii,a,b)
+    void signal_iiS(int a,int b, const QString &c) W_SIGNAL_2(signal_iiS,a,b,c)
+    void signal_dd(double a,double b) W_SIGNAL_2(signal_dd,a,b)
+    void signal_ddS(double a,double b, const QString &c) W_SIGNAL_2(signal_ddS,a,b,c)
+    void signal_S(const QString &a) W_SIGNAL_2(signal_S,a)
+    void signal_SSSS(const QString &a, const QString &c, const QString &d, const QString &e) W_SIGNAL_2(signal_SSSS,a,c,d,e)
+    void signal_iiSS(int a, int b, const QString &c, const QString &d) W_SIGNAL_2(signal_iiSS,a,b,c,d)
+    void signal_VV(const QVariant &a, const QVariant &b) W_SIGNAL_2(signal_VV,a,b)
 };
 
 template<typename Functor, typename Signal>
@@ -5995,7 +6042,7 @@ public Q_SLOTS:
     void triggerSignal() { Q_EMIT aSignal(); }
 
 Q_SIGNALS:
-    void aSignal();
+    void aSignal() W_SIGNAL_2(aSignal)
 };
 
 static int countedStructObjectsCount = 0;
@@ -6011,6 +6058,8 @@ struct CountedStruct
 
     GetSenderObject *sender;
 };
+
+W_DECLARE_METATYPE(CountedStruct)
 
 void tst_QObject::disconnectDoesNotLeakFunctor()
 {
@@ -6309,7 +6358,7 @@ public slots:
         return s2;
     }
 signals:
-    CountedStruct mySignal(const CountedStruct &s1, CountedStruct s2);
+    CountedStruct mySignal(const CountedStruct &s1, CountedStruct s2) W_SIGNAL_2(mySignal,s1,s2)
 };
 
 void tst_QObject::exceptions()

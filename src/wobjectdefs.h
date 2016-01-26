@@ -483,6 +483,25 @@ struct SignalImplementation<void (Obj::*)(Args...), Idx>{
         QMetaObject::activate(this_, &Obj::staticMetaObject, Idx, const_cast<void **>(a));
     }
 };
+template<typename Ret, typename Obj, typename... Args, int Idx>
+struct SignalImplementation<Ret (Obj::*)(Args...) const, Idx>{
+    const Obj *this_;
+    Ret operator()(Args... args) const {
+        Ret r{};
+        const void * a[]= { &r, (&args)... };
+        QMetaObject::activate(const_cast<Obj*>(this_), &Obj::staticMetaObject, Idx, const_cast<void **>(a));
+        return r;
+    }
+};
+template<typename Obj, typename... Args, int Idx>
+struct SignalImplementation<void (Obj::*)(Args...) const, Idx>{
+    const Obj *this_;
+    void operator()(Args... args) {
+        const void *a[]= { nullptr, (&args)... };
+        QMetaObject::activate(const_cast<Obj*>(this_), &Obj::staticMetaObject, Idx, const_cast<void **>(a));
+    }
+};
+
 
 
 template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
@@ -503,6 +522,8 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
 #define W_MACRO_TAIL(A, ...) __VA_ARGS__
 #define W_MACRO_STRIGNIFY(...) W_MACRO_STRIGNIFY2(__VA_ARGS__)
 #define W_MACRO_STRIGNIFY2(...) #__VA_ARGS__
+#define W_MACRO_CONCAT(A, B) W_MACRO_CONCAT2(A,B)
+#define W_MACRO_CONCAT2(A, B) A##_##_##B
 
 // remove the surrounding parentheses
 #define W_MACRO_REMOVEPAREN(A) W_MACRO_DELAY(W_MACRO_REMOVEPAREN2, W_MACRO_REMOVEPAREN_HELPER A)
@@ -576,10 +597,10 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
 #define W_SIGNAL_2(NAME, ...) \
     { \
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
-        return SignalImplementation<w_SignalType, w_signalIndex_##NAME>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
+        return SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
     } \
-    static constexpr int w_signalIndex_##NAME = simple::tuple_size<decltype(w_SignalState(w_number<>{}))>::value; \
-    static constexpr auto w_SignalState(w_number<w_signalIndex_##NAME + 1> counter) \
+    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = simple::tuple_size<decltype(w_SignalState(w_number<>{}))>::value; \
+    static constexpr auto w_SignalState(w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> counter) \
         W_RETURN(tuple_append(w_SignalState(counter.prev()), MetaObjectBuilder::makeMetaSignalInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))))
