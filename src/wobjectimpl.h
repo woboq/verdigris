@@ -530,7 +530,8 @@ static void propertyOp(T *_o, QMetaObject::Call _c, int _id, void **_a) {
             MetaObjectBuilder::propReset(p.reset, _o);
         }
         break;
-
+    case QMetaObject::RegisterPropertyMetaType:
+        *reinterpret_cast<int*>(_a[0]) = QtPrivate::QMetaTypeIdHelper<Type>::qt_metatype_id();
     }
 }
 
