@@ -200,10 +200,19 @@ template <int N> constexpr StaticString<N> makeStaticString(StaticStringArray<N>
 template<int ...Sizes> using StaticStringList = simple::tuple<StaticString<Sizes>...>;
 
 /* Creates a StaticStringList from a list of string literal */
-template<int... N>
+/*template<int... N>
 constexpr StaticStringList<N...> makeStaticStringList(StaticStringArray<N> & ...args)  {
     return simple::make_tuple(StaticString<N>(args)...);
-}
+}*/
+
+constexpr simple::tuple<> makeParamStringList() { return {}; }
+template<typename... T>
+constexpr simple::tuple<> makeParamStringList(StaticStringArray<1> &, T...)
+{ return {}; }
+template<int N, typename... T>
+constexpr auto makeParamStringList(StaticStringArray<N> &h, T&...t)
+{ return simple::tuple_cat( StaticStringList<N>{{h}} ,makeParamStringList(t...)); }
+
 
 /** concatenate() : returns a StaticString which is the concatenation of all the strings in a StaticStringList
  *     Note:  keeps the \0 between the strings
@@ -513,7 +522,7 @@ struct FriendHelper2;
 // strignify and make a StaticStringList out of an array of arguments
 #define W_PARAM_TOSTRING(...) W_PARAM_TOSTRING2(__VA_ARGS__ ,,,,,,,,,,,,,,,,)
 #define W_PARAM_TOSTRING2(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
-makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
+    makeParamStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
 
 #define W_MACRO_EMPTY
 #define W_MACRO_EVAL(...) __VA_ARGS__
