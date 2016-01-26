@@ -90,7 +90,7 @@ struct FriendHelper1 { /* FIXME */
     struct ResolveNotifySignal {
         static constexpr auto propertyInfo = T::w_PropertyState(w_number<>{});
         static constexpr auto property = simple::get<I>(propertyInfo);
-        static constexpr bool hasNotify = !getSignalIndexHelperCompare(property.notify, 0);
+        static constexpr bool hasNotify = !getSignalIndexHelperCompare(property.notify, nullptr);
         static constexpr int signalIndex = !hasNotify ? -1 :
         getSignalIndex(property.notify, T::w_SignalState(w_number<>{}));
         static_assert(signalIndex >= 0 || !hasNotify, "NOTIFY signal not registered as a signal");
@@ -397,9 +397,37 @@ struct ConstructorParametersGenerator {
     };
     template<std::size_t... I> const uint build_int_data<std::index_sequence<I...>>::data[sizeof...(I)] = { uint(I)... };
 
+    // Helpers for propertyOp
+    template <typename F, typename O, typename T>
+    inline auto propSet(F f, O *o, const T &t) W_RETURN(((o->*f)(t),0))
+    template <typename F, typename O, typename T>
+    inline auto propSet(F f, O *o, const T &t) W_RETURN(o->*f = t)
+    template <typename O, typename T>
+    inline void propSet(std::nullptr_t, O *, const T &) {}
+
+    template <typename F, typename O, typename T>
+    inline auto propGet(F f, O *o, T &t) W_RETURN(t = (o->*f)())
+    template <typename F, typename O, typename T>
+    inline auto propGet(F f, O *o, T &t) W_RETURN(t = o->*f)
+    template <typename O, typename T>
+    inline void propGet(std::nullptr_t, O *, T &) {}
+
+    template <typename F, typename M, typename O>
+    inline auto propNotify(F f, M m, O *o) W_RETURN(((o->*f)(o->*m),0))
+    template <typename F, typename M, typename O>
+    inline auto propNotify(F f, M, O *o) W_RETURN(((o->*f)(),0))
+    template <typename... T>
+    inline void propNotify(T...) {}
 }
 
 struct FriendHelper2 {
+
+template<typename T>
+static constexpr auto parentMetaObject(int) W_RETURN(&T::W_BaseType::staticMetaObject)
+
+template<typename T>
+static constexpr auto parentMetaObject(...) { return nullptr; }
+
 
 template<typename T>
 static constexpr QMetaObject createMetaObject()
@@ -410,7 +438,7 @@ static constexpr QMetaObject createMetaObject()
     auto string_data = MetaObjectBuilder::build_string_data<Creator>(Creator::string_data);
     auto int_data = MetaObjectBuilder::build_int_data<typename std::remove_const<decltype(Creator::int_data)>::type>::data;
 
-    return { { &T::W_BaseType::staticMetaObject , string_data , int_data,  T::qt_static_metacall, {}, {} }  };
+    return { { parentMetaObject<T>(0) , string_data , int_data,  T::qt_static_metacall, {}, {} }  };
 }
 
 
@@ -478,17 +506,18 @@ static void propertyOp(T *_o, QMetaObject::Call _c, int _id, void **_a) {
     using Type = typename decltype(p)::PropertyType;
     switch(+_c) {
         case QMetaObject::ReadProperty:
-            if (p.getter) {
-                *reinterpret_cast<Type*>(_a[0]) = (_o->*(p.getter))();
-            } else if (p.member) {
-                *reinterpret_cast<Type*>(_a[0]) = _o->*(p.member);
+            if (p.getter != nullptr) {
+                MetaObjectBuilder::propGet(p.getter, _o, *reinterpret_cast<Type*>(_a[0]));
+            } else if (p.member != nullptr) {
+                MetaObjectBuilder::propGet(p.member, _o, *reinterpret_cast<Type*>(_a[0]));
             }
             break;
         case QMetaObject::WriteProperty:
-            if (p.setter) {
-                (_o->*(p.setter))(*reinterpret_cast<Type*>(_a[0]));
-            } else if (p.member) {
-                _o->*(p.member) = *reinterpret_cast<Type*>(_a[0]);
+            if (p.setter != nullptr) {
+                MetaObjectBuilder::propSet(p.setter, _o, *reinterpret_cast<Type*>(_a[0]));
+            } else if (p.member != nullptr) {
+                MetaObjectBuilder::propSet(p.member, _o, *reinterpret_cast<Type*>(_a[0]));
+                MetaObjectBuilder::propNotify(p.notify, p.member, _o);
             }
     }
 }
@@ -528,6 +557,26 @@ static void qt_static_metacall_impl(QObject *_o, QMetaObject::Call _c, int _id, 
     }
 }
 
+// for Q_GADGET
+template<typename T, size_t...MethI, size_t ...ConsI, size_t...PropI>
+static void qt_static_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void** _a,
+                        std::index_sequence<MethI...>, std::index_sequence<ConsI...>, std::index_sequence<PropI...>) {
+    Q_UNUSED(_id)
+    if (_c == QMetaObject::InvokeMetaMethod) {
+        nop((invokeMethod<T, MethI>(_o, _id, _a),0)...);
+    } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
+        nop((registerMethodArgumentType<T,MethI>(_id, _a),0)...);
+    } else if (_c == QMetaObject::IndexOfMethod) {
+        Q_ASSERT_X(false, "qt_static_metacall", "IndexOfMethod called on a Q_GADGET");
+    } else if (_c == QMetaObject::CreateInstance) {
+        nop((createInstance<T, ConsI>(_id, _a),0)...);
+    } else if ((_c >= QMetaObject::ReadProperty && _c <= QMetaObject::QueryPropertyUser)
+            || _c == QMetaObject::RegisterPropertyMetaType) {
+        nop((propertyOp<T,PropI>(_o, _c, _id, _a),0)...);
+    }
+}
+
+
 };
 
 template<typename T> constexpr auto createMetaObject() {  return FriendHelper2::createMetaObject<T>(); }
@@ -543,20 +592,25 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
 }
 
 
-#define W_OBJECT_IMPL(TYPE) \
+#define W_OBJECT_IMPL_COMMON(TYPE) \
     struct TYPE::MetaObjectCreatorHelper { \
         static constexpr auto objectInfo = MetaObjectBuilder::makeObjectInfo<TYPE>(#TYPE); \
         static constexpr auto data = MetaObjectBuilder::generateDataArray<TYPE>(objectInfo); \
         static constexpr auto string_data = data.first; \
         static constexpr auto int_data = data.second; \
     }; \
-    constexpr const QMetaObject TYPE::staticMetaObject = createMetaObject<TYPE>(); \
+    constexpr const QMetaObject TYPE::staticMetaObject = createMetaObject<TYPE>();
+
+#define W_OBJECT_IMPL(TYPE) \
+    W_OBJECT_IMPL_COMMON(TYPE) \
+    void TYPE::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
+    { qt_static_metacall_impl<TYPE>(_o, _c, _id, _a); } \
     const QMetaObject *TYPE::metaObject() const  { return &staticMetaObject; } \
     void *TYPE::qt_metacast(const char *) { return nullptr; } /* TODO */ \
-    int TYPE::qt_metacall(QMetaObject::Call _c, int _id, void** _a) { \
-        return qt_metacall_impl<TYPE>(this, _c, _id, _a); \
-    } \
-    void TYPE::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) { \
-        qt_static_metacall_impl<TYPE>(_o, _c, _id, _a); \
-    } \
+    int TYPE::qt_metacall(QMetaObject::Call _c, int _id, void** _a) \
+    { return qt_metacall_impl<TYPE>(this, _c, _id, _a); }
 
+#define W_GADGET_IMPL(TYPE) \
+    W_OBJECT_IMPL_COMMON(TYPE) \
+    void TYPE::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
+    { qt_static_metacall_impl<TYPE>(reinterpret_cast<TYPE*>(_o), _c, _id, _a); }

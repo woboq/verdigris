@@ -361,8 +361,9 @@ namespace MetaObjectBuilder {
     { return { {""} }; }
 
     /** Holds information about a property */
-    template<typename Type, int NameLength, int TypeLength, typename Getter, typename Setter,
-             typename Member, typename Notify, int Flags = 0>
+    template<typename Type, int NameLength, int TypeLength, typename Getter = std::nullptr_t,
+             typename Setter = std::nullptr_t, typename Member = std::nullptr_t,
+             typename Notify = std::nullptr_t, int Flags = 0>
     struct MetaPropertyInfo {
         using PropertyType = Type;
         StaticString<NameLength> name;
@@ -429,7 +430,7 @@ namespace MetaObjectBuilder {
 
     template<typename T, int N1, int N2, typename ... Args>
     constexpr auto makeMetaPropertyInfo(StaticStringArray<N1> &name, StaticStringArray<N2> &type, Args... args) {
-        MetaPropertyInfo<T, N1, N2, T(QObject::*)(), void(QObject::*)(const T&), T QObject::*, int> meta
+        MetaPropertyInfo<T, N1, N2> meta
         { {name}, {type}, {}, {}, {}, {} };
         return parseProperty(meta, args...);
     }
@@ -507,9 +508,7 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
 
 #define W_RETURN(R) -> decltype(R) { return R; }
 
-
-// public macros
-#define W_OBJECT(TYPE) \
+#define W_OBJECT_COMMON(TYPE) \
         using W_ThisType = TYPE; /* This is the only reason why we need TYPE */ \
         static constexpr auto &W_UnscopedName = #TYPE; /* so we don't repeat it in W_CONSTRUCTOR */ \
         friend struct MetaObjectBuilder::FriendHelper1; \
@@ -522,9 +521,20 @@ makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A1
         static constexpr simple::tuple<> w_EnumState(w_number<0>) { return {}; } \
         static constexpr simple::tuple<> w_ClassInfoState(w_number<0>) { return {}; } \
     public: \
-        struct MetaObjectCreatorHelper; \
+        struct MetaObjectCreatorHelper;
+
+
+// public macros
+#define W_OBJECT(TYPE) \
+    W_OBJECT_COMMON(TYPE) \
+    public: \
         using W_BaseType = decltype(getParentObjectHelper(&W_ThisType::qt_metacast)); \
     Q_OBJECT
+
+#define W_GADGET(TYPE) \
+    W_OBJECT_COMMON(TYPE) \
+    Q_GADGET
+
 
 #define W_SLOT(NAME, ...) \
     static constexpr auto w_SlotState(w_number<simple::tuple_size<decltype(w_SlotState(w_number<>{}))>::value+1> counter) \
@@ -583,8 +593,6 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
     static constexpr auto w_ClassInfoState(w_number<simple::tuple_size<decltype(w_ClassInfoState(w_number<>{}))>::value+1> counter) \
         W_RETURN(tuple_append(w_ClassInfoState(counter.prev()), \
             std::pair<StaticString<sizeof(A)>, StaticString<sizeof(B)>>{ {A}, {B} }))
-
-
 
 #define WRITE , &W_ThisType::
 #define READ , &W_ThisType::

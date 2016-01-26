@@ -149,10 +149,11 @@ public:
     void setValue(const QString &value) { m_value = value; }
     QString getValue() { return m_value; }
     void resetValue() { m_value = QLatin1Literal("reset"); }
-    //Q_GADGET
-    //W_PROPERTY(QString, value READ getValue WRITE setValue RESET resetValue)
-    static constexpr auto &staticMetaObject  = QObject::staticMetaObject;
+    W_GADGET(MyGadget)
+    W_PROPERTY(QString, value READ getValue WRITE setValue /*RESET resetValue*/)
 };
+
+W_GADGET_IMPL(MyGadget)
 
 void tst_QMetaProperty::gadget()
 {
