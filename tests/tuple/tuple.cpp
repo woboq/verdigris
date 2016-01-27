@@ -124,6 +124,8 @@ namespace binary {
     template<int N, typename Root> constexpr auto get(tuple<Root> t)
     { return Get<Root, N>::get(t.root); }
 
+    template<int I, typename T> using tree_element_t = decltype(get<I>(std::declval<T>()));
+
 }
 
 

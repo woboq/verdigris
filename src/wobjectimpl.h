@@ -20,16 +20,16 @@ struct IntermediateState {
     /// add a string to the strings state and add its index to the end of the int array
     template<int L>
     constexpr auto addString(const StaticString<L> & s) const {
-        auto s2 = tuple_append(strings, s);
-        return IntermediateState<decltype(s2), Ints..., simple::tuple_size<Strings>::value>{s2};
+        auto s2 = binary::tree_append(strings, s);
+        return IntermediateState<decltype(s2), Ints..., binary::tree_size<Strings>::value>{s2};
     }
 
     /// same as before but ass the IsUnresolvedType flag
     template<int L>
     constexpr auto addTypeString(const StaticString<L> & s) const {
-        auto s2 = tuple_append(strings, s);
+        auto s2 = binary::tree_append(strings, s);
         return IntermediateState<decltype(s2), Ints...,
-            IsUnresolvedType | simple::tuple_size<Strings>::value>{s2};
+            IsUnresolvedType | binary::tree_size<Strings>::value>{s2};
     }
 
 
@@ -42,12 +42,12 @@ struct IntermediateState {
 
 /** Iterate over all the items of a tuple and call the Generator::generate function */
 template<typename Generator, int, typename State>
-constexpr auto generate(State s, const simple::tuple<>&)
+constexpr auto generate(State s, binary::tree<>)
 { return s; }
-template<typename Generator, int Ofst, typename State, typename Head, typename... Tail>
-constexpr auto generate(const State &s, const simple::tuple<Head, Tail...> &t) {
-    return generate<Generator, Ofst + Generator::template offset<Head>()>(
-        Generator::template generate<Ofst>(s, simple::tuple_head(t)), tuple_tail(t));
+template<typename Generator, int Ofst, typename State, typename Tree>
+constexpr auto generate(State s, Tree t) {
+    return generate<Generator, Ofst + Generator::template offset<binary::tree_element_t<0,Tree>>()>(
+        Generator::template generate<Ofst>(s, binary::tree_head(t)), binary::tree_tail(t));
 }
 
 template <typename T1, typename T2> constexpr bool getSignalIndexHelperCompare(T1, T2) { return false; }
@@ -55,12 +55,12 @@ template <typename T> constexpr bool getSignalIndexHelperCompare(T f1, T f2) { r
 
 //////
 // Helper to get the signal index
-template <typename F> constexpr int getSignalIndex(F,simple::tuple<>) { return -1; }
+template <typename F> constexpr int getSignalIndex(F,binary::tree<>) { return -1; }
 template <typename F, typename Ms>
 constexpr int getSignalIndex(F func, Ms ms) {
-    if (getSignalIndexHelperCompare(func,tuple_head(ms).func))
+    if (getSignalIndexHelperCompare(func,binary::tree_head(ms).func))
         return 0;
-    auto x = getSignalIndex(func,tuple_tail(ms));
+    auto x = getSignalIndex(func,binary::tree_tail(ms));
     return x >= 0 ? x + 1 : x;
 }
 
@@ -76,11 +76,11 @@ constexpr int getSignalIndex(F func, Ms ms) {
         Enums enums;
         ClassInfos classInfos;
 
-        static constexpr int methodCount = simple::tuple_size<Methods>::value;
-        static constexpr int constructorCount = simple::tuple_size<Constructors>::value;
-        static constexpr int propertyCount = simple::tuple_size<Properties>::value;
-        static constexpr int enumCount = simple::tuple_size<Enums>::value;
-        static constexpr int classInfoCount = simple::tuple_size<ClassInfos>::value;
+        static constexpr int methodCount = binary::tree_size<Methods>::value;
+        static constexpr int constructorCount = binary::tree_size<Constructors>::value;
+        static constexpr int propertyCount = binary::tree_size<Properties>::value;
+        static constexpr int enumCount = binary::tree_size<Enums>::value;
+        static constexpr int classInfoCount = binary::tree_size<ClassInfos>::value;
         static constexpr int signalCount = SignalCount;
     };
 
@@ -89,7 +89,7 @@ struct FriendHelper1 { /* FIXME */
     template<typename T, int I>
     struct ResolveNotifySignal {
         static constexpr auto propertyInfo = T::w_PropertyState(w_number<>{});
-        static constexpr auto property = simple::get<I>(propertyInfo);
+        static constexpr auto property = binary::get<I>(propertyInfo);
         static constexpr bool hasNotify = !getSignalIndexHelperCompare(property.notify, nullptr);
         static constexpr int signalIndex = !hasNotify ? -1 :
         getSignalIndex(property.notify, T::w_SignalState(w_number<>{}));
@@ -100,12 +100,12 @@ struct FriendHelper1 { /* FIXME */
     template<typename T, int N>
     static constexpr auto makeObjectInfo(StaticStringArray<N> &name) {
         constexpr auto sigState = T::w_SignalState(w_number<>{});
-        constexpr auto methodInfo = simple::tuple_cat(sigState, T::w_SlotState(w_number<>{}), T::w_MethodState(w_number<>{}));
+        constexpr auto methodInfo = binary::tree_cat(sigState, T::w_SlotState(w_number<>{}), T::w_MethodState(w_number<>{}));
         constexpr auto constructorInfo = T::w_ConstructorState(w_number<>{});
         constexpr auto propertyInfo = T::w_PropertyState(w_number<>{});
         constexpr auto enumInfo = T::w_EnumState(w_number<>{});
         constexpr auto classInfo = T::w_ClassInfoState(w_number<>{});
-        constexpr int sigCount = simple::tuple_size<decltype(sigState)>::value;
+        constexpr int sigCount = binary::tree_size<decltype(sigState)>::value;
         return ObjectInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo),
                           decltype(enumInfo), decltype(classInfo), sigCount>
             { {name}, methodInfo, constructorInfo, propertyInfo, enumInfo, classInfo };
@@ -199,13 +199,13 @@ struct EnumGenerator {
 struct EnumValuesGenerator {
 
     template<typename Strings>
-    static constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<>, simple::tuple<>)
+    static constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<>, binary::tree<>)
     { return s; }
 
     template<typename Strings, std::size_t Value, std::size_t... I, typename Names>
     static constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<Value, I...>, Names names) {
-        auto s2 = s.addString(simple::tuple_head(names)).template add<uint(Value)>();
-        return generateSingleEnumValues(s2, std::index_sequence<I...>{}, tuple_tail(names));
+        auto s2 = s.addString(binary::tree_head(names)).template add<uint(Value)>();
+        return generateSingleEnumValues(s2, std::index_sequence<I...>{}, binary::tree_tail(names));
     }
 
     template<typename> static constexpr int offset() { return 0; }
@@ -227,21 +227,21 @@ struct EnumValuesGenerator {
         template<typename Strings, typename ParamTypes>
         static constexpr auto result(const Strings &ss, const ParamTypes &paramTypes) {
             using Type = typename QtPrivate::RemoveConstRef<A>::Type;
-            auto typeStr = tuple_head(paramTypes);
+            auto typeStr = binary::tree_head(paramTypes);
             using ts_t = decltype(typeStr);
             // This way, the overload of result will not pick the StaticString one if it is a tuple (because registered types have the priority)
-            auto typeStr2 = std::conditional_t<std::is_same<A, Type>::value, ts_t, simple::tuple<ts_t>>{typeStr};
+            auto typeStr2 = std::conditional_t<std::is_same<A, Type>::value, ts_t, std::tuple<ts_t>>{typeStr};
             auto r1 = HandleType<Type>::result(ss, typeStr2);
-            return HandleArgsHelper<Args...>::result(r1, tuple_tail(paramTypes));
+            return HandleArgsHelper<Args...>::result(r1, binary::tree_tail(paramTypes));
         }
     };
 
     template<int N> struct HandleArgNames{
-        template<typename Strings, int S, int...T>
-        static constexpr auto result(const Strings &ss, StaticStringList<S, T...> pn)
+        template<typename Strings, typename Str>
+        static constexpr auto result(const Strings &ss, StaticStringList<Str> pn)
         {
-            auto s2 = ss.addString(simple::tuple_head(pn));
-            auto tail = tuple_tail(pn);
+            auto s2 = ss.addString(binary::tree_head(pn));
+            auto tail = binary::tree_tail(pn);
             return HandleArgNames<N-1>::result(s2, tail);
         }
         template<typename Strings> static constexpr auto result(const Strings &ss, StaticStringList<> pn)
@@ -257,20 +257,20 @@ struct MethodParametersGenerator {
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
     static constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...),
                                                         const ParamTypes &paramTypes, const ParamNames &paramNames ) {
-        auto types = HandleArgsHelper<Ret, Args...>::result(ss, simple::tuple_cat(simple::tuple<int>{}, paramTypes));
+        auto types = HandleArgsHelper<Ret, Args...>::result(ss, binary::tree_prepend(paramTypes, 0));
         return HandleArgNames<sizeof...(Args)>::result(types, paramNames);
     }
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
     static constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...) const,
                                                  const ParamTypes &paramTypes, const ParamNames &paramNames ) {
-        auto types = HandleArgsHelper<Ret, Args...>::result(ss, simple::tuple_cat(simple::tuple<int>{}, paramTypes));
+        auto types = HandleArgsHelper<Ret, Args...>::result(ss, binary::tree_prepend(paramTypes, 0));
         return HandleArgNames<sizeof...(Args)>::result(types, paramNames);
     }
     // static member functions
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Ret, typename... Args>
     static constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (*)(Args...),
                                                  const ParamTypes &paramTypes, const ParamNames &paramNames ) {
-        auto types = HandleArgsHelper<Ret, Args...>::result(ss, simple::tuple_cat(simple::tuple<int>{}, paramTypes));
+        auto types = HandleArgsHelper<Ret, Args...>::result(ss, binary::tree_prepend(paramTypes, 0));
         return HandleArgNames<sizeof...(Args)>::result(types, paramNames);
     }
 
@@ -286,7 +286,7 @@ struct ConstructorParametersGenerator {
     template<int, typename State, int N, typename... Args>
     static constexpr auto generate(State s, MetaConstructorInfo<N,Args...>) {
         auto s2 = s.template add<IsUnresolvedType | 1>();
-        auto s3 = HandleArgsHelper<Args...>::result(s2, simple::tuple<>{});
+        auto s3 = HandleArgsHelper<Args...>::result(s2, binary::tree<>{});
         return s3.template add<((void)sizeof(Args),1)...>(); // all the names are 1 (for "\0")
     }
 };
@@ -295,7 +295,7 @@ struct ConstructorParametersGenerator {
 
     template<typename Methods, std::size_t... I>
     constexpr int paramOffset(std::index_sequence<I...>)
-    { return sums(int(1 + simple::tuple_element_t<I, Methods>::argCount * 2)...); }
+    { return sums(int(1 + binary::tree_element_t<I, Methods>::argCount * 2)...); }
 
     // generate the integer array and the lists of string
     template<typename T, typename ObjI>
@@ -313,7 +313,7 @@ struct ConstructorParametersGenerator {
         constexpr int enumValueOffset = constructorParamIndex +
             paramOffset<decltype(objectInfo.constructors)>(simple::make_index_sequence<ObjI::constructorCount>{});
 
-        auto stringData = simple::make_tuple(objectInfo.name, StaticString<1>(""));
+        auto stringData = binary::tree_append(binary::tree_append(binary::tree<>{} , objectInfo.name), StaticString<1>(""));
         IntermediateState<decltype(stringData),
                 7,       // revision
                 0,       // classname
@@ -385,8 +385,9 @@ struct ConstructorParametersGenerator {
      * returns the string data suitable for the QMetaObject from a list of string
      * T is MetaObjectCreatorHelper<ObjectType>
      */
+    // N... are all the sizes of the strings
     template<typename T, int... N>
-    constexpr const QByteArrayData *build_string_data(StaticStringList<N...>)  {
+    constexpr const QByteArrayData *build_string_data()  {
         return BuildStringDataHelper<simple::make_index_sequence<sums(N...)>,
                                      simple::make_index_sequence<sizeof...(N)>,
                                      typename ComputeOffsets<N...>::Result,
@@ -394,6 +395,11 @@ struct ConstructorParametersGenerator {
                                       T>
             ::qt_meta_stringdata.data;
     }
+    template<typename T, std::size_t... I>
+    constexpr const QByteArrayData *build_string_data(std::index_sequence<I...>)  {
+        return build_string_data<T, decltype(binary::get<I>(T::string_data))::size...>();
+    }
+
 
     /**
      * returns a pointer to an array of string built at compile time.
@@ -447,7 +453,7 @@ static constexpr QMetaObject createMetaObject()
 
     using Creator = typename T::MetaObjectCreatorHelper;
 
-    auto string_data = MetaObjectBuilder::build_string_data<Creator>(Creator::string_data);
+    auto string_data = MetaObjectBuilder::build_string_data<Creator>(simple::make_index_sequence<Creator::string_data.size>());
     auto int_data = MetaObjectBuilder::build_int_data<typename std::remove_const<decltype(Creator::int_data)>::type>::data;
 
     return { { parentMetaObject<T>(0) , string_data , int_data,  T::qt_static_metacall, {}, {} }  };
@@ -481,9 +487,9 @@ template<typename T> static int qt_metacall_impl(T *_o, QMetaObject::Call _c, in
  */
 template<typename T, int I>
 static int indexOfMethod(void **func) {
-    constexpr auto f = simple::get<I>(T::MetaObjectCreatorHelper::objectInfo.methods).func;
+    constexpr auto f = binary::get<I>(T::MetaObjectCreatorHelper::objectInfo.methods).func;
     using Ms = decltype(T::MetaObjectCreatorHelper::objectInfo.methods);
-    if ((simple::tuple_element_t<I,Ms>::flags & 0xc) == W_MethodType::Signal.value
+    if ((binary::tree_element_t<I,Ms>::flags & 0xc) == W_MethodType::Signal.value
         && f == *reinterpret_cast<decltype(f)*>(func))
         return I;
     return -1;
@@ -492,7 +498,7 @@ static int indexOfMethod(void **func) {
 template <typename T, int I>
 static void invokeMethod(T *_o, int _id, void **_a) {
     if (_id == I) {
-        constexpr auto f = simple::get<I>(T::MetaObjectCreatorHelper::objectInfo.methods).func;
+        constexpr auto f = binary::get<I>(T::MetaObjectCreatorHelper::objectInfo.methods).func;
         using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
         P::template call<typename P::Arguments, typename P::ReturnType>(f, _o, _a);
     }
@@ -501,7 +507,7 @@ static void invokeMethod(T *_o, int _id, void **_a) {
 template <typename T, int I>
 static void registerMethodArgumentType(int _id, void **_a) {
     if (_id == I) {
-        constexpr auto f = simple::get<I>(T::MetaObjectCreatorHelper::objectInfo.methods).func;
+        constexpr auto f = binary::get<I>(T::MetaObjectCreatorHelper::objectInfo.methods).func;
         using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
         auto _t = QtPrivate::ConnectionTypes<typename P::Arguments>::types();
         uint arg = *reinterpret_cast<int*>(_a[1]);
@@ -514,7 +520,7 @@ template<typename T, int I>
 static void propertyOp(T *_o, QMetaObject::Call _c, int _id, void **_a) {
     if (_id != I)
         return;
-    constexpr auto p = simple::get<I>(T::MetaObjectCreatorHelper::objectInfo.properties);
+    constexpr auto p = binary::get<I>(T::MetaObjectCreatorHelper::objectInfo.properties);
     using Type = typename decltype(p)::PropertyType;
     switch(+_c) {
     case QMetaObject::ReadProperty:
@@ -549,7 +555,7 @@ static void propertyOp(T *_o, QMetaObject::Call _c, int _id, void **_a) {
 template<typename T, int I>
 static void createInstance(int _id, void** _a) {
     if (_id == I) {
-        constexpr auto m = simple::get<I>(T::MetaObjectCreatorHelper::objectInfo.constructors);
+        constexpr auto m = binary::get<I>(T::MetaObjectCreatorHelper::objectInfo.constructors);
         m.template createInstance<T>(_a, simple::make_index_sequence<decltype(m)::argCount>{});
     }
 }

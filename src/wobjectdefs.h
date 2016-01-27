@@ -5,9 +5,6 @@
 #include <utility>
 
 namespace simple {
-
-
-
     // FIXME default std::make_index_sequence is recursing O(N) times which is too big for big strings
     using std::index_sequence;
     template<size_t... I1, size_t... I2>
@@ -22,62 +19,128 @@ namespace simple {
     template<> struct make_index_sequence_helper<1> { using result = index_sequence<0>; };
     template<> struct make_index_sequence_helper<0> { using result = index_sequence<>; };
     template<int I> using make_index_sequence = typename make_index_sequence_helper<I>::result;
+}
 
 
-    // std::tuple compilation time is too slow for use in constexpr
 
-    template<typename ... Ts> struct tuple;
-    template<typename T, typename ... Ts> struct tuple<T, Ts...> : tuple<Ts...> {
-        static constexpr int size = 1 + sizeof...(Ts);
-        constexpr tuple(T t, Ts... ts) : tuple<Ts...>{ts...} , data{t} {};
-        constexpr tuple() : data{} {};
+namespace binary {
+
+    template <typename T> struct Leaf {
         T data;
-        constexpr T get_helper(std::integral_constant<int, sizeof...(Ts)>) { return data; }
-        using tuple<Ts...>::get_helper;
-    };
-    template<> struct tuple<> {
-        static constexpr int size = 0;
-        void get_helper() { }
-
+        static constexpr int Depth = 0;
+        static constexpr int Count = 1;
+        static constexpr bool Balanced = true;
     };
 
-    template<typename T> struct tuple_size { static constexpr int value = T::size; };
+    template <class A, class B> struct Node {
+        A a;
+        B b;
+        static constexpr int Count = A::Count + B::Count;
+        static constexpr int Depth = A::Depth + 1;
+        static constexpr bool Balanced = A::Depth == B::Depth && B::Balanced;
+    };
 
-    template<int N, typename...Ts> constexpr auto get(tuple<Ts...> t)
-    { return t.get_helper(std::integral_constant<int, sizeof...(Ts) - N - 1>{}); }
+    /* Add the node 'N' to thre tree 'T' */
+    template <class T, typename N, bool Balanced = T::Balanced > struct Add {
+        typedef Node<T, Leaf<N> > Result;
+        static constexpr Result add(T t, N n) { return {t, {n} }; }
+    };
+    template <class A, class B, typename N> struct Add<Node<A, B>, N, false> {
+        typedef Node<A, typename Add<B, N>::Result > Result;
+        static constexpr Result add(Node<A, B> t, N n) { return {t.a , Add<B, N>::add(t.b, n) }; }
+    };
 
-    template<typename... Ts> constexpr tuple<Ts...> make_tuple(Ts... ts) { return {ts...}; }
+    template <class T, typename N, bool Balanced = T::Balanced > struct AddPre {
+        typedef Node<Leaf<N> , T > Result;
+        static constexpr Result add(T t, N n) { return {{n}, t}; }
+    };
+    template <class A, class B, typename N> struct AddPre<Node<A, B>, N, false> {
+        typedef Node<typename AddPre<A, N>::Result, B > Result;
+        static constexpr Result add(Node<A, B> t, N n) { return {AddPre<A, N>::add(t.a, n) , t.b }; }
+    };
 
-    template<typename... T1, typename... T2, std::size_t... I1, std::size_t... I2>
-    constexpr tuple<T1..., T2...> tuple_cat_helper(tuple<T1...> t1, tuple<T2...> t2,
-                                    std::index_sequence<I1...>, std::index_sequence<I2...>) {
-        Q_UNUSED(t1) Q_UNUSED(t2)
-        return { get<I1>(t1)..., get<I2>(t2)... };
-    }
+
+    template <class T, int I, typename = void> struct Get;
+    template <class N> struct Get<Leaf<N>, 0> {
+        static constexpr N get(Leaf<N> t) { return t.data; }
+    };
+    template <class A, class B, int I> struct Get<Node<A,B>, I, std::enable_if_t<(A::Count <= I)>> {
+        static constexpr auto get(Node<A,B> t) { return Get<B,I - A::Count>::get(t.b); }
+    };
+    template <class A, class B, int I> struct Get<Node<A,B>, I, std::enable_if_t<(A::Count > I)>> {
+        static constexpr auto get(Node<A,B> t) { return Get<A,I>::get(t.a); }
+    };
+
+    template<typename A, typename B> struct Tail;
+    template<typename A, typename B> struct Tail<Leaf<A>, B> {
+        using Result = B;
+        static constexpr B tail(Node<Leaf<A>,B> t) { return t.b; }
+    };
+    template<typename A, typename B, typename C> struct Tail<Node<A,B>, C> {
+        using Result = Node<typename Tail<A,B>::Result, C>;
+        static constexpr Result tail(Node<Node<A,B>, C> t) { return { Tail<A,B>::tail(t.a) , t.b }; }
+    };
+
+    template<typename T = void> struct tree {
+        static constexpr int size = T::Count;
+        T root;
+    };
+    template<> struct tree<> { static constexpr int size = 0; };
+
+    template<typename T> struct tree_size { static constexpr int value = T::size; };
+    //template<typename... Ts> tuple<Ts...> make_tuple(Ts... ts) { return {ts...}; }
+
+    template<typename N>
+    constexpr tree<Leaf<N>> tree_append(tree<>, N n)
+    { return {{n}}; }
+    template<typename Root, typename N>
+    constexpr tree<typename Add<Root,N>::Result> tree_append(tree<Root> t, N n)
+    { return {Add<Root,N>::add(t.root,n)}; }
+
+    template<typename N>
+    constexpr tree<Leaf<N>> tree_prepend(tree<>, N n)
+    { return {{n}}; }
+    template<typename Root, typename N>
+    constexpr tree<typename AddPre<Root,N>::Result> tree_prepend(tree<Root> t, N n)
+    { return {AddPre<Root,N>::add(t.root,n)}; }
 
 
-    template<typename... T1, typename... T2>
-    constexpr tuple<T1..., T2...> tuple_cat(tuple<T1...> t1, tuple<T2...> t2) {
-        return tuple_cat_helper(t1, t2, simple::make_index_sequence<sizeof...(T1)>{},
-                                simple::make_index_sequence<sizeof...(T2)>{});
-    }
-    template<typename... T1, typename... T2, typename... T>
-    constexpr auto tuple_cat(tuple<T1...> t1, tuple<T2...> t2, T... t)
-    { return tuple_cat(t1, tuple_cat(t2, t...)); }
+    template<int N, typename Root> constexpr auto get(tree<Root> t)
+    { return Get<Root, N>::get(t.root); }
 
-    template<int I, typename T> using tuple_element_t = decltype(get<I>(std::declval<T>()));
 
     /**
-     * tuple_head()  same as get<O> but return something in case the tuple is too small
+     *  tree_tail()  Returns a tuple with the first element removed
      */
-    template<typename T, typename... Ts>
-    constexpr T tuple_head(const simple::tuple<T, Ts...> &t)
-    { return t.data; }
-    constexpr auto tuple_head(const simple::tuple<> &) {
-        struct _{};
-        return _{};
-    }
+    template<typename A, typename B>
+    constexpr tree<typename Tail<A,B>::Result> tree_tail(tree<Node<A, B>> t)
+    { return { Tail<A,B>::tail(t.root) }; }
+    template<typename N>
+    constexpr tree<> tree_tail(tree<Leaf<N>>) { return {}; }
+    constexpr tree<> tree_tail(tree<>) { return {}; }
+
+    /**
+     * tree_head()  same as get<O> but return something in case the tuple is too small
+     */
+    template<typename T> constexpr auto tree_head(tree<T> t) { return get<0>(t); }
+    constexpr auto tree_head(tree<void>) { struct _{}; return _{}; }
+    template<typename T> constexpr auto tree_head(T) { struct _{}; return _{}; }
+
+    template<int I, typename T> using tree_element_t = decltype(get<I>(std::declval<T>()));
+
+    // FIXME: Should we balance?
+    template<class A, class B>
+    constexpr tree<Node<A,B>> tree_cat(tree<A> a, tree<B> b) { return { { a.root, b.root } }; }
+    template<class A>
+    constexpr tree<A> tree_cat(tree<>, tree<A> a) { return a; }
+    template<class A>
+    constexpr tree<A> tree_cat(tree<A> a, tree<>) { return a; }
+    constexpr tree<> tree_cat(tree<>, tree<>) { return {}; }
+    template<class A, class B, class C, class...D>
+    constexpr auto tree_cat(A a, B b, C c, D... d) { return tree_cat(a, tree_cat(b, c, d...)); }
 }
+
+
 
 
 
@@ -125,43 +188,6 @@ template<std::size_t... I, std::size_t...J>
 constexpr std::index_sequence<I...,J...> operator+(std::index_sequence<I...>,std::index_sequence<J...>)
 { return {}; }
 
-/**
- *  tuple_tail()  Returns a tuple with the first element removed
- */
-template<typename T, std::size_t...I> constexpr auto tuple_tail_helper(const T&t , std::index_sequence<I...>) {
-    return simple::make_tuple(simple::get<I+1>(t)...);
-}
-template<typename T> constexpr auto tuple_tail(const T& tuple) {
-    return tuple_tail_helper(tuple, simple::make_index_sequence<simple::tuple_size<T>::value-1>());
-}
-constexpr auto tuple_tail(simple::tuple<>)
-{ return simple::tuple<>{}; }
-
-
-/**
- * tuple_append() Appends one element to the tuple (faster than tuple_cat)
- */
-template<typename... Ts, typename T, std::size_t...I>
-constexpr auto tuple_append_helper(const simple::tuple<Ts...> &tuple, const T &t, std::index_sequence<I...>) {
-    return simple::tuple<Ts..., T>{simple::get<I>(tuple)... , t};
-}
-template<typename T1, typename T>
-constexpr auto tuple_append(const T1 &tuple, const T &t) {
-    return tuple_append_helper(tuple, t, simple::make_index_sequence<simple::tuple_size<T1>::value>());
-}
-
-#if 0
-/**
- * tuple_head()  same as get<O> but return something in case the tuple is too small
- */
-template<typename T, typename... Ts>
-constexpr auto tuple_head(const simple::tuple<T, Ts...> &t)
-{ return simple::tuple_head(t); }
-constexpr auto tuple_head(const simple::tuple<> &) {
-    struct _{};
-    return _{};
-}
-#endif
 
 /**
  * ones()
@@ -197,21 +223,16 @@ template<int N> struct StaticString  {
 template <int N> constexpr StaticString<N> makeStaticString(StaticStringArray<N> &d) { return {d}; }
 
 /* A tuple containing many  StaticString with possibly different sizes */
-template<int ...Sizes> using StaticStringList = simple::tuple<StaticString<Sizes>...>;
+template<typename T = void> using StaticStringList = binary::tree<T>;
 
-/* Creates a StaticStringList from a list of string literal */
-/*template<int... N>
-constexpr StaticStringList<N...> makeStaticStringList(StaticStringArray<N> & ...args)  {
-    return simple::make_tuple(StaticString<N>(args)...);
-}*/
 
-constexpr simple::tuple<> makeParamStringList() { return {}; }
+constexpr binary::tree<> makeParamStringList() { return {}; }
 template<typename... T>
-constexpr simple::tuple<> makeParamStringList(StaticStringArray<1> &, T...)
+constexpr binary::tree<> makeParamStringList(StaticStringArray<1> &, T...)
 { return {}; }
 template<int N, typename... T>
 constexpr auto makeParamStringList(StaticStringArray<N> &h, T&...t)
-{ return simple::tuple_cat( StaticStringList<N>{{h}} ,makeParamStringList(t...)); }
+{ return binary::tree_prepend(makeParamStringList(t...), StaticString<N>(h)); }
 
 
 /** concatenate() : returns a StaticString which is the concatenation of all the strings in a StaticStringList
@@ -225,16 +246,17 @@ template<std::size_t... I1, std::size_t... I2> struct concatenate_helper<std::in
         return StaticString<size>( d );
     }
 };
-constexpr StaticString<1> concatenate(const StaticStringList<>) { return {""}; }
-template<int H,  int... T> constexpr auto concatenate(const StaticStringList<H, T...> &s) {
-    auto tail = concatenate(tuple_tail(s));
-    return concatenate_helper<simple::make_index_sequence<H>, simple::make_index_sequence<tail.size>>::concatenate(simple::tuple_head(s), tail);
+constexpr StaticString<1> concatenate(StaticStringList<>) { return {""}; }
+template<typename T> constexpr auto concatenate(StaticStringList<T> s) {
+    auto tail = concatenate(binary::tree_tail(s));
+    using H = decltype(binary::tree_head(s));
+    return concatenate_helper<simple::make_index_sequence<H::size>, simple::make_index_sequence<tail.size>>::concatenate(binary::tree_head(s), tail);
 }
 
 /** Add a string in a StaticStringList */
-template<int L, int...N >
-constexpr auto addString(const StaticStringList<N...> &l, const StaticString<L> & s) {
-    return tuple_append(l, s);
+template<int L, typename T>
+constexpr auto addString(const StaticStringList<T> &l, const StaticString<L> & s) {
+    return binary::tree_append(l, s);
 }
 
 
@@ -564,13 +586,13 @@ struct FriendHelper2;
         static constexpr auto &W_UnscopedName = #TYPE; /* so we don't repeat it in W_CONSTRUCTOR */ \
         friend struct MetaObjectBuilder::FriendHelper1; \
         friend struct ::FriendHelper2; \
-        static constexpr simple::tuple<> w_SlotState(w_number<0>) { return {}; } \
-        static constexpr simple::tuple<> w_SignalState(w_number<0>) { return {}; } \
-        static constexpr simple::tuple<> w_MethodState(w_number<0>) { return {}; } \
-        static constexpr simple::tuple<> w_ConstructorState(w_number<0>) { return {}; } \
-        static constexpr simple::tuple<> w_PropertyState(w_number<0>) { return {}; } \
-        static constexpr simple::tuple<> w_EnumState(w_number<0>) { return {}; } \
-        static constexpr simple::tuple<> w_ClassInfoState(w_number<0>) { return {}; } \
+        static constexpr binary::tree<> w_SlotState(w_number<0>) { return {}; } \
+        static constexpr binary::tree<> w_SignalState(w_number<0>) { return {}; } \
+        static constexpr binary::tree<> w_MethodState(w_number<0>) { return {}; } \
+        static constexpr binary::tree<> w_ConstructorState(w_number<0>) { return {}; } \
+        static constexpr binary::tree<> w_PropertyState(w_number<0>) { return {}; } \
+        static constexpr binary::tree<> w_EnumState(w_number<0>) { return {}; } \
+        static constexpr binary::tree<> w_ClassInfoState(w_number<0>) { return {}; } \
     public: \
         struct MetaObjectCreatorHelper;
 
@@ -588,15 +610,15 @@ struct FriendHelper2;
 
 
 #define W_SLOT(NAME, ...) \
-    static constexpr auto w_SlotState(w_number<simple::tuple_size<decltype(w_SlotState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(tuple_append(w_SlotState(counter.prev()), MetaObjectBuilder::makeMetaSlotInfo( \
+    static constexpr auto w_SlotState(w_number<binary::tree_size<decltype(w_SlotState(w_number<>{}))>::value+1> counter) \
+        W_RETURN(binary::tree_append(w_SlotState(counter.prev()), MetaObjectBuilder::makeMetaSlotInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa)))
 
 #define W_INVOKABLE(NAME, ...) \
-    static constexpr auto w_MethodState(w_number<simple::tuple_size<decltype(w_MethodState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(tuple_append(w_MethodState(counter.prev()), MetaObjectBuilder::makeMetaMethodInfo( \
+    static constexpr auto w_MethodState(w_number<binary::tree_size<decltype(w_MethodState(w_number<>{}))>::value+1> counter) \
+        W_RETURN(binary::tree_append(w_MethodState(counter.prev()), MetaObjectBuilder::makeMetaMethodInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa)))
@@ -608,27 +630,27 @@ struct FriendHelper2;
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
         return SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
     } \
-    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = simple::tuple_size<decltype(w_SignalState(w_number<>{}))>::value; \
+    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = binary::tree_size<decltype(w_SignalState(w_number<>{}))>::value; \
     static constexpr auto w_SignalState(w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> counter) \
-        W_RETURN(tuple_append(w_SignalState(counter.prev()), MetaObjectBuilder::makeMetaSignalInfo( \
+        W_RETURN(binary::tree_append(w_SignalState(counter.prev()), MetaObjectBuilder::makeMetaSignalInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))))
 
 #define W_CONSTRUCTOR(...) \
-    static constexpr auto w_ConstructorState(w_number<simple::tuple_size<decltype(w_ConstructorState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(tuple_append(w_ConstructorState(counter.prev()), \
+    static constexpr auto w_ConstructorState(w_number<binary::tree_size<decltype(w_ConstructorState(w_number<>{}))>::value+1> counter) \
+        W_RETURN(binary::tree_append(w_ConstructorState(counter.prev()), \
             MetaObjectBuilder::makeMetaConstructorInfo<__VA_ARGS__>().setName(W_UnscopedName)))
 
 #define W_PROPERTY(...) W_PROPERTY2(__VA_ARGS__) // expands the READ, WRITE, and other sub marcos
 #define W_PROPERTY2(TYPE, NAME, ...) \
-    static constexpr auto w_PropertyState(w_number<simple::tuple_size<decltype(w_PropertyState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(tuple_append(w_PropertyState(counter.prev()), \
+    static constexpr auto w_PropertyState(w_number<binary::tree_size<decltype(w_PropertyState(w_number<>{}))>::value+1> counter) \
+        W_RETURN(binary::tree_append(w_PropertyState(counter.prev()), \
                               MetaObjectBuilder::makeMetaPropertyInfo<W_MACRO_REMOVEPAREN(TYPE)>(\
                                     #NAME, W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE)), __VA_ARGS__)))
 
 #define W_ENUM(NAME, ...) \
-    static constexpr auto w_EnumState(w_number<simple::tuple_size<decltype(w_EnumState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(tuple_append(w_EnumState(counter.prev()), MetaObjectBuilder::makeMetaEnumInfo<NAME,false>( \
+    static constexpr auto w_EnumState(w_number<binary::tree_size<decltype(w_EnumState(w_number<>{}))>::value+1> counter) \
+        W_RETURN(binary::tree_append(w_EnumState(counter.prev()), MetaObjectBuilder::makeMetaEnumInfo<NAME,false>( \
             #NAME, std::integer_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__)))) \
     Q_ENUM(NAME)
 
@@ -636,14 +658,14 @@ template<typename T> struct QEnumOrQFlags { using Type = T; };
 template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 
 #define W_FLAG(NAME, ...) \
-    static constexpr auto w_EnumState(w_number<simple::tuple_size<decltype(w_EnumState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(tuple_append(w_EnumState(counter.prev()), MetaObjectBuilder::makeMetaEnumInfo<QEnumOrQFlags<NAME>::Type,true>( \
+    static constexpr auto w_EnumState(w_number<binary::tree_size<decltype(w_EnumState(w_number<>{}))>::value+1> counter) \
+        W_RETURN(binary::tree_append(w_EnumState(counter.prev()), MetaObjectBuilder::makeMetaEnumInfo<QEnumOrQFlags<NAME>::Type,true>( \
             #NAME, std::integer_sequence<QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__)))) \
     Q_FLAG(NAME)
 
 #define W_CLASSINFO(A, B) \
-    static constexpr auto w_ClassInfoState(w_number<simple::tuple_size<decltype(w_ClassInfoState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(tuple_append(w_ClassInfoState(counter.prev()), \
+    static constexpr auto w_ClassInfoState(w_number<binary::tree_size<decltype(w_ClassInfoState(w_number<>{}))>::value+1> counter) \
+        W_RETURN(binary::tree_append(w_ClassInfoState(counter.prev()), \
             std::pair<StaticString<sizeof(A)>, StaticString<sizeof(B)>>{ {A}, {B} }))
 
 #define WRITE , &W_ThisType::
