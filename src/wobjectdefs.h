@@ -234,25 +234,6 @@ template<int N, typename... T>
 constexpr auto makeParamStringList(StaticStringArray<N> &h, T&...t)
 { return binary::tree_prepend(makeParamStringList(t...), StaticString<N>(h)); }
 
-
-/** concatenate() : returns a StaticString which is the concatenation of all the strings in a StaticStringList
- *     Note:  keeps the \0 between the strings
- */
-template<typename I1, typename I2> struct concatenate_helper;
-template<std::size_t... I1, std::size_t... I2> struct concatenate_helper<std::index_sequence<I1...>, std::index_sequence<I2...>> {
-    static constexpr int size = sizeof...(I1) + sizeof...(I2);
-    static constexpr auto concatenate(const StaticString<sizeof...(I1)> &s1, const StaticString<sizeof...(I2)> &s2) {
-        StaticStringArray<size> d = { s1[I1]... , s2[I2]... };
-        return StaticString<size>( d );
-    }
-};
-constexpr StaticString<1> concatenate(StaticStringList<>) { return {""}; }
-template<typename T> constexpr auto concatenate(StaticStringList<T> s) {
-    auto tail = concatenate(binary::tree_tail(s));
-    using H = decltype(binary::tree_head(s));
-    return concatenate_helper<simple::make_index_sequence<H::size>, simple::make_index_sequence<tail.size>>::concatenate(binary::tree_head(s), tail);
-}
-
 /** Add a string in a StaticStringList */
 template<int L, typename T>
 constexpr auto addString(const StaticStringList<T> &l, const StaticString<L> & s) {

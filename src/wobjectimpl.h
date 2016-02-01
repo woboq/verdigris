@@ -8,6 +8,28 @@
  };
 
 
+
+/** concatenate() : returns a StaticString which is the concatenation of all the strings in a StaticStringList
+ *     Note:  keeps the \0 between the strings
+ */
+template<typename I1, typename I2> struct concatenate_helper;
+template<std::size_t... I1, std::size_t... I2> struct concatenate_helper<std::index_sequence<I1...>, std::index_sequence<I2...>> {
+    static constexpr int size = sizeof...(I1) + sizeof...(I2);
+    static constexpr auto concatenate(const StaticString<sizeof...(I1)> &s1, const StaticString<sizeof...(I2)> &s2) {
+        StaticStringArray<size> d = { s1[I1]... , s2[I2]... };
+        return StaticString<size>( d );
+    }
+};
+constexpr StaticString<1> concatenate(StaticStringList<>) { return {""}; }
+template<typename T> constexpr auto concatenate(StaticStringList<binary::Leaf<T>> s) { return s.root.data; }
+template<typename A, typename B> constexpr auto concatenate(StaticStringList<binary::Node<A,B>> s) {
+    auto a = concatenate(binary::tree<A>{s.root.a});
+    auto b = concatenate(binary::tree<B>{s.root.b});
+    return concatenate_helper<simple::make_index_sequence<a.size>, simple::make_index_sequence<b.size>>::concatenate(a, b);
+}
+
+
+
 namespace MetaObjectBuilder {
 
 enum { IsUnresolvedType = 0x80000000 };
@@ -365,7 +387,7 @@ struct ConstructorParametersGenerator {
     BuildStringDataHelper<std::index_sequence<S...>, std::index_sequence<I...>, std::index_sequence<O...>, std::index_sequence<N...>, T>::qt_meta_stringdata = {
         {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(N-1,
                 qptrdiff(offsetof(meta_stringdata_t, stringdata) + O - I * sizeof(QByteArrayData)) )...},
-        { concatenate(T::string_data)[S]...     }
+        { concatenate(T::string_data)[S]... }
     };
 
 
