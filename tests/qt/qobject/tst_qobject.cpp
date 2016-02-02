@@ -202,15 +202,15 @@ public slots:
     W_SLOT(aPublicSlot)
 
 public:
-    Q_INVOKABLE void invoke1(){}
+    void invoke1(){} W_INVOKABLE(invoke1)
     Q_SCRIPTABLE void sinvoke1(){}
     int aPublicSlotCalled;
 protected:
-    Q_INVOKABLE QT_MOC_COMPAT void invoke2(){}
-    Q_INVOKABLE QT_MOC_COMPAT void invoke2(int){}
+    QT_MOC_COMPAT void invoke2(){} W_INVOKABLE(invoke2,())
+    QT_MOC_COMPAT void invoke2(int){} W_INVOKABLE(invoke2,(int))
     Q_SCRIPTABLE QT_MOC_COMPAT void sinvoke2(){}
 private:
-    Q_INVOKABLE void invoke3(int hinz = 0, int kunz = 0){Q_UNUSED(hinz) Q_UNUSED(kunz)}
+    void invoke3(int hinz = 0, int kunz = 0){Q_UNUSED(hinz) Q_UNUSED(kunz)} W_INVOKABLE(invoke3)
     Q_SCRIPTABLE void sinvoke3(){}
 
     int recursionCount;
@@ -4227,7 +4227,8 @@ class Constructable: public QObject
     W_OBJECT(Constructable)
 
 public:
-    Q_INVOKABLE Constructable(){}
+    Constructable(){}
+    W_CONSTRUCTOR()
 
 };
 

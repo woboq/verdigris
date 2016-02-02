@@ -312,9 +312,11 @@ constexpr std::integral_constant<int, MetaObjectBuilder::Final> W_Final{};
 
 
 // workaround to avoid leading coma in macro that can optionaly take a flag
-struct W_RemoveLeadingComa { constexpr w_number<0> operator+() const { return {}; } };
-template <typename T> constexpr T operator+(T &&t, W_RemoveLeadingComa) { return t; }
-constexpr W_RemoveLeadingComa W_removeLeadingComa{};
+template<int F = 0>
+struct W_RemoveLeadingComa { constexpr w_number<F> operator+() const { return {}; } };
+template <typename T, int F> constexpr T operator+(T &&t, W_RemoveLeadingComa<F>) { return t; }
+template<int F = 0>
+constexpr W_RemoveLeadingComa<F> W_removeLeadingComa{};
 
 template<typename T> struct W_TypeRegistery { enum { registered = false }; };
 #define W_DECLARE_METATYPE(T) template<> struct W_TypeRegistery<T> { \
@@ -595,14 +597,14 @@ struct FriendHelper2;
         W_RETURN(binary::tree_append(w_SlotState(counter.prev()), MetaObjectBuilder::makeMetaSlotInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
-            W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa)))
+            W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa<W_Access::Public.value>)))
 
 #define W_INVOKABLE(NAME, ...) \
     static constexpr auto w_MethodState(w_number<binary::tree_size<decltype(w_MethodState(w_number<>{}))>::value+1> counter) \
         W_RETURN(binary::tree_append(w_MethodState(counter.prev()), MetaObjectBuilder::makeMetaMethodInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
-            W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa)))
+            W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa<W_Access::Public.value>)))
 
 #define W_SIGNAL_1(...) \
     __VA_ARGS__
