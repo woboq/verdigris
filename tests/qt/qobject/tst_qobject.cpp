@@ -193,7 +193,7 @@ signals:
     void signal2() W_SIGNAL_2(signal2)
     void signal3() W_SIGNAL_2(signal3)
     void signal4() W_SIGNAL_2(signal4)
-    QT_MOC_COMPAT void signal5() W_SIGNAL_2(signal5)
+    void signal5() W_SIGNAL_2_COMPAT(signal5)
     void signal6(void) W_SIGNAL_2(signal6)
     void signal7(int a, const QString &b) W_SIGNAL_2(signal7,a,b)
 
@@ -203,15 +203,15 @@ public slots:
 
 public:
     void invoke1(){} W_INVOKABLE(invoke1)
-    Q_SCRIPTABLE void sinvoke1(){}
+    void sinvoke1(){} W_INVOKABLE(sinvoke1, W_Scriptable)
     int aPublicSlotCalled;
 protected:
-    QT_MOC_COMPAT void invoke2(){} W_INVOKABLE(invoke2,())
-    QT_MOC_COMPAT void invoke2(int){} W_INVOKABLE(invoke2,(int))
-    Q_SCRIPTABLE QT_MOC_COMPAT void sinvoke2(){}
+    void invoke2(){} W_INVOKABLE(invoke2,(), W_Compat, W_Access::Protected)
+    void invoke2(int){} W_INVOKABLE(invoke2,(int), W_Compat, W_Access::Protected)
+    void sinvoke2(){} W_INVOKABLE(sinvoke2, W_Compat, W_Scriptable, W_Access::Protected)
 private:
-    void invoke3(int hinz = 0, int kunz = 0){Q_UNUSED(hinz) Q_UNUSED(kunz)} W_INVOKABLE(invoke3)
-    Q_SCRIPTABLE void sinvoke3(){}
+    void invoke3(int hinz = 0, int kunz = 0){Q_UNUSED(hinz) Q_UNUSED(kunz)} W_INVOKABLE(invoke3, W_Access::Private)
+    void sinvoke3(){} W_INVOKABLE(sinvoke3, W_Scriptable, W_Access::Private)
 
     int recursionCount;
 };
@@ -2109,8 +2109,8 @@ void tst_QObject::metamethod()
     QVERIFY((m.attributes() & QMetaMethod::Scriptable));
     QVERIFY((m.attributes() & QMetaMethod::Compatibility));
 
-    m = mobj->method(mobj->indexOfMethod("invoke3()"));
-    QVERIFY(m.methodSignature() == "invoke3()");
+    m = mobj->method(mobj->indexOfMethod("invoke3(int,int)")); // ### Default value are not supported by W_INVOKABLE
+    QVERIFY(m.methodSignature() == "invoke3(int,int)");
     QCOMPARE(m.methodType(), QMetaMethod::Method);
     QCOMPARE(m.access(), QMetaMethod::Private);
     QVERIFY(!(m.attributes() & QMetaMethod::Scriptable));

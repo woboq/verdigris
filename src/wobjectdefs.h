@@ -249,6 +249,8 @@ template<int N = 255> struct w_number : public w_number<N - 1> {
 };
 template<> struct w_number<0> { static constexpr int value = 0; };
 
+template <int N> struct W_MethodFlags { static constexpr int value = N; };
+
 
 // Mirror of QMetaMethod::Access
 namespace W_Access {
@@ -258,9 +260,9 @@ namespace W_Access {
     AccessPublic = 0x02,
     AccessMask = 0x03, //mask
  */
-    constexpr w_number<0x02> Public{};
-    constexpr w_number<0x01> Protected{};
-    constexpr w_number<0x00> Private{};
+    constexpr W_MethodFlags<0x00> Public{};
+    constexpr W_MethodFlags<0x01> Protected{};
+    constexpr W_MethodFlags<0x02> Private{}; // Note: Public and Private are reversed so Public can be the default
 }
 
 // Mirror of QMetaMethod::MethodType
@@ -272,11 +274,22 @@ namespace W_MethodType {
     MethodConstructor = 0x0c,
     MethodTypeMask = 0x0c,
 */
-    constexpr w_number<0x00> Method{};
-    constexpr w_number<0x04> Signal{};
-    constexpr w_number<0x08> Slot{};
-    constexpr w_number<0x0c> Constructor{};
+    constexpr W_MethodFlags<0x00> Method{};
+    constexpr W_MethodFlags<0x04> Signal{};
+    constexpr W_MethodFlags<0x08> Slot{};
+    constexpr W_MethodFlags<0x0c> Constructor{};
 }
+
+/*
+MethodCompatibility = 0x10,
+MethodCloned = 0x20,
+MethodScriptable = 0x40,
+MethodRevisioned = 0x80
+*/
+
+constexpr W_MethodFlags<0x10> W_Compat{};
+constexpr W_MethodFlags<0x40> W_Scriptable{};
+
 
 namespace MetaObjectBuilder {
 // From qmetaobject_p.h
@@ -312,11 +325,9 @@ constexpr std::integral_constant<int, MetaObjectBuilder::Final> W_Final{};
 
 
 // workaround to avoid leading coma in macro that can optionaly take a flag
-template<int F = 0>
-struct W_RemoveLeadingComa { constexpr w_number<F> operator+() const { return {}; } };
-template <typename T, int F> constexpr T operator+(T &&t, W_RemoveLeadingComa<F>) { return t; }
-template<int F = 0>
-constexpr W_RemoveLeadingComa<F> W_removeLeadingComa{};
+struct W_RemoveLeadingComa { constexpr W_MethodFlags<0> operator+() const { return {}; } };
+template <typename T> constexpr T operator+(T &&t, W_RemoveLeadingComa) { return t; }
+constexpr W_RemoveLeadingComa W_removeLeadingComa{};
 
 template<typename T> struct W_TypeRegistery { enum { registered = false }; };
 #define W_DECLARE_METATYPE(T) template<> struct W_TypeRegistery<T> { \
@@ -343,19 +354,21 @@ namespace MetaObjectBuilder {
         static constexpr int flags = Flags;
     };
 
-    template<typename F, int N, typename ParamTypes, int Flags = W_Access::Public.value>
-    constexpr MetaMethodInfo<F, N, Flags | W_MethodType::Slot.value, ParamTypes>
-    makeMetaSlotInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes, w_number<Flags> = {})
+    template<typename F, int N, typename ParamTypes, int... Flags>
+    constexpr MetaMethodInfo<F, N, sums(Flags...) | W_MethodType::Slot.value, ParamTypes>
+    makeMetaSlotInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
     { return { f, {name}, paramTypes, {} }; }
 
-    template<typename F, int N, typename ParamTypes, int Flags = W_Access::Public.value>
-    constexpr MetaMethodInfo<F, N, Flags | W_MethodType::Method.value, ParamTypes>
-    makeMetaMethodInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes, w_number<Flags> = {})
+    template<typename F, int N, typename ParamTypes, int... Flags>
+    constexpr MetaMethodInfo<F, N, sums(Flags...) | W_MethodType::Method.value, ParamTypes>
+    makeMetaMethodInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
     { return { f, {name}, paramTypes, {} }; }
 
-    template<typename F, int N, typename ParamTypes, typename ParamNames>
-    constexpr MetaMethodInfo<F, N, W_MethodType::Signal.value | W_Access::Public.value, ParamTypes, ParamNames>
-    makeMetaSignalInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes, const ParamNames &paramNames)
+    template<typename F, int N, typename ParamTypes, typename ParamNames, int... Flags>
+    constexpr MetaMethodInfo<F, N, sums(Flags...) | W_MethodType::Signal.value | W_Access::Public.value,
+                             ParamTypes, ParamNames>
+    makeMetaSignalInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes,
+                       const ParamNames &paramNames, W_MethodFlags<Flags>...)
     { return { f, {name}, paramTypes, paramNames }; }
 
 
@@ -597,14 +610,14 @@ struct FriendHelper2;
         W_RETURN(binary::tree_append(w_SlotState(counter.prev()), MetaObjectBuilder::makeMetaSlotInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
-            W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa<W_Access::Public.value>)))
+            W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa)))
 
 #define W_INVOKABLE(NAME, ...) \
     static constexpr auto w_MethodState(w_number<binary::tree_size<decltype(w_MethodState(w_number<>{}))>::value+1> counter) \
         W_RETURN(binary::tree_append(w_MethodState(counter.prev()), MetaObjectBuilder::makeMetaMethodInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
-            W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa<W_Access::Public.value>)))
+            W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa)))
 
 #define W_SIGNAL_1(...) \
     __VA_ARGS__
@@ -618,6 +631,19 @@ struct FriendHelper2;
         W_RETURN(binary::tree_append(w_SignalState(counter.prev()), MetaObjectBuilder::makeMetaSignalInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))))
+
+// Same as W_SIGNAL_2, but set the W_Compat flag
+#define W_SIGNAL_2_COMPAT(NAME, ...) \
+    { \
+        using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
+        return SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
+    } \
+    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = binary::tree_size<decltype(w_SignalState(w_number<>{}))>::value; \
+    static constexpr auto w_SignalState(w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> counter) \
+        W_RETURN(binary::tree_append(w_SignalState(counter.prev()), MetaObjectBuilder::makeMetaSignalInfo( \
+            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
+            W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat)))
+
 
 #define W_CONSTRUCTOR(...) \
     static constexpr auto w_ConstructorState(w_number<binary::tree_size<decltype(w_ConstructorState(w_number<>{}))>::value+1> counter) \

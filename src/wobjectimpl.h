@@ -3,8 +3,8 @@
 #include "wobjectdefs.h"
 #include <QtCore/qobject.h>
 
- template<typename T>   struct assert{
-     static_assert(!sizeof(T), "");
+ template<typename T, bool X = false>   struct assert{
+     static_assert(X, "");
  };
 
 
@@ -167,8 +167,11 @@ struct MethodGenerator {
                 template add<Method::argCount,
                              ParamIndex, //parametters
                              1, //tag, always \0
-                             Method::flags>();
-
+                             adjustFlags(Method::flags)>();
+    }
+    // because public and private are inverted
+    static constexpr uint adjustFlags(uint f) {
+        return (f & W_Access::Protected.value) ? f : (f ^ W_Access::Private.value);
     }
 };
 
