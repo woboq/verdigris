@@ -208,7 +208,8 @@ struct PropertyGenerator {
     static constexpr auto generate(State s, Prop prop) {
         auto s2 = s.addString(prop.name);
         auto s3 = HandleType<typename Prop::PropertyType>::result(s2, prop.typeStr);
-        return s3.template add<Prop::flags>();
+        constexpr uint moreFlags = (QtPrivate::IsQEnumHelper<typename Prop::PropertyType>::Value ? PropertyFlags::EnumOrFlag : 0 );
+        return s3.template add<Prop::flags | moreFlags>();
     }
 };
 

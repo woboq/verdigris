@@ -1549,16 +1549,6 @@ class PropertyObject : public QObject
 {
     W_OBJECT(PropertyObject)
 
-    Q_PROPERTY(Alpha alpha READ alpha WRITE setAlpha)
-    Q_PROPERTY(Priority priority READ priority WRITE setPriority)
-    Q_PROPERTY(int number READ number WRITE setNumber)
-    Q_PROPERTY(QString string READ string WRITE setString)
-    Q_PROPERTY(QVariant variant READ variant WRITE setVariant)
-    Q_PROPERTY(CustomType* custom READ custom WRITE setCustom)
-    Q_PROPERTY(float myFloat READ myFloat WRITE setMyFloat)
-    Q_PROPERTY(qreal myQReal READ myQReal WRITE setMyQReal)
-    Q_PROPERTY(CustomString customString READ customString WRITE setCustomString )
-
 public:
     enum Alpha {
         Alpha0,
@@ -1610,8 +1600,19 @@ private:
     qreal m_qreal;
     CustomString m_customString;
 
-    Q_ENUM(Alpha)
-    Q_ENUM(Priority)
+    W_ENUM(Alpha, Alpha0, Alpha1, Alpha2)
+    W_ENUM(Priority, High, Low, VeryHigh, VeryLow)
+
+    W_PROPERTY(Alpha, alpha READ alpha WRITE setAlpha)
+    W_PROPERTY(Priority, priority READ priority WRITE setPriority)
+    W_PROPERTY(int, number READ number WRITE setNumber)
+    W_PROPERTY(QString, string READ string WRITE setString)
+    W_PROPERTY(QVariant, variant READ variant WRITE setVariant)
+    W_PROPERTY(CustomType*, custom READ custom WRITE setCustom)
+    W_PROPERTY(float, myFloat READ myFloat WRITE setMyFloat)
+    W_PROPERTY(qreal, myQReal READ myQReal WRITE setMyQReal)
+    W_PROPERTY(CustomString, customString READ customString WRITE setCustomString )
+
 };
 
 Q_DECLARE_METATYPE(PropertyObject::Priority)
