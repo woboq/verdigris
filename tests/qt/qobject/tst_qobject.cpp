@@ -2461,6 +2461,8 @@ public:
 
 void tst_QObject::connectSignalsToSignalsWithDefaultArguments()
 {
+    QSKIP("Not supported by W_SLOT/W_SIGNAL");
+
     DefaultArguments o;
     connect(&o, SIGNAL(theOriginalSignal()), &o, SIGNAL(theSecondSignal()));
     connect(&o, SIGNAL(theSecondSignal(QString)), &o, SLOT(theSlot(QString)));
