@@ -589,6 +589,7 @@ struct FriendHelper2;
         static constexpr binary::tree<> w_PropertyState(w_number<0>) { return {}; } \
         static constexpr binary::tree<> w_EnumState(w_number<0>) { return {}; } \
         static constexpr binary::tree<> w_ClassInfoState(w_number<0>) { return {}; } \
+        static constexpr binary::tree<> w_InterfaceState(w_number<0>) { return {}; } \
     public: \
         struct MetaObjectCreatorHelper;
 
@@ -676,6 +677,11 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
     static constexpr auto w_ClassInfoState(w_number<binary::tree_size<decltype(w_ClassInfoState(w_number<>{}))>::value+1> counter) \
         W_RETURN(binary::tree_append(w_ClassInfoState(counter.prev()), \
             std::pair<StaticString<sizeof(A)>, StaticString<sizeof(B)>>{ {A}, {B} }))
+
+#define W_INTERFACE(A) \
+    static constexpr auto w_InterfaceState(w_number<binary::tree_size<decltype(w_InterfaceState(w_number<>{}))>::value+1> counter) \
+        W_RETURN(binary::tree_append(w_InterfaceState(counter.prev()), static_cast<A*>(nullptr)))
+
 
 #define WRITE , &W_ThisType::
 #define READ , &W_ThisType::

@@ -89,7 +89,7 @@ constexpr int getSignalIndex(F func, Ms ms) {
 
         /** Holds information about a class,  includeing all the properties and methods */
     template<int NameLength, typename Methods, typename Constructors, typename Properties,
-             typename Enums, typename ClassInfos, int SignalCount>
+             typename Enums, typename ClassInfos, typename Interfaces, int SignalCount>
     struct ObjectInfo {
         StaticString<NameLength> name;
         Methods methods;
@@ -97,12 +97,14 @@ constexpr int getSignalIndex(F func, Ms ms) {
         Properties properties;
         Enums enums;
         ClassInfos classInfos;
+        Interfaces interfaces;
 
         static constexpr int methodCount = binary::tree_size<Methods>::value;
         static constexpr int constructorCount = binary::tree_size<Constructors>::value;
         static constexpr int propertyCount = binary::tree_size<Properties>::value;
         static constexpr int enumCount = binary::tree_size<Enums>::value;
         static constexpr int classInfoCount = binary::tree_size<ClassInfos>::value;
+        static constexpr int interfaceCount = binary::tree_size<Interfaces>::value;
         static constexpr int signalCount = SignalCount;
     };
 
@@ -127,10 +129,11 @@ struct FriendHelper1 { /* FIXME */
         constexpr auto propertyInfo = T::w_PropertyState(w_number<>{});
         constexpr auto enumInfo = T::w_EnumState(w_number<>{});
         constexpr auto classInfo = T::w_ClassInfoState(w_number<>{});
+        constexpr auto interfaceInfo = T::w_InterfaceState(w_number<>{});
         constexpr int sigCount = binary::tree_size<decltype(sigState)>::value;
         return ObjectInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo),
-                          decltype(enumInfo), decltype(classInfo), sigCount>
-            { {name}, methodInfo, constructorInfo, propertyInfo, enumInfo, classInfo };
+                          decltype(enumInfo), decltype(classInfo), decltype(interfaceInfo), sigCount>
+            { {name}, methodInfo, constructorInfo, propertyInfo, enumInfo, classInfo, interfaceInfo };
     }
 };
 
@@ -585,8 +588,6 @@ static void createInstance(int _id, void** _a) {
     }
 }
 
-
-
 template<typename...Ts> static constexpr void nop(Ts...) {}
 
 template<typename T, size_t...MethI, size_t ...ConsI, size_t...PropI>
@@ -627,14 +628,37 @@ static void qt_static_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void**
     }
 }
 
+template <typename T1, typename T2>
+static void metaCast(void *&result, T1 *o, const char *clname, T2*) {
+    const char *iid = qobject_interface_iid<T2*>();
+    if (iid && !strcmp(clname, iid))
+        result = static_cast<T2*>(o);
+}
+
+template<typename T, size_t... InterfaceI>
+static void *qt_metacast_impl(T *o, const char *_clname, std::index_sequence<InterfaceI...>) {
+    if (!_clname)
+        return nullptr;
+    const QByteArrayDataPtr sd = { const_cast<QByteArrayData*>(T::staticMetaObject.d.stringdata) };
+    if (_clname == QByteArray(sd))
+        return o;
+    void *result = nullptr;
+    nop((metaCast(result, o, _clname, binary::get<InterfaceI>(T::MetaObjectCreatorHelper::objectInfo.interfaces)),0)...);
+    return result ? result : o->T::W_BaseType::qt_metacast(_clname);
+}
 
 };
 
 template<typename T> constexpr auto createMetaObject() {  return FriendHelper2::createMetaObject<T>(); }
 template<typename T, typename... Ts> auto qt_metacall_impl(Ts &&...args)
 {  return FriendHelper2::qt_metacall_impl<T>(std::forward<Ts>(args)...); }
-template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
-{
+template<typename T> auto qt_metacast_impl(T *o, const char *_clname) {
+    using ObjI = decltype(T::MetaObjectCreatorHelper::objectInfo);
+    return FriendHelper2::qt_metacast_impl<T>(o, _clname,
+                                              simple::make_index_sequence<ObjI::interfaceCount>{});
+}
+
+template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args) {
     using ObjI = decltype(T::MetaObjectCreatorHelper::objectInfo);
     return FriendHelper2::qt_static_metacall_impl<T>(std::forward<Ts>(args)...,
                                                      simple::make_index_sequence<ObjI::methodCount>{},
@@ -657,7 +681,7 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
     void TYPE::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
     { qt_static_metacall_impl<TYPE>(_o, _c, _id, _a); } \
     const QMetaObject *TYPE::metaObject() const  { return &staticMetaObject; } \
-    void *TYPE::qt_metacast(const char *) { return nullptr; } /* TODO */ \
+    void *TYPE::qt_metacast(const char *_clname) { return qt_metacast_impl<TYPE>(this, _clname); } \
     int TYPE::qt_metacall(QMetaObject::Call _c, int _id, void** _a) \
     { return qt_metacall_impl<TYPE>(this, _c, _id, _a); }
 

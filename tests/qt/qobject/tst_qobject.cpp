@@ -2337,7 +2337,7 @@ QT_END_NAMESPACE
 class FooObject: public QObject, public Foo::Bar
 {
     W_OBJECT(FooObject)
-    Q_INTERFACES(Foo::Bar)
+    W_INTERFACE(Foo::Bar)
 public:
     int rtti() const { return 42; }
 };
@@ -2345,7 +2345,7 @@ public:
 class BlehObject : public QObject, public Foo::Bleh
 {
     W_OBJECT(BlehObject)
-    Q_INTERFACES(Foo::Bleh)
+    W_INTERFACE(Foo::Bleh)
 public:
     int rtti() const { return 43; }
 };
