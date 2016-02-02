@@ -1971,6 +1971,10 @@ void tst_QObject::property()
     QCOMPARE(object.property("string"), QVariant("String1"));
     QVERIFY(object.setProperty("string", "String2"));
     QCOMPARE(object.property("string"), QVariant("String2"));
+
+    if (qVersion() < QByteArray("5.6.0"))
+        QSKIP("this tests bugs in 5.5");
+
     QVERIFY(object.setProperty("string", QVariant()));
 
     const int idx = mo->indexOfProperty("variant");
@@ -3749,6 +3753,7 @@ class OverloadObject : public QObject
 
 void tst_QObject::overloads()
 {
+    QSKIP("Overload not supported by W_SIGNAL/W_SLOT");
     OverloadObject obj1;
     OverloadObject obj2;
     QObject obj3;
@@ -4031,11 +4036,11 @@ void tst_QObject::qMetaObjectConnect()
     OverloadObject obj1;
     QObject obj2, obj3;
 
-    QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(int)) , r1, slot1Index);
-    QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(QObject *, QObject *, QObject *)) , r2, slot1Index);
+    QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(int,int)) , r1, slot1Index);
+    QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(QObject *, QObject *, QObject *, QObject *)) , r2, slot1Index);
 
     QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(QObject *, QObject *, QObject *, QObject *)) , r1, slot2Index);
-    QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(QObject *)) , r2, slot2Index);
+    QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(QObject*,OverloadObject*,QObject*,QObject*)) , r2, slot2Index);
     QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(int, int)) , r1, slot3Index);
 
     emit obj1.sig(0.5); //connected to nothing
