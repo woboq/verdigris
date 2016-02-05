@@ -1,3 +1,3 @@
 TEMPLATE = subdirs
 
-SUBDIRS += basic qt
+SUBDIRS += basic qt templates

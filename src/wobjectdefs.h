@@ -330,9 +330,9 @@ template <typename T> constexpr T operator+(T &&t, W_RemoveLeadingComa) { return
 constexpr W_RemoveLeadingComa W_removeLeadingComa{};
 
 template<typename T> struct W_TypeRegistery { enum { registered = false }; };
-#define W_DECLARE_METATYPE(T) template<> struct W_TypeRegistery<T> { \
+#define W_DECLARE_METATYPE(...) template<> struct W_TypeRegistery<__VA_ARGS__> { \
     enum { registered = true }; \
-    static constexpr auto name = makeStaticString(#T); \
+    static constexpr auto name = makeStaticString(#__VA_ARGS__); \
 };
 
 W_DECLARE_METATYPE(char*)

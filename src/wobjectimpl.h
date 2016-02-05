@@ -668,25 +668,28 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
 }
 
 
-#define W_OBJECT_IMPL_COMMON(TYPE) \
-    struct TYPE::MetaObjectCreatorHelper { \
-        static constexpr auto objectInfo = MetaObjectBuilder::makeObjectInfo<TYPE>(#TYPE); \
-        static constexpr auto data = MetaObjectBuilder::generateDataArray<TYPE>(objectInfo); \
+#define W_OBJECT_IMPL_COMMON(TYPE, ...) \
+    __VA_ARGS__ struct W_MACRO_REMOVEPAREN(TYPE)::MetaObjectCreatorHelper { \
+        static constexpr auto objectInfo = \
+            MetaObjectBuilder::makeObjectInfo<W_MACRO_REMOVEPAREN(TYPE)>(W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE))); \
+        static constexpr auto data = MetaObjectBuilder::generateDataArray<W_MACRO_REMOVEPAREN(TYPE)>(objectInfo); \
         static constexpr auto string_data = data.first; \
         static constexpr auto int_data = data.second; \
     }; \
-    constexpr const QMetaObject TYPE::staticMetaObject = createMetaObject<TYPE>();
+    __VA_ARGS__ constexpr const QMetaObject W_MACRO_REMOVEPAREN(TYPE)::staticMetaObject = createMetaObject<W_MACRO_REMOVEPAREN(TYPE)>();
 
-#define W_OBJECT_IMPL(TYPE) \
-    W_OBJECT_IMPL_COMMON(TYPE) \
-    void TYPE::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
-    { qt_static_metacall_impl<TYPE>(_o, _c, _id, _a); } \
-    const QMetaObject *TYPE::metaObject() const  { return &staticMetaObject; } \
-    void *TYPE::qt_metacast(const char *_clname) { return qt_metacast_impl<TYPE>(this, _clname); } \
-    int TYPE::qt_metacall(QMetaObject::Call _c, int _id, void** _a) \
-    { return qt_metacall_impl<TYPE>(this, _c, _id, _a); }
+#define W_OBJECT_IMPL(TYPE, ...) \
+    W_OBJECT_IMPL_COMMON(TYPE, __VA_ARGS__) \
+    __VA_ARGS__ void W_MACRO_REMOVEPAREN(TYPE)::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
+    { qt_static_metacall_impl<W_MACRO_REMOVEPAREN(TYPE)>(_o, _c, _id, _a); } \
+    __VA_ARGS__ const QMetaObject *W_MACRO_REMOVEPAREN(TYPE)::metaObject() const  { return &staticMetaObject; } \
+    __VA_ARGS__ void *W_MACRO_REMOVEPAREN(TYPE)::qt_metacast(const char *_clname) \
+    { return qt_metacast_impl<W_MACRO_REMOVEPAREN(TYPE)>(this, _clname); } \
+    __VA_ARGS__ int W_MACRO_REMOVEPAREN(TYPE)::qt_metacall(QMetaObject::Call _c, int _id, void** _a) \
+    { return qt_metacall_impl<W_MACRO_REMOVEPAREN(TYPE)>(this, _c, _id, _a); }
 
-#define W_GADGET_IMPL(TYPE) \
-    W_OBJECT_IMPL_COMMON(TYPE) \
-    void TYPE::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
-    { qt_static_metacall_impl<TYPE>(reinterpret_cast<TYPE*>(_o), _c, _id, _a); }
+
+#define W_GADGET_IMPL(TYPE, ...) \
+    W_OBJECT_IMPL_COMMON(TYPE, __VA_ARGS__) \
+    __VA_ARGS__ void W_MACRO_REMOVEPAREN(TYPE)::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
+    { qt_static_metacall_impl<W_MACRO_REMOVEPAREN(TYPE)>(reinterpret_cast<W_MACRO_REMOVEPAREN(TYPE)*>(_o), _c, _id, _a); }
