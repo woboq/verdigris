@@ -10,6 +10,8 @@ private /*slots*/:
     void templatesMethod_data(); W_SLOT(templatesMethod_data, W_Access::Private)
     void templatesMethod(); W_SLOT(templatesMethod, W_Access::Private)
 
+    // from https://codereview.qt-project.org/49866/
+    void connectTemplate();  W_SLOT(connectTemplate, W_Access::Private)
 
 };
 
@@ -144,6 +146,47 @@ void tst_Templates::templatesMethod()
     QCOMPARE(index != -1, exist);
 }
 
+template <typename T> class TemplateObject : public QObject  {
+    W_OBJECT(TemplateObject)
+public: // signals
+    void signalTemplate(const T &t) W_SIGNAL_2(signalTemplate, t)
+    void signalString(const QString & str) W_SIGNAL_2(signalString, str)
+public:
+    void slotTemplate(const T &t) { result = QVariant::fromValue<T>(t); count++; }
+    W_SLOT(slotTemplate)
+    void slotVariant(const QVariant &t) { result = t; count += 100; }
+    W_SLOT(slotVariant)
+
+public:
+    TemplateObject() : count(0) { }
+    int count;
+    QVariant result;
+};
+
+void tst_Templates::connectTemplate()
+{
+    TemplateObject<int> oi;
+    TemplateObject<QString> os;
+
+    QVERIFY(QObject::connect(&oi, &TemplateObject<int>::signalTemplate, &os, &TemplateObject<QString>::slotVariant));
+    oi.signalTemplate(25);
+    QCOMPARE(os.count, 100);
+    QCOMPARE(os.result, QVariant(25));
+    os.count = 0;
+
+    QVERIFY(QObject::connect(&oi, &TemplateObject<int>::signalString, &os, &TemplateObject<QString>::slotTemplate));
+    oi.signalString("hello");
+    QCOMPARE(os.count, 1);
+    QCOMPARE(os.result, QVariant("hello"));
+    os.count = 0;
+
+    QVERIFY(QObject::connect(&os, &TemplateObject<QString>::signalTemplate, &oi, &TemplateObject<int>::slotVariant));
+    os.signalTemplate("world");
+    QCOMPARE(oi.count, 100);
+    QCOMPARE(oi.result, QVariant("world"));
+}
+
+
 
 QTEST_MAIN(tst_Templates)
 
@@ -156,3 +199,5 @@ W_OBJECT_IMPL(TestTemplate2<T>, template<typename T>)
 W_OBJECT_IMPL((FunctionTemplateParameter<O,T1,F1,F2>), template<typename O, typename T1, void (O::*F1)(const T1&), void (O::*F2)(const T1&)>)
 W_OBJECT_IMPL((TemplateTemplateParameter<C1, C2, C3>), template<template<typename> class C1, template <typename> class C2, template <typename, int > class C3>)
 W_OBJECT_IMPL((MappedReducedKernel<ReducedResultType, Iterator, MapFunctor, ReduceFunctor, Reducer>), template <typename ReducedResultType, typename Iterator, typename MapFunctor, typename ReduceFunctor, typename Reducer>)
+
+W_OBJECT_IMPL(TemplateObject<T>, template<typename T>)

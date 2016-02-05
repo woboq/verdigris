@@ -582,14 +582,14 @@ struct FriendHelper2;
         static constexpr auto &W_UnscopedName = #TYPE; /* so we don't repeat it in W_CONSTRUCTOR */ \
         friend struct MetaObjectBuilder::FriendHelper1; \
         friend struct ::FriendHelper2; \
-        static constexpr binary::tree<> w_SlotState(w_number<0>) { return {}; } \
-        static constexpr binary::tree<> w_SignalState(w_number<0>) { return {}; } \
-        static constexpr binary::tree<> w_MethodState(w_number<0>) { return {}; } \
-        static constexpr binary::tree<> w_ConstructorState(w_number<0>) { return {}; } \
-        static constexpr binary::tree<> w_PropertyState(w_number<0>) { return {}; } \
-        static constexpr binary::tree<> w_EnumState(w_number<0>) { return {}; } \
-        static constexpr binary::tree<> w_ClassInfoState(w_number<0>) { return {}; } \
-        static constexpr binary::tree<> w_InterfaceState(w_number<0>) { return {}; } \
+        friend constexpr binary::tree<> w_SlotState(w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr binary::tree<> w_SignalState(w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr binary::tree<> w_MethodState(w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr binary::tree<> w_ConstructorState(w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr binary::tree<> w_PropertyState(w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr binary::tree<> w_EnumState(w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr binary::tree<> w_ClassInfoState(w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr binary::tree<> w_InterfaceState(w_number<0>, W_ThisType**) { return {}; } \
     public: \
         struct MetaObjectCreatorHelper;
 
@@ -605,17 +605,16 @@ struct FriendHelper2;
     W_OBJECT_COMMON(TYPE) \
     Q_GADGET
 
-
 #define W_SLOT(NAME, ...) \
-    static constexpr auto w_SlotState(w_number<binary::tree_size<decltype(w_SlotState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(binary::tree_append(w_SlotState(counter.prev()), MetaObjectBuilder::makeMetaSlotInfo( \
+    friend constexpr auto w_SlotState(w_number<binary::tree_size<decltype(w_SlotState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, W_ThisType **w_this) \
+        W_RETURN(binary::tree_append(w_SlotState(w_counter.prev(), w_this), MetaObjectBuilder::makeMetaSlotInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa)))
 
 #define W_INVOKABLE(NAME, ...) \
-    static constexpr auto w_MethodState(w_number<binary::tree_size<decltype(w_MethodState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(binary::tree_append(w_MethodState(counter.prev()), MetaObjectBuilder::makeMetaMethodInfo( \
+    friend constexpr auto w_MethodState(w_number<binary::tree_size<decltype(w_MethodState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, W_ThisType **w_this) \
+        W_RETURN(binary::tree_append(w_MethodState(w_counter.prev(), w_this), MetaObjectBuilder::makeMetaMethodInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa)))
@@ -627,9 +626,9 @@ struct FriendHelper2;
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
         return SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
     } \
-    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = binary::tree_size<decltype(w_SignalState(w_number<>{}))>::value; \
-    static constexpr auto w_SignalState(w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> counter) \
-        W_RETURN(binary::tree_append(w_SignalState(counter.prev()), MetaObjectBuilder::makeMetaSignalInfo( \
+    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = binary::tree_size<decltype(w_SignalState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value; \
+    friend constexpr auto w_SignalState(w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> w_counter, W_ThisType **w_this) \
+        W_RETURN(binary::tree_append(w_SignalState(w_counter.prev(), w_this), MetaObjectBuilder::makeMetaSignalInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))))
 
@@ -639,28 +638,28 @@ struct FriendHelper2;
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
         return SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
     } \
-    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = binary::tree_size<decltype(w_SignalState(w_number<>{}))>::value; \
-    static constexpr auto w_SignalState(w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> counter) \
-        W_RETURN(binary::tree_append(w_SignalState(counter.prev()), MetaObjectBuilder::makeMetaSignalInfo( \
+    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = binary::tree_size<decltype(w_SignalState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value; \
+    friend constexpr auto w_SignalState(w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> w_counter, W_ThisType **w_this) \
+        W_RETURN(binary::tree_append(w_SignalState(w_counter.prev(), w_this), MetaObjectBuilder::makeMetaSignalInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat)))
 
 
 #define W_CONSTRUCTOR(...) \
-    static constexpr auto w_ConstructorState(w_number<binary::tree_size<decltype(w_ConstructorState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(binary::tree_append(w_ConstructorState(counter.prev()), \
+    friend constexpr auto w_ConstructorState(w_number<binary::tree_size<decltype(w_ConstructorState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, W_ThisType **w_this) \
+        W_RETURN(binary::tree_append(w_ConstructorState(w_counter.prev(), w_this), \
             MetaObjectBuilder::makeMetaConstructorInfo<__VA_ARGS__>().setName(W_UnscopedName)))
 
 #define W_PROPERTY(...) W_PROPERTY2(__VA_ARGS__) // expands the READ, WRITE, and other sub marcos
 #define W_PROPERTY2(TYPE, NAME, ...) \
-    static constexpr auto w_PropertyState(w_number<binary::tree_size<decltype(w_PropertyState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(binary::tree_append(w_PropertyState(counter.prev()), \
+    friend constexpr auto w_PropertyState(w_number<binary::tree_size<decltype(w_PropertyState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, W_ThisType **w_this) \
+        W_RETURN(binary::tree_append(w_PropertyState(w_counter.prev(), w_this), \
                               MetaObjectBuilder::makeMetaPropertyInfo<W_MACRO_REMOVEPAREN(TYPE)>(\
                                     #NAME, W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE)), __VA_ARGS__)))
 
 #define W_ENUM(NAME, ...) \
-    static constexpr auto w_EnumState(w_number<binary::tree_size<decltype(w_EnumState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(binary::tree_append(w_EnumState(counter.prev()), MetaObjectBuilder::makeMetaEnumInfo<NAME,false>( \
+    friend constexpr auto w_EnumState(w_number<binary::tree_size<decltype(w_EnumState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, W_ThisType **w_this) \
+        W_RETURN(binary::tree_append(w_EnumState(w_counter.prev(), w_this), MetaObjectBuilder::makeMetaEnumInfo<NAME,false>( \
             #NAME, std::integer_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__)))) \
     Q_ENUM(NAME)
 
@@ -668,19 +667,19 @@ template<typename T> struct QEnumOrQFlags { using Type = T; };
 template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 
 #define W_FLAG(NAME, ...) \
-    static constexpr auto w_EnumState(w_number<binary::tree_size<decltype(w_EnumState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(binary::tree_append(w_EnumState(counter.prev()), MetaObjectBuilder::makeMetaEnumInfo<QEnumOrQFlags<NAME>::Type,true>( \
+    friend constexpr auto w_EnumState(w_number<binary::tree_size<decltype(w_EnumState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, W_ThisType **w_this) \
+        W_RETURN(binary::tree_append(w_EnumState(w_counter.prev(), w_this), MetaObjectBuilder::makeMetaEnumInfo<QEnumOrQFlags<NAME>::Type,true>( \
             #NAME, std::integer_sequence<QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__)))) \
     Q_FLAG(NAME)
 
 #define W_CLASSINFO(A, B) \
-    static constexpr auto w_ClassInfoState(w_number<binary::tree_size<decltype(w_ClassInfoState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(binary::tree_append(w_ClassInfoState(counter.prev()), \
+    friend constexpr auto w_ClassInfoState(w_number<binary::tree_size<decltype(w_ClassInfoState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, W_ThisType **w_this) \
+        W_RETURN(binary::tree_append(w_ClassInfoState(w_counter.prev(), w_this), \
             std::pair<StaticString<sizeof(A)>, StaticString<sizeof(B)>>{ {A}, {B} }))
 
 #define W_INTERFACE(A) \
-    static constexpr auto w_InterfaceState(w_number<binary::tree_size<decltype(w_InterfaceState(w_number<>{}))>::value+1> counter) \
-        W_RETURN(binary::tree_append(w_InterfaceState(counter.prev()), static_cast<A*>(nullptr)))
+    friend constexpr auto w_InterfaceState(w_number<binary::tree_size<decltype(w_InterfaceState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, W_ThisType **w_this) \
+        W_RETURN(binary::tree_append(w_InterfaceState(w_counter.prev(), w_this), static_cast<A*>(nullptr)))
 
 
 #define WRITE , &W_ThisType::

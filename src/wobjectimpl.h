@@ -112,24 +112,25 @@ struct FriendHelper1 { /* FIXME */
 
     template<typename T, int I>
     struct ResolveNotifySignal {
-        static constexpr auto propertyInfo = T::w_PropertyState(w_number<>{});
+        static constexpr auto propertyInfo = w_PropertyState(w_number<>{},static_cast<T**>(nullptr));
         static constexpr auto property = binary::get<I>(propertyInfo);
         static constexpr bool hasNotify = !getSignalIndexHelperCompare(property.notify, nullptr);
         static constexpr int signalIndex = !hasNotify ? -1 :
-        getSignalIndex(property.notify, T::w_SignalState(w_number<>{}));
+        getSignalIndex(property.notify, w_SignalState(w_number<>{},static_cast<T**>(nullptr)));
         static_assert(signalIndex >= 0 || !hasNotify, "NOTIFY signal not registered as a signal");
     };
 
     /** Construct a ObjectInfo with just the name */
     template<typename T, int N>
     static constexpr auto makeObjectInfo(StaticStringArray<N> &name) {
-        constexpr auto sigState = T::w_SignalState(w_number<>{});
-        constexpr auto methodInfo = binary::tree_cat(sigState, T::w_SlotState(w_number<>{}), T::w_MethodState(w_number<>{}));
-        constexpr auto constructorInfo = T::w_ConstructorState(w_number<>{});
-        constexpr auto propertyInfo = T::w_PropertyState(w_number<>{});
-        constexpr auto enumInfo = T::w_EnumState(w_number<>{});
-        constexpr auto classInfo = T::w_ClassInfoState(w_number<>{});
-        constexpr auto interfaceInfo = T::w_InterfaceState(w_number<>{});
+        constexpr auto sigState = w_SignalState(w_number<>{}, static_cast<T**>(nullptr));
+        constexpr auto methodInfo = binary::tree_cat(sigState, w_SlotState(w_number<>{}, static_cast<T**>(nullptr)),
+                                                     w_MethodState(w_number<>{}, static_cast<T**>(nullptr)));
+        constexpr auto constructorInfo = w_ConstructorState(w_number<>{}, static_cast<T**>(nullptr));
+        constexpr auto propertyInfo = w_PropertyState(w_number<>{}, static_cast<T**>(nullptr));
+        constexpr auto enumInfo = w_EnumState(w_number<>{}, static_cast<T**>(nullptr));
+        constexpr auto classInfo = w_ClassInfoState(w_number<>{}, static_cast<T**>(nullptr));
+        constexpr auto interfaceInfo = w_InterfaceState(w_number<>{}, static_cast<T**>(nullptr));
         constexpr int sigCount = binary::tree_size<decltype(sigState)>::value;
         return ObjectInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo),
                           decltype(enumInfo), decltype(classInfo), decltype(interfaceInfo), sigCount>
