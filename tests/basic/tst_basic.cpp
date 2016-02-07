@@ -4,6 +4,8 @@ class tst_Basic : public QObject
 {
     W_OBJECT(tst_Basic)
 
+    struct SubObject;
+
 private /*slots*/:
     void firstTest();
     W_SLOT(firstTest, W_Access::Private)
@@ -26,6 +28,9 @@ private /*slots*/:
 
     void enumBase();
     W_SLOT(enumBase, W_Access::Private)
+
+    void subObject();
+    W_SLOT(subObject, W_Access::Private)
 };
 
 #include <wobjectimpl.h>
@@ -39,16 +44,6 @@ void tst_Basic::firstTest()
     QCOMPARE(metaObject()->className(), "tst_Basic");
     QCOMPARE(metaObject()->superClass()->className(), "QObject");
 }
-/*
-#undef Q_PROPERTY
-#define WRITE , &ThisType::
-#define READ , &ThisType::
-#define NOTIFY , &ThisType::
-#define MEMBER , &ThisType::
-
-#define W_PROPERTY2(...)  W_PROPERTY(__VA_ARGS__)  // expands the WRITE and READ macro
-
-*/
 
 
 class BTestObj  : public QObject
@@ -172,6 +167,21 @@ void tst_Basic::enumBase()
     QVERIFY(em.isValid());
     QCOMPARE(em.keyCount(), 3);
 }
+
+struct tst_Basic::SubObject : QObject {
+    W_OBJECT(SubObject)
+public:
+    void mySignal() W_SIGNAL_2(mySignal);
+};
+
+W_OBJECT_IMPL(tst_Basic::SubObject)
+
+void tst_Basic::subObject()
+{
+    QVERIFY(QMetaMethod::fromSignal(&tst_Basic::SubObject::mySignal).isValid());
+}
+
+
 
 
 QTEST_MAIN(tst_Basic)
