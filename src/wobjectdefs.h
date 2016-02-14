@@ -4,25 +4,36 @@
 #include <QtCore/qmetatype.h>
 #include <utility>
 
+// FIXME: rename this namespace
 namespace simple {
-    // FIXME default std::make_index_sequence is recursing O(N) times which is too big for big strings
+    /* The default std::make_index_sequence from libstdc++ is recursing O(N) times which is reaching
+       recursion limits level for big strings. This implementation has only O(log N) recursion */
     using std::index_sequence;
     template<size_t... I1, size_t... I2>
     index_sequence<I1... , (I2 +(sizeof...(I1)))...>
     make_index_sequence_helper_merge(index_sequence<I1...>, index_sequence<I2...>);
 
-    template<int I> struct make_index_sequence_helper {
-        using part1 = typename make_index_sequence_helper<(I+1)/2>::result;
-        using part2 = typename make_index_sequence_helper<I/2>::result;
+    template<int N> struct make_index_sequence_helper {
+        using part1 = typename make_index_sequence_helper<(N+1)/2>::result;
+        using part2 = typename make_index_sequence_helper<N/2>::result;
         using result = decltype(make_index_sequence_helper_merge(part1(), part2()));
     };
     template<> struct make_index_sequence_helper<1> { using result = index_sequence<0>; };
     template<> struct make_index_sequence_helper<0> { using result = index_sequence<>; };
-    template<int I> using make_index_sequence = typename make_index_sequence_helper<I>::result;
+    template<int N> using make_index_sequence = typename make_index_sequence_helper<N>::result;
 }
 
 
-
+/* In this namespace we find the implementation of a template binary tree container
+ * It has a similar API than std::tuple, but is stored in a binary way.
+ * the libstdc++ std::tuple recurse something like 16*N for a tuple of N elements. (Because the copy
+ * constructor uses traits for stuff like noexcept.) Which means we are quickly reaching the
+ * implementation limit of recursion. (Cannot have more than  ~16 items in a tuple)
+ * Also, a linear tuple happens to lead to very slow compilation times.
+ *
+ * So a std::tuple<T1, T2, T3, T4> is represented by a
+ * binary::tree<Node<Node<Leaf<T1>, Leaf<T2>>, Node<Leaf<T3>, Leaf<T4>>>
+ */
 namespace binary {
 
     template <typename T> struct Leaf {
@@ -90,6 +101,9 @@ namespace binary {
     template<typename T> struct tree_size { static constexpr int value = T::size; };
     //template<typename... Ts> tuple<Ts...> make_tuple(Ts... ts) { return {ts...}; }
 
+    /**
+     * tree_append(tree, T)  append an element at the end of the tree
+     */
     template<typename N>
     constexpr tree<Leaf<N>> tree_append(tree<>, N n)
     { return {{n}}; }
@@ -110,7 +124,7 @@ namespace binary {
 
 
     /**
-     *  tree_tail()  Returns a tuple with the first element removed
+     *  tree_tail()  Returns a tree with the first element removed
      */
     template<typename A, typename B>
     constexpr tree<typename Tail<A,B>::Result> tree_tail(tree<Node<A, B>> t)
@@ -128,6 +142,9 @@ namespace binary {
 
     template<int I, typename T> using tree_element_t = decltype(get<I>(std::declval<T>()));
 
+    /**
+     * tree_cat()  concatenate trees  (like tuple_cat)
+     */
     // FIXME: Should we balance?
     template<class A, class B>
     constexpr tree<Node<A,B>> tree_cat(tree<A> a, tree<B> b) { return { { a.root, b.root } }; }
