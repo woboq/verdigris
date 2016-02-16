@@ -168,7 +168,7 @@ template <typename... Args>
 struct QNonConstOverload
 {
     template <typename R, typename T>
-    Q_DECL_CONSTEXPR auto operator()(R (T::*ptr)(Args...)) const
+    constexpr auto operator()(R (T::*ptr)(Args...)) const
     { return ptr; }
 };
 
@@ -176,7 +176,7 @@ template <typename... Args>
 struct QConstOverload
 {
     template <typename R, typename T>
-    Q_DECL_CONSTEXPR auto operator()(R (T::*ptr)(Args...) const) const
+    constexpr auto operator()(R (T::*ptr)(Args...) const) const
     { return ptr; }
 };
 
@@ -187,13 +187,11 @@ struct QOverload : QConstOverload<Args...>, QNonConstOverload<Args...>
     using QNonConstOverload<Args...>::operator();
 
     template <typename R>
-    Q_DECL_CONSTEXPR auto operator()(R (*ptr)(Args...)) const
+    constexpr auto operator()(R (*ptr)(Args...)) const
     { return ptr; }
 };
 
-template <typename... Args> QOverload<Args...> qOverload = {};
-template <typename... Args> QConstOverload<Args...> qConstOverload = {};
-template <typename... Args> QNonConstOverload<Args...> qNonConstOverload = {};
+template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 
 }
 
@@ -201,19 +199,6 @@ template <typename... Args> QNonConstOverload<Args...> qNonConstOverload = {};
 /* Helpers to play with tuple or strings at compile time                                         */
 /*-----------------------------------------------------------------------------------------------*/
 
-template<std::size_t... I, std::size_t...J>
-constexpr std::index_sequence<I...,J...> operator+(std::index_sequence<I...>,std::index_sequence<J...>)
-{ return {}; }
-
-
-/**
- * ones()
- * return an index_sequence with N ones
- **/
-template<typename> struct ones_helper;
-template<std::size_t...I> struct ones_helper<std::index_sequence<I...>>
-{ using result = std::index_sequence<(void(I),1)...>; };
-template<int N> using ones = typename ones_helper<simple::make_index_sequence<N>>::result;
 
 /* Compute the sum of many integers */
 constexpr int sums() { return 0; }

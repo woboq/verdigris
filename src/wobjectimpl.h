@@ -275,8 +275,7 @@ struct EnumValuesGenerator {
             return HandleArgNames<N-1>::result(s2, tail);
         }
         template<typename Strings> static constexpr auto result(const Strings &ss, StaticStringList<> pn)
-        { return HandleArgNames<N-1>::result(ss.template add<1>(), pn); } // FIXME: use ones
-
+        { return HandleArgNames<N-1>::result(ss.template add<1>(), pn); }
     };
     template<> struct HandleArgNames<0> {
         template<typename Strings, typename PN> static constexpr auto result(const Strings &ss, PN)
