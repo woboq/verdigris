@@ -199,5 +199,4 @@ W_OBJECT_IMPL(TestTemplate2<T>, template<typename T>)
 W_OBJECT_IMPL((FunctionTemplateParameter<O,T1,F1,F2>), template<typename O, typename T1, void (O::*F1)(const T1&), void (O::*F2)(const T1&)>)
 W_OBJECT_IMPL((TemplateTemplateParameter<C1, C2, C3>), template<template<typename> class C1, template <typename> class C2, template <typename, int > class C3>)
 W_OBJECT_IMPL((MappedReducedKernel<ReducedResultType, Iterator, MapFunctor, ReduceFunctor, Reducer>), template <typename ReducedResultType, typename Iterator, typename MapFunctor, typename ReduceFunctor, typename Reducer>)
-
 W_OBJECT_IMPL(TemplateObject<T>, template<typename T>)

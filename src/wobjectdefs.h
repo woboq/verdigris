@@ -611,6 +611,21 @@ struct FriendHelper2;
         struct MetaObjectCreatorHelper;
 
 
+#if defined Q_CC_GNU && !defined Q_CC_CLANG
+// workaround gcc bug  (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=69837)
+#define W_STATE_APPEND(STATE, ...) \
+    static constexpr int W_MACRO_CONCAT(W_WORKAROUND_, __LINE__) = \
+            binary::tree_size<decltype(STATE(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1; \
+    friend constexpr auto STATE(w_number<W_MACRO_CONCAT(W_WORKAROUND_, __LINE__)> w_counter, W_ThisType **w_this) \
+        W_RETURN(binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
+#else
+#define W_STATE_APPEND(STATE, ...) \
+    friend constexpr auto STATE(w_number<binary::tree_size<decltype(STATE(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, W_ThisType **w_this) \
+        W_RETURN(binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
+#endif
+
+
+
 // public macros
 #define W_OBJECT(TYPE) \
     W_OBJECT_COMMON(TYPE) \
@@ -623,18 +638,16 @@ struct FriendHelper2;
     Q_GADGET
 
 #define W_SLOT(NAME, ...) \
-    friend constexpr auto w_SlotState(w_number<binary::tree_size<decltype(w_SlotState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, W_ThisType **w_this) \
-        W_RETURN(binary::tree_append(w_SlotState(w_counter.prev(), w_this), MetaObjectBuilder::makeMetaSlotInfo( \
+    W_STATE_APPEND(w_SlotState, MetaObjectBuilder::makeMetaSlotInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
-            W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa)))
+            W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa))
 
 #define W_INVOKABLE(NAME, ...) \
-    friend constexpr auto w_MethodState(w_number<binary::tree_size<decltype(w_MethodState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, W_ThisType **w_this) \
-        W_RETURN(binary::tree_append(w_MethodState(w_counter.prev(), w_this), MetaObjectBuilder::makeMetaMethodInfo( \
+    W_STATE_APPEND(w_MethodState, MetaObjectBuilder::makeMetaMethodInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
-            W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa)))
+            W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa))
 
 #define W_SIGNAL_1(...) \
     __VA_ARGS__
@@ -663,40 +676,34 @@ struct FriendHelper2;
 
 
 #define W_CONSTRUCTOR(...) \
-    friend constexpr auto w_ConstructorState(w_number<binary::tree_size<decltype(w_ConstructorState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, W_ThisType **w_this) \
-        W_RETURN(binary::tree_append(w_ConstructorState(w_counter.prev(), w_this), \
-            MetaObjectBuilder::makeMetaConstructorInfo<__VA_ARGS__>().setName(W_UnscopedName)))
+    W_STATE_APPEND(w_ConstructorState, \
+                   MetaObjectBuilder::makeMetaConstructorInfo<__VA_ARGS__>().setName(W_UnscopedName))
 
 #define W_PROPERTY(...) W_PROPERTY2(__VA_ARGS__) // expands the READ, WRITE, and other sub marcos
 #define W_PROPERTY2(TYPE, NAME, ...) \
-    friend constexpr auto w_PropertyState(w_number<binary::tree_size<decltype(w_PropertyState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, W_ThisType **w_this) \
-        W_RETURN(binary::tree_append(w_PropertyState(w_counter.prev(), w_this), \
-                              MetaObjectBuilder::makeMetaPropertyInfo<W_MACRO_REMOVEPAREN(TYPE)>(\
-                                    #NAME, W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE)), __VA_ARGS__)))
+    W_STATE_APPEND(w_PropertyState, \
+        MetaObjectBuilder::makeMetaPropertyInfo<W_MACRO_REMOVEPAREN(TYPE)>(\
+                            #NAME, W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE)), __VA_ARGS__))
 
 #define W_ENUM(NAME, ...) \
-    friend constexpr auto w_EnumState(w_number<binary::tree_size<decltype(w_EnumState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, W_ThisType **w_this) \
-        W_RETURN(binary::tree_append(w_EnumState(w_counter.prev(), w_this), MetaObjectBuilder::makeMetaEnumInfo<NAME,false>( \
-            #NAME, std::integer_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__)))) \
+    W_STATE_APPEND(w_EnumState, MetaObjectBuilder::makeMetaEnumInfo<NAME,false>( \
+            #NAME, std::integer_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
     Q_ENUM(NAME)
 
 template<typename T> struct QEnumOrQFlags { using Type = T; };
 template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 
 #define W_FLAG(NAME, ...) \
-    friend constexpr auto w_EnumState(w_number<binary::tree_size<decltype(w_EnumState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, W_ThisType **w_this) \
-        W_RETURN(binary::tree_append(w_EnumState(w_counter.prev(), w_this), MetaObjectBuilder::makeMetaEnumInfo<QEnumOrQFlags<NAME>::Type,true>( \
-            #NAME, std::integer_sequence<QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__)))) \
+    W_STATE_APPEND(w_EnumState, MetaObjectBuilder::makeMetaEnumInfo<QEnumOrQFlags<NAME>::Type,true>( \
+            #NAME, std::integer_sequence<QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
     Q_FLAG(NAME)
 
-#define W_CLASSINFO(A, B) \
-    friend constexpr auto w_ClassInfoState(w_number<binary::tree_size<decltype(w_ClassInfoState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, W_ThisType **w_this) \
-        W_RETURN(binary::tree_append(w_ClassInfoState(w_counter.prev(), w_this), \
-            std::pair<StaticString<sizeof(A)>, StaticString<sizeof(B)>>{ {A}, {B} }))
+    #define W_CLASSINFO(A, B) \
+        W_STATE_APPEND(w_ClassInfoState, \
+            std::pair<StaticString<sizeof(A)>, StaticString<sizeof(B)>>{ {A}, {B} })
 
 #define W_INTERFACE(A) \
-    friend constexpr auto w_InterfaceState(w_number<binary::tree_size<decltype(w_InterfaceState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, W_ThisType **w_this) \
-        W_RETURN(binary::tree_append(w_InterfaceState(w_counter.prev(), w_this), static_cast<A*>(nullptr)))
+    W_STATE_APPEND(w_InterfaceState, static_cast<A*>(nullptr))
 
 
 #define WRITE , &W_ThisType::
