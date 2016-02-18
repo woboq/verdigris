@@ -215,6 +215,53 @@ public:
 // For gadget there is also a different IMPL macro
 W_GADGET_IMPL(InvokableTutorial)
 
+/** ******************************************************************************************** **/
+/** PROPERTY **/
+
+#include <QtCore/QMap>
+
+class PropertyTutorial  : public QObject {
+    W_OBJECT(PropertyTutorial)
+
+public:
+    /** W_PROPERTY(<type>, <name> [, <flags>]*)
+
+        In addition, there are the macro READ WRITE MEMBER and so on which have been defined so
+        you can just add a comma after the type, just like in a Q_PROPERTY.
+
+        W_PROPERTY need to be put after all the seter member and co have been declared
+    */
+
+    QString m_value;
+    QString value() const { return m_value; }
+    void setValue(const QString &value) {
+        m_value = value;
+        emit valueChanged();
+    }
+    W_SIGNAL_1(void valueChanged())
+    W_SIGNAL_2(valueChanged)
+
+    // So just like in Qt only with one additional coma
+    W_PROPERTY(QString, prop1 READ value WRITE setValue NOTIFY valueChanged)
+
+    // Is equivalent to:
+    W_PROPERTY(QString, prop2, &PropertyTutorial::value, &PropertyTutorial::setValue,
+               W_Notify, &PropertyTutorial::valueChanged)
+    // The setter and getter are matched by signature. add W_Notify before the notify signal
+
+    // By member:
+    W_PROPERTY(QString, prop3 MEMBER m_value NOTIFY valueChanged)
+    //equivalent to
+    W_PROPERTY(QString, prop4, &PropertyTutorial::m_value, W_Notify, &PropertyTutorial::valueChanged)
+
+    // Optionally, you can put parentheses around the type, usefull if it contains a coma
+    QMap<int, int> m_map;
+    W_PROPERTY((QMap<int,int>), map  MEMBER m_map)
+};
+
+W_OBJECT_IMPL(PropertyTutorial)
+
+
 
 /** ******************************************************************************************** **/
 /** Enums **/
