@@ -141,6 +141,7 @@ private:
     W_SLOT(overload, (double), W_Access::Private)
     void overload(int, int) {}
     W_SLOT(overload, (int, int), W_Access::Private)
+    // Note: for curstom type that are not const reference, one must use the normalized signature
 };
 
 W_OBJECT_IMPL(SlotTutorial)
@@ -290,12 +291,54 @@ public:
 
 W_GADGET_IMPL(EnumTutorial)
 
+/** ******************************************************************************************** **/
+/** TYPE REGISTRATION **/
+
+/* Here is where the thing gets a bit more awkward:
+   The types of signals and slots need to be registered so that we can generate the function signature
+
+   To use a type as a return type or signal slot, it needs to:
+    - be a builtin QMetaType; or
+    - be registered with W_REGISTER_METATYPE; or
+    - use the overload syntax, but not with const reference.
+*/
+
+struct CustomType1;
+struct CustomType2;
+struct CustomType3;
+
+/** W_DECLARE_METATYPE(TYPE)
+   register  TYPE so it can be used as a parameter of a signal/slot or return value
+   One must use the normalized signature
+   Note: This do not implies Q_DECLARE_METATYPE, and Q_DECLARE_METATYPE does not implies this
+  */
+W_DECLARE_METATYPE(CystomType1)
+W_DECLARE_METATYPE(CystomType1*)
+W_DECLARE_METATYPE(CystomType2)
+
+class FooBar : public QObject {
+    W_OBJECT(FooBar)
+public:
+    void slot1(CystomType1 a, CustomType2 b) {}
+    W_SLOT(slot1) // OK, all arguments register with W_DECLARE_METATYPE
+
+    void slot2(CystomType1 *a, CustomType2 *b) {}
+    W_SLOT(slot2, (CustomType1*,CustomType2*)) // Need to use the overload syntax because
+                                               // CustomType2* is not registered
+
+};
+
+W_OBJECT_IMPL(FooBar)
+
+/** ******************************************************************************************** **/
+/** ** template TODO */
 
 
-
+/** ******************************************************************************************** **/
 
 
 int main() {
     MyObject o;
     aaa(&o);
+   // templ();
 }
