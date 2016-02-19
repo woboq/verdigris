@@ -1,26 +1,26 @@
 
-/*
- This file present this "fork" of coperspice.
+/**
+ This file presents a "fork" of CopperSpice.
 
- What is copperspice:
-  Copperspice is a fork of Qt 4 which has been done mainly to get rid of moc. In order to get rid
+ What is CopperSpice:
+  CopperSpice is a fork of Qt 4 which has been done mainly to get rid of moc. In order to get rid
   of moc, they changed the Qt macro to be less optimal dropped many compilers to require C++11
   (even more than what is still supported in Qt 5.7). And they made a complete, incompatible fork
   of Qt.
 
  This library:
-  It is not a fork of copperspice, but rather a re-implementation of their macro in a way that is
+  It is not a fork of CopperSpice, but rather a re-implementation of their macro in a way that is
   binary compatible with Qt.
   That is: you can write your application without needing moc, and still use it with Qt.
 
  How:
-  Copperspice generate the metaobjects at runtime. But moc generates it at compile time. I choose
+  CopperSpice generate the metaobjects at runtime. But moc generates it at compile time. I choose
   to do the same using constexpr to generate a QMetaObject at compile time.
-  I am using C++14 for simplicity because it is much more easy to handle constexpr in C++14 altough
-  I think everything should be possible in C++11.  The code is originaly taken from my previous work
+  I am using C++14 for simplicity because it is much more easy to handle constexpr in C++14 although
+  I think everything should be possible in C++11.  The code is originally taken from my previous work
   https://woboq.com/blog/reflection-in-cpp-and-qt-moc.html
   But in there i was trying to do so with the same kind of annotation that Qt does (keeping source
-  compatibility). When using uglier macro (copperspice style) we can do it without the moc.
+  compatibility). When using uglier macro (CopperSpice style) we can do it without the moc.
 
 
  Name of this library: ###
@@ -51,8 +51,8 @@
 class MyObject : public QObject
 {
     /* The W_OBJECT macro is equivalent to the Q_OBJECT macro. The difference is that it must
-       contains the class name as a parametter and need to be put before any other W_ macro in the
-       class. So it's the same as the CS_OBJECT macro from copperspice */
+       contains the class name as a parameter and need to be put before any other W_ macro in the
+       class. So it's the same as the CS_OBJECT macro from CopperSpice */
     W_OBJECT(MyObject)
 
 public /* slots */:
@@ -64,7 +64,7 @@ public /* slots */:
        just like so: */
     W_SLOT(mySlot)
     /* The W_SLOT has optional argument we will see them later. But notice how much simpler it
-       is than the two CS_SLOT_ macro.  Aslo, copperspice slot cannot be ceclared inline in the
+       is than the two CS_SLOT_ macro.  Also, CopperSpice slot cannot be declared inline in the
        class definition. */
 
 public /* signals */:
@@ -73,7 +73,7 @@ public /* signals */:
     W_SIGNAL_1(void mySignal(const QString &name))
     W_SIGNAL_2(mySignal, name)
 
-    /* Slightly more complicated than a slot. This is actually just like copperspice */
+    /* Slightly more complicated than a slot. This is actually just like CopperSpice */
 
 };
 
@@ -84,7 +84,7 @@ public /* signals */:
 // But it is better to keep them separate
 #include <wobjectimpl.h>
 
-// And now this is the macro you need to instentiate the meta object
+// And now this is the macro you need to instantiate the meta object
 // It's an additional macro compared to Qt and moc but it is required
 W_OBJECT_IMPL(MyObject)
 
@@ -106,7 +106,7 @@ class SlotTutorial : public QObject {
 
     /**
 
-       W_SLOT( <slot name> [, (<parametters types>) ]  [, <flags>]* )
+       W_SLOT( <slot name> [, (<parameters types>) ]  [, <flags>]* )
 
        The W_SLOT macro needs to be put after the slot declaration.
        The W_SLOT macro can have flags:
@@ -114,8 +114,8 @@ class SlotTutorial : public QObject {
          or W_Access::Public (the default)
        - W_Compat: for deprecated methods (equivalent of Q_MOC_COMPAT
 
-       The W_SLOT macro can optionally have a list of parametter types as second
-       argument to disambiguate or declarre types.
+       The W_SLOT macro can optionally have a list of parameter types as second
+       argument to disambiguate or declare types.
      */
 
     /* Examples: */
@@ -129,7 +129,7 @@ private:
     W_SLOT(protectedSlot, W_Access::Private)
 
 public:
-    // overloaded function needs a parametter list as second argument of the macro
+    // overloaded function needs a parameter list as second argument of the macro
     // to disambiguate
     void overload() {}
     W_SLOT(overload, ())
@@ -141,7 +141,7 @@ private:
     W_SLOT(overload, (double), W_Access::Private)
     void overload(int, int) {}
     W_SLOT(overload, (int, int), W_Access::Private)
-    // Note: for curstom type that are not const reference, one must use the normalized signature
+    // Note: for custom type that are not const reference, one must use the normalized signature
 };
 
 W_OBJECT_IMPL(SlotTutorial)
@@ -156,7 +156,7 @@ class SignalTutorial : public QObject {
     /**
 
        W_SIGNAL_1( <signal signature> )
-       W_SIGNAL_2( <signal name> [, (<parametters types>) ] , <parametters> )
+       W_SIGNAL_2( <signal name> [, (<parameters types>) ] , <parameters> )
 
        Almost Exactly like CS_SIGNAL, but
         - It is not possible to specify anything else than public signals
@@ -168,7 +168,8 @@ public:
     W_SIGNAL_1(void sig1(int a , int b))
     W_SIGNAL_2(sig1, a, b)
 
-    // technicly the W_SIGNAL_1 is not nessesary. I only have it for symetry with copperspice but
+    // ###
+    // technically the W_SIGNAL_1 is not necessary. I only have it for symmetry with CopperSpice but
     // I guess i should get rid of it.  But W_SIGNAL_2 should always come after the declaration
     // without semi colon at the end of the declaration:
     // So another way to declare a signal:
@@ -183,7 +184,7 @@ W_OBJECT_IMPL(SignalTutorial)
 
 
 /** ******************************************************************************************** **/
-/** Gadgets,  invokables, constructor **/
+/** Gadgets,  invokable, constructor **/
 
 
 class InvokableTutorial  {
@@ -198,8 +199,8 @@ public:
     W_INVOKABLE(myInvokable)
 
 
-    /** W_CONSTRUCTOR(<parametter types>)
-        for Q_INVOKABLE constructor, just pass the parametter types to this macro.
+    /** W_CONSTRUCTOR(<parameter types>)
+        for Q_INVOKABLE constructor, just pass the parameter types to this macro.
         one can have W_CONSTRUCTOR() for the default constructor even if it is implicit
      */
 
@@ -209,7 +210,7 @@ public:
 
     InvokableTutorial(void*, void* =nullptr) {}
     W_CONSTRUCTOR(void*, void*)
-    // because of tehe default argument we can also do that:  (only in this macro)
+    // because of the default argument we can also do that:  (only in this macro)
     W_CONSTRUCTOR(void*)
 };
 
@@ -230,7 +231,7 @@ public:
         In addition, there are the macro READ WRITE MEMBER and so on which have been defined so
         you can just add a comma after the type, just like in a Q_PROPERTY.
 
-        W_PROPERTY need to be put after all the seter member and co have been declared
+        W_PROPERTY need to be put after all the setter member and co have been declared
     */
 
     QString m_value;
@@ -255,13 +256,12 @@ public:
     //equivalent to
     W_PROPERTY(QString, prop4, &PropertyTutorial::m_value, W_Notify, &PropertyTutorial::valueChanged)
 
-    // Optionally, you can put parentheses around the type, usefull if it contains a coma
+    // Optionally, you can put parentheses around the type, useful if it contains a coma
     QMap<int, int> m_map;
     W_PROPERTY((QMap<int,int>), map  MEMBER m_map)
 };
 
 W_OBJECT_IMPL(PropertyTutorial)
-
 
 
 /** ******************************************************************************************** **/
@@ -347,7 +347,7 @@ template<typename T>
 class MyTemplate : public QObject {
     W_OBJECT(MyTemplate)
 public:
-    // Template class can have slots and signals that depends on the parametter:
+    // Template class can have slots and signals that depends on the parameter:
     void slot(T t) { qDebug() << "templated slot" << t; }
     W_SLOT(slot)
 
@@ -355,7 +355,7 @@ public:
     W_SIGNAL_2(signal, t)
 };
 
-//The syntax of W_OBJECT_IMPL changes a bit: as a second parametter you need to specify the template
+//The syntax of W_OBJECT_IMPL changes a bit: as a second parameter you need to specify the template
 //prefix:
 W_OBJECT_IMPL(MyTemplate<T>, template <typename T>)
 
