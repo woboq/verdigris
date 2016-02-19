@@ -1,3 +1,4 @@
+/* Copyright 2016 Olivier Goffart, Woboq GmbH */
 #pragma once
 
 #include "wobjectdefs.h"

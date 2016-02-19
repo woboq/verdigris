@@ -1,3 +1,4 @@
+/* Copyright 2016 Olivier Goffart, Woboq GmbH */
 #include <wobjectdefs.h>
 #include <QtCore/QObject>
 class tst_Basic : public QObject

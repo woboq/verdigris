@@ -1,3 +1,4 @@
+/* Copyright 2016 Olivier Goffart, Woboq GmbH */
 
 /**
  This file presents a "fork" of CopperSpice.
