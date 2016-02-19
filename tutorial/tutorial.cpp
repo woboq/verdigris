@@ -303,36 +303,93 @@ W_GADGET_IMPL(EnumTutorial)
     - use the overload syntax, but not with const reference.
 */
 
-struct CustomType1;
-struct CustomType2;
-struct CustomType3;
+struct CustomType1 {};
+struct CustomType2 {};
+struct CustomType3 {};
 
 /** W_DECLARE_METATYPE(TYPE)
    register  TYPE so it can be used as a parameter of a signal/slot or return value
    One must use the normalized signature
    Note: This do not implies Q_DECLARE_METATYPE, and Q_DECLARE_METATYPE does not implies this
   */
-W_DECLARE_METATYPE(CystomType1)
-W_DECLARE_METATYPE(CystomType1*)
-W_DECLARE_METATYPE(CystomType2)
+W_DECLARE_METATYPE(CustomType1)
+W_DECLARE_METATYPE(CustomType1*)
+W_DECLARE_METATYPE(CustomType2)
 
 class FooBar : public QObject {
     W_OBJECT(FooBar)
 public:
-    void slot1(CystomType1 a, CustomType2 b) {}
+    void slot1(CustomType1 a, CustomType2 b) {}
     W_SLOT(slot1) // OK, all arguments register with W_DECLARE_METATYPE
 
-    void slot2(CystomType1 *a, CustomType2 *b) {}
+    void slot2(CustomType1 *a, CustomType2 *b) {}
     W_SLOT(slot2, (CustomType1*,CustomType2*)) // Need to use the overload syntax because
                                                // CustomType2* is not registered
+
+    typedef int MyInt;
+    typedef CustomType1 MyCustomType1;
+
+    void slot3(FooBar::MyInt a, FooBar::MyCustomType1 b) {}
+    W_SLOT(slot3, (FooBar::MyInt,FooBar::MyCustomType1)) // Need to use the overload syntax to use
+                                                         // different type name (typedefs)
 
 };
 
 W_OBJECT_IMPL(FooBar)
 
 /** ******************************************************************************************** **/
-/** ** template TODO */
+/** TEMPLATES **/
 
+#include <QtCore/QDebug>
+
+// we can have templated class:
+template<typename T>
+class MyTemplate : public QObject {
+    W_OBJECT(MyTemplate)
+public:
+    // Template class can have slots and signals that depends on the parametter:
+    void slot(T t) { qDebug() << "templated slot" << t; }
+    W_SLOT(slot)
+
+    W_SIGNAL_1(void signal(T t))
+    W_SIGNAL_2(signal, t)
+};
+
+//The syntax of W_OBJECT_IMPL changes a bit: as a second parametter you need to specify the template
+//prefix:
+W_OBJECT_IMPL(MyTemplate<T>, template <typename T>)
+
+// When you have several template arguments:
+template<typename A, typename B> class MyTemplate2 : public QObject {
+    W_OBJECT(MyTemplate2)
+};
+// The first argument of W_OBJECT_IMPL need to be within parentheses:
+W_OBJECT_IMPL((MyTemplate2<A,B>), template<typename A, typename B>)
+
+
+void templ() {
+    // This shows that it is possible;
+    bool ok = true;
+    MyTemplate<QString> obj;
+    // old syntax
+    ok = ok && QObject::connect(&obj, SIGNAL(signal(QString)), &obj, SLOT(slot(QString)));
+    // new syntax
+    ok = ok && QObject::connect(&obj, &MyTemplate<QString>::signal, &obj, &MyTemplate<QString>::slot);
+    Q_ASSERT(ok);
+    emit obj.signal("Hallo"); // Will show the qDebug twice
+}
+
+/** ******************************************************************************************** **/
+// This show nested class:
+struct MyStruct {
+    class Nested : public QObject {
+        W_OBJECT(Nested)
+    public:
+        int foobar() {}
+        W_INVOKABLE(foobar)
+    };
+};
+W_OBJECT_IMPL(MyStruct::Nested)
 
 /** ******************************************************************************************** **/
 
@@ -340,5 +397,5 @@ W_OBJECT_IMPL(FooBar)
 int main() {
     MyObject o;
     aaa(&o);
-   // templ();
+    templ();
 }
