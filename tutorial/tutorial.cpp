@@ -71,8 +71,8 @@ public /* slots */:
 public /* signals */:
 
     // Now a signal
-    W_SIGNAL_1(void mySignal(const QString &name))
-    W_SIGNAL_2(mySignal, name)
+    void mySignal(const QString &name)
+    W_SIGNAL(mySignal, name)
 
     /* Slightly more complicated than a slot. This is actually just like CopperSpice */
 
@@ -155,10 +155,11 @@ class SignalTutorial : public QObject {
     W_OBJECT(SignalTutorial)
 
     /**
+       <signal signature>
+       W_SIGNAL( <signal name> [, (<parameters types>) ] , <parameters> )
 
-       W_SIGNAL_1( <signal signature> )
-       W_SIGNAL_2( <signal name> [, (<parameters types>) ] , <parameters> )
-
+       Unlike W_SLOT, W_SIGNAL must be placed directly after the signal signature declaration.
+       There should not be a semi collon after the signal signature.
        Almost Exactly like CS_SIGNAL, but
         - It is not possible to specify anything else than public signals
         - CS_SIGNAL_OVERLOAD is merged with W_SIGNAL_2
@@ -166,19 +167,15 @@ class SignalTutorial : public QObject {
 
 public:
     // example:
-    W_SIGNAL_1(void sig1(int a , int b))
-    W_SIGNAL_2(sig1, a, b)
+    void sig1(int a , int b)
+    W_SIGNAL(sig1, a, b)
 
-    // ###
-    // technically the W_SIGNAL_1 is not necessary. I only have it for symmetry with CopperSpice but
-    // I guess i should get rid of it.  But W_SIGNAL_2 should always come after the declaration
-    // without semi colon at the end of the declaration:
-    // So another way to declare a signal:
-    void sig2(int a, int b) W_SIGNAL_2(sig2, a, b)
+    // Or on the same line
+    void sig2(int a, int b) W_SIGNAL(sig2, a, b)
 
     // For overloaded signals:
-    W_SIGNAL_1(void overload(int a, int b))
-    W_SIGNAL_2(overload, (int, int), a, b)
+    void overload(int a, int b)
+    W_SIGNAL(overload, (int, int), a, b)
 };
 
 W_OBJECT_IMPL(SignalTutorial)
@@ -241,8 +238,8 @@ public:
         m_value = value;
         emit valueChanged();
     }
-    W_SIGNAL_1(void valueChanged())
-    W_SIGNAL_2(valueChanged)
+    void valueChanged()
+    W_SIGNAL(valueChanged)
 
     // So just like in Qt only with one additional coma
     W_PROPERTY(QString, prop1 READ value WRITE setValue NOTIFY valueChanged)
@@ -352,8 +349,8 @@ public:
     void slot(T t) { qDebug() << "templated slot" << t; }
     W_SLOT(slot)
 
-    W_SIGNAL_1(void signal(T t))
-    W_SIGNAL_2(signal, t)
+    void signal(T t)
+    W_SIGNAL(signal, t)
 };
 
 //The syntax of W_OBJECT_IMPL changes a bit: as a second parameter you need to specify the template
@@ -386,7 +383,7 @@ struct MyStruct {
     class Nested : public QObject {
         W_OBJECT(Nested)
     public:
-        int foobar() {}
+        int foobar() const { return 0; }
         W_INVOKABLE(foobar)
     };
 };

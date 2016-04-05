@@ -635,9 +635,7 @@ struct FriendHelper2;
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa))
 
-#define W_SIGNAL_1(...) \
-    __VA_ARGS__
-#define W_SIGNAL_2(NAME, ...) \
+#define W_SIGNAL(NAME, ...) \
     { \
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
         return SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
@@ -648,8 +646,8 @@ struct FriendHelper2;
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))))
 
-// Same as W_SIGNAL_2, but set the W_Compat flag
-#define W_SIGNAL_2_COMPAT(NAME, ...) \
+// Same as W_SIGNAL, but set the W_Compat flag
+#define W_SIGNAL_COMPAT(NAME, ...) \
     { \
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
         return SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
@@ -659,7 +657,6 @@ struct FriendHelper2;
         W_RETURN(binary::tree_append(w_SignalState(w_counter.prev(), w_this), MetaObjectBuilder::makeMetaSignalInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat)))
-
 
 #define W_CONSTRUCTOR(...) \
     W_STATE_APPEND(w_ConstructorState, \

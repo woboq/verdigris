@@ -85,8 +85,8 @@ public:
     W_SLOT(fire)
 
 signals:
-    W_SIGNAL_1(void fired ())
-    W_SIGNAL_2(fired)
+    void fired ()
+    W_SIGNAL(fired)
 
 public:
     Receiver *r;

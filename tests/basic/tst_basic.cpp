@@ -64,14 +64,14 @@ public:
     W_ENUM(XXX, X1, X2, X3)
 
 public: /*signals*/
-    W_SIGNAL_1(void valueChanged(const QString &s))
-    W_SIGNAL_2(valueChanged, s)
+    void valueChanged(const QString &s)
+    W_SIGNAL(valueChanged, s)
 
-    W_SIGNAL_1(void simpleSignal())
-    W_SIGNAL_2(simpleSignal)
+    void simpleSignal()
+    W_SIGNAL(simpleSignal)
 
-    W_SIGNAL_1(void signalSeveralArgs(int a, const QString &b, char * c = nullptr))
-    W_SIGNAL_2(signalSeveralArgs, a, b, c)
+    void signalSeveralArgs(int a, const QString &b, char * c = nullptr)
+    W_SIGNAL(signalSeveralArgs, a, b, c)
 
 
 public:
@@ -172,7 +172,7 @@ void tst_Basic::enumBase()
 struct tst_Basic::SubObject : QObject {
     W_OBJECT(SubObject)
 public:
-    void mySignal() W_SIGNAL_2(mySignal);
+    void mySignal() W_SIGNAL(mySignal);
 };
 
 W_OBJECT_IMPL(tst_Basic::SubObject)

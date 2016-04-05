@@ -271,10 +271,10 @@ private slots:
 
 
 signals:
-    W_SIGNAL_1(void value6Changed())
-    W_SIGNAL_2(value6Changed)
-    W_SIGNAL_1(void value7Changed(const QString &_))
-    W_SIGNAL_2(value7Changed,_)
+    void value6Changed()
+    W_SIGNAL(value6Changed)
+    void value7Changed(const QString &_)
+    W_SIGNAL(value7Changed,_)
 
 
     W_PROPERTY(EnumType, value WRITE setValue READ getValue)
@@ -500,13 +500,13 @@ public slots:
     W_SLOT(throwingSlot)
 
 signals:
-    W_SIGNAL_1(void sig0())
-    W_SIGNAL_2(sig0)
-    W_SIGNAL_1(QString sig1(QString s1))
-    W_SIGNAL_2(sig1,s1)
-    W_SIGNAL_1(void sig10(QString s1, QString s2, QString s3, QString s4, QString s5, QString s6, QString s7,
-               QString s8, QString s9, QString s10))
-    W_SIGNAL_2(sig10,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10)
+    void sig0()
+    W_SIGNAL(sig0)
+    QString sig1(QString s1)
+    W_SIGNAL(sig1,s1)
+    void sig10(QString s1, QString s2, QString s3, QString s4, QString s5, QString s6, QString s7,
+               QString s8, QString s9, QString s10)
+    W_SIGNAL(sig10,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10)
 
 protected:
     QtTestObject(QVariant) {}
@@ -944,8 +944,8 @@ public slots:
     W_SLOT(sl1)
 
 signals:
-    W_SIGNAL_1(void sig_custom(const CustomString &string))
-    W_SIGNAL_2(sig_custom,string)
+    void sig_custom(const CustomString &string)
+    W_SIGNAL(sig_custom,string)
 
 public:
     int sum;

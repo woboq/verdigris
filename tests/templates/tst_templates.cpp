@@ -35,7 +35,7 @@ class TestTemplate : public QObject {
 public:
     void mySlot(const T&) {} W_SLOT(mySlot,(const T&))
 //signals:
-    void mySignal(const T& t) W_SIGNAL_2(mySignal,(const T&), t)
+    void mySignal(const T& t) W_SIGNAL(mySignal,(const T&), t)
 };
 
 template<typename T>
@@ -45,7 +45,7 @@ class TestTemplate2 : public TestTemplate<T>
 public:
     void sl2() {} W_SLOT(sl2)
 //signals:
-    void si2() W_SIGNAL_2(si2)
+    void si2() W_SIGNAL(si2)
 };
 
 template<typename O, typename T1, void (O::*)(const T1&), void (O::*F2)(const T1&)>
@@ -55,7 +55,7 @@ class FunctionTemplateParameter : public QObject {
     W_PROPERTY(QString, member MEMBER member)
 public:
 //signals:
-    void hello() W_SIGNAL_2(hello)
+    void hello() W_SIGNAL(hello)
 };
 
 template<template<typename> class Container1, template <typename TT> class , template <typename, int > class Container3>
@@ -63,7 +63,7 @@ class TemplateTemplateParameter : public QObject {
     W_OBJECT(TemplateTemplateParameter)
 public:
 //signals:
-    void hello() W_SIGNAL_2(hello)
+    void hello() W_SIGNAL(hello)
 };
 
 template<typename, typename, typename> struct ReduceKernel{};
@@ -80,7 +80,7 @@ class MappedReducedKernel : public QObject
 {
     W_OBJECT(MappedReducedKernel)
 public: // signals:
-    void hello(Reducer*r) W_SIGNAL_2(hello,(Reducer*),r)
+    void hello(Reducer*r) W_SIGNAL(hello,(Reducer*),r)
 };
 
 Q_DECLARE_METATYPE(const QMetaObject*);
@@ -151,8 +151,8 @@ void tst_Templates::templatesMethod()
 template <typename T> class TemplateObject : public QObject  {
     W_OBJECT(TemplateObject)
 public: // signals
-    void signalTemplate(const T &t) W_SIGNAL_2(signalTemplate, t)
-    void signalString(const QString & str) W_SIGNAL_2(signalString, str)
+    void signalTemplate(const T &t) W_SIGNAL(signalTemplate, t)
+    void signalString(const QString & str) W_SIGNAL(signalString, str)
 public:
     void slotTemplate(const T &t) { result = QVariant::fromValue<T>(t); count++; }
     W_SLOT(slotTemplate)

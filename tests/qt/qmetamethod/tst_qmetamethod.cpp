@@ -145,25 +145,25 @@ public slots:
     void voidSlotNoParameterNames(bool, int);
     W_SLOT(voidSlotNoParameterNames)
 signals:
-    void voidSignal() W_SIGNAL_2(voidSignal)
-    void voidSignalVoid(void) W_SIGNAL_2(voidSignalVoid)
-    void voidSignalInt(int voidSignalIntArg) W_SIGNAL_2(voidSignalInt,voidSignalIntArg)
-    void voidSignalQReal(qreal voidSignalQRealArg) W_SIGNAL_2(voidSignalQReal,voidSignalQRealArg)
-    void voidSignalQString(const QString &voidSignalQStringArg) W_SIGNAL_2(voidSignalQString,voidSignalQStringArg)
-    void voidSignalCustomType(CustomType voidSignalCustomTypeArg) W_SIGNAL_2(voidSignalCustomType,voidSignalCustomTypeArg)
-    void voidSignalCustomUnregisteredType(CustomUnregisteredType voidSignalCustomUnregisteredTypeArg) W_SIGNAL_2(voidSignalCustomUnregisteredType,voidSignalCustomUnregisteredTypeArg)
-    bool boolSignal() W_SIGNAL_2(boolSignal)
-    qreal qrealSignal() W_SIGNAL_2(qrealSignal)
-    QString qstringSignal() W_SIGNAL_2(qstringSignal)
-    CustomType customTypeSignal() W_SIGNAL_2(customTypeSignal)
-    CustomUnregisteredType customUnregisteredTypeSignal() W_SIGNAL_2(customUnregisteredTypeSignal)
+    void voidSignal() W_SIGNAL(voidSignal)
+    void voidSignalVoid(void) W_SIGNAL(voidSignalVoid)
+    void voidSignalInt(int voidSignalIntArg) W_SIGNAL(voidSignalInt,voidSignalIntArg)
+    void voidSignalQReal(qreal voidSignalQRealArg) W_SIGNAL(voidSignalQReal,voidSignalQRealArg)
+    void voidSignalQString(const QString &voidSignalQStringArg) W_SIGNAL(voidSignalQString,voidSignalQStringArg)
+    void voidSignalCustomType(CustomType voidSignalCustomTypeArg) W_SIGNAL(voidSignalCustomType,voidSignalCustomTypeArg)
+    void voidSignalCustomUnregisteredType(CustomUnregisteredType voidSignalCustomUnregisteredTypeArg) W_SIGNAL(voidSignalCustomUnregisteredType,voidSignalCustomUnregisteredTypeArg)
+    bool boolSignal() W_SIGNAL(boolSignal)
+    qreal qrealSignal() W_SIGNAL(qrealSignal)
+    QString qstringSignal() W_SIGNAL(qstringSignal)
+    CustomType customTypeSignal() W_SIGNAL(customTypeSignal)
+    CustomUnregisteredType customUnregisteredTypeSignal() W_SIGNAL(customUnregisteredTypeSignal)
     QVariant qvariantSignalBoolIntUIntLonglongULonglongDoubleLongShortCharUlongUshortUcharFloat(
         bool boolArg, int intArg, uint uintArg, qlonglong longlongArg, qulonglong ulonglongArg, double doubleArg,
         long longArg, short shortArg, char charArg, ulong ulongArg, ushort ushortArg, uchar ucharArg, float floatArg)
-    W_SIGNAL_2(qvariantSignalBoolIntUIntLonglongULonglongDoubleLongShortCharUlongUshortUcharFloat,
+    W_SIGNAL(qvariantSignalBoolIntUIntLonglongULonglongDoubleLongShortCharUlongUshortUcharFloat,
                boolArg, intArg, uintArg, longlongArg, ulonglongArg, doubleArg,
                longArg, shortArg, charArg, ulongArg, ushortArg, ucharArg, floatArg)
-    void voidSignalNoParameterNames(bool _1, int _2) W_SIGNAL_2(voidSignalNoParameterNames, _1, _2)
+    void voidSignalNoParameterNames(bool _1, int _2) W_SIGNAL(voidSignalNoParameterNames, _1, _2)
 };
 
 MethodTestObject::MethodTestObject() {}
