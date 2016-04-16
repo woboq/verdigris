@@ -539,12 +539,6 @@ template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
 struct FriendHelper2;
 
 // private macro helpers
-
-// strignify and make a StaticStringList out of an array of arguments
-#define W_PARAM_TOSTRING(...) W_PARAM_TOSTRING2(__VA_ARGS__ ,,,,,,,,,,,,,,,,)
-#define W_PARAM_TOSTRING2(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
-    makeParamStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
-
 #define W_MACRO_EMPTY
 #define W_MACRO_EVAL(...) __VA_ARGS__
 #define W_MACRO_DELAY(X,...) X(__VA_ARGS__)
@@ -555,12 +549,16 @@ struct FriendHelper2;
 #define W_MACRO_CONCAT(A, B) W_MACRO_CONCAT2(A,B)
 #define W_MACRO_CONCAT2(A, B) A##_##_##B
 
+// strignify and make a StaticStringList out of an array of arguments
+#define W_PARAM_TOSTRING(...) W_PARAM_TOSTRING2(__VA_ARGS__ ,,,,,,,,,,,,,,,,)
+#define W_PARAM_TOSTRING2(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
+makeParamStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
+
 // remove the surrounding parentheses
 #define W_MACRO_REMOVEPAREN(A) W_MACRO_DELAY(W_MACRO_REMOVEPAREN2, W_MACRO_REMOVEPAREN_HELPER A)
 #define W_MACRO_REMOVEPAREN2(...) W_MACRO_DELAY2(W_MACRO_TAIL, W_MACRO_REMOVEPAREN_HELPER_##__VA_ARGS__)
 #define W_MACRO_REMOVEPAREN_HELPER(...) _ , __VA_ARGS__
 #define W_MACRO_REMOVEPAREN_HELPER_W_MACRO_REMOVEPAREN_HELPER ,
-
 
 // if __VA_ARGS__ is "(types), foobar"   then return just the types, otherwise return nothing
 #define W_OVERLOAD_TYPES(A, ...) W_MACRO_DELAY(W_MACRO_TAIL,W_OVERLOAD_TYPES_HELPER A)
@@ -569,14 +567,12 @@ struct FriendHelper2;
 #define W_OVERLOAD_RESOLVE(A, ...) W_MACRO_DELAY(W_MACRO_TAIL,W_OVERLOAD_RESOLVE_HELPER A)
 #define W_OVERLOAD_RESOLVE_HELPER(...) , qOverload<__VA_ARGS__>
 
-
 // remove the first argument if it is in parentheses"
 #define W_OVERLOAD_REMOVE(...) W_MACRO_DELAY(W_OVERLOAD_REMOVE2, W_OVERLOAD_REMOVE_HELPER __VA_ARGS__)
 #define W_OVERLOAD_REMOVE2(...) W_MACRO_DELAY2(W_MACRO_TAIL, W_OVERLOAD_REMOVE_HELPER_##__VA_ARGS__)
 
 #define W_OVERLOAD_REMOVE_HELPER(...) _
 #define W_OVERLOAD_REMOVE_HELPER_W_OVERLOAD_REMOVE_HELPER ,
-
 
 #define W_RETURN(R) -> decltype(R) { return R; }
 
@@ -598,7 +594,7 @@ struct FriendHelper2;
 
 
 #if defined Q_CC_GNU && !defined Q_CC_CLANG
-// workaround gcc bug  (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=69837)
+// workaround gcc bug  (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=69836)
 #define W_STATE_APPEND(STATE, ...) \
     static constexpr int W_MACRO_CONCAT(W_WORKAROUND_, __LINE__) = \
             binary::tree_size<decltype(STATE(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1; \
