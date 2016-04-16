@@ -4,11 +4,8 @@
 #include "wobjectdefs.h"
 #include <QtCore/qobject.h>
 
- template<typename T, bool X = false>   struct assert{
-     static_assert(X, "");
- };
 
-
+namespace w_internal {
 
 /** concatenate() : returns a StaticString which is the concatenation of all the strings in a StaticStringList
  *     Note:  keeps the \0 between the strings
@@ -26,7 +23,7 @@ template<typename T> constexpr auto concatenate(StaticStringList<binary::Leaf<T>
 template<typename A, typename B> constexpr auto concatenate(StaticStringList<binary::Node<A,B>> s) {
     auto a = concatenate(binary::tree<A>{s.root.a});
     auto b = concatenate(binary::tree<B>{s.root.b});
-    return concatenate_helper<simple::make_index_sequence<a.size>, simple::make_index_sequence<b.size>>::concatenate(a, b);
+    return concatenate_helper<make_index_sequence<a.size>, make_index_sequence<b.size>>::concatenate(a, b);
 }
 
 
@@ -210,7 +207,8 @@ struct PropertyGenerator {
     static constexpr auto generate(State s, Prop prop) {
         auto s2 = s.addString(prop.name);
         auto s3 = HandleType<typename Prop::PropertyType>::result(s2, prop.typeStr);
-        constexpr uint moreFlags = (QtPrivate::IsQEnumHelper<typename Prop::PropertyType>::Value ? PropertyFlags::EnumOrFlag : 0 );
+        constexpr uint moreFlags = (QtPrivate::IsQEnumHelper<typename Prop::PropertyType>::Value
+            ? uint(PropertyFlags::EnumOrFlag) : 0);
         return s3.template add<Prop::flags | moreFlags>();
     }
 };
@@ -331,7 +329,7 @@ struct ConstructorParametersGenerator {
     template<typename T, typename ObjI>
     constexpr auto generateDataArray(const ObjI &objectInfo) {
 
-        constexpr bool hasNotify = hasNotifySignal<T>(simple::make_index_sequence<ObjI::propertyCount>{});
+        constexpr bool hasNotify = hasNotifySignal<T>(make_index_sequence<ObjI::propertyCount>{});
         constexpr int classInfoOffstet = 14;
         constexpr int methodOffset = classInfoOffstet + ObjI::classInfoCount * 2;
         constexpr int propertyOffset = methodOffset + ObjI::methodCount * 5;
@@ -339,9 +337,9 @@ struct ConstructorParametersGenerator {
         constexpr int constructorOffset = enumOffset + ObjI::enumCount* 4;
         constexpr int paramIndex = constructorOffset + ObjI::constructorCount * 5 ;
         constexpr int constructorParamIndex = paramIndex +
-            paramOffset<decltype(objectInfo.methods)>(simple::make_index_sequence<ObjI::methodCount>{});
+            paramOffset<decltype(objectInfo.methods)>(make_index_sequence<ObjI::methodCount>{});
         constexpr int enumValueOffset = constructorParamIndex +
-            paramOffset<decltype(objectInfo.constructors)>(simple::make_index_sequence<ObjI::constructorCount>{});
+            paramOffset<decltype(objectInfo.constructors)>(make_index_sequence<ObjI::constructorCount>{});
 
         auto stringData = binary::tree_append(binary::tree_append(binary::tree<>{} , objectInfo.name), StaticString<1>(""));
         IntermediateState<decltype(stringData),
@@ -360,7 +358,7 @@ struct ConstructorParametersGenerator {
         auto methods = generate<MethodGenerator, paramIndex>(classInfos , objectInfo.methods);
         auto properties = generate<PropertyGenerator, 0>(methods, objectInfo.properties);
         auto notify = generateNotifySignals<T>(properties, std::integral_constant<bool, hasNotify>{},
-                                               simple::make_index_sequence<ObjI::propertyCount>{});
+                                               make_index_sequence<ObjI::propertyCount>{});
         auto enums = generate<EnumGenerator, enumValueOffset>(notify, objectInfo.enums);
         auto constructors = generate<MethodGenerator, constructorParamIndex>(enums, objectInfo.constructors);
         auto parametters = generate<MethodParametersGenerator, 0>(constructors, objectInfo.methods);
@@ -382,7 +380,7 @@ struct ConstructorParametersGenerator {
      * \param I: a index_sequence that goes from 0 to the number of string
      * \param O: a index_sequence of the offsets
      * \param N: a index_sequence of the size of each strings
-     * \param T: the MetaObjectCreatorHelper
+     * \param T: the W_MetaObjectCreatorHelper
      */
     template<typename S, typename I, typename O, typename N, typename T> struct BuildStringDataHelper;
     template<std::size_t... S, std::size_t... I, std::size_t... O, std::size_t...N, typename T>
@@ -413,13 +411,13 @@ struct ConstructorParametersGenerator {
 
     /**
      * returns the string data suitable for the QMetaObject from a list of string
-     * T is MetaObjectCreatorHelper<ObjectType>
+     * T is W_MetaObjectCreatorHelper<ObjectType>
      */
     // N... are all the sizes of the strings
     template<typename T, int... N>
     constexpr const QByteArrayData *build_string_data()  {
-        return BuildStringDataHelper<simple::make_index_sequence<sums(N...)>,
-                                     simple::make_index_sequence<sizeof...(N)>,
+        return BuildStringDataHelper<make_index_sequence<sums(N...)>,
+                                     make_index_sequence<sizeof...(N)>,
                                      typename ComputeOffsets<N...>::Result,
                                      std::index_sequence<N...>,
                                       T>
@@ -481,9 +479,9 @@ template<typename T>
 static constexpr QMetaObject createMetaObject()
 {
 
-    using Creator = typename T::MetaObjectCreatorHelper;
+    using Creator = typename T::W_MetaObjectCreatorHelper;
 
-    auto string_data = MetaObjectBuilder::build_string_data<Creator>(simple::make_index_sequence<Creator::string_data.size>());
+    auto string_data = MetaObjectBuilder::build_string_data<Creator>(make_index_sequence<Creator::string_data.size>());
     auto int_data = MetaObjectBuilder::build_int_data<typename std::remove_const<decltype(Creator::int_data)>::type>::data;
 
     return { { parentMetaObject<T>(0) , string_data , int_data,  T::qt_static_metacall, {}, {} }  };
@@ -491,7 +489,7 @@ static constexpr QMetaObject createMetaObject()
 
 
 template<typename T> static int qt_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void** _a) {
-    using Creator = typename T::MetaObjectCreatorHelper;
+    using Creator = typename T::W_MetaObjectCreatorHelper;
     _id = _o->T::W_BaseType::qt_metacall(_c, _id, _a);
     if (_id < 0)
         return _id;
@@ -517,8 +515,8 @@ template<typename T> static int qt_metacall_impl(T *_o, QMetaObject::Call _c, in
  */
 template<typename T, int I>
 static int indexOfMethod(void **func) {
-    constexpr auto f = binary::get<I>(T::MetaObjectCreatorHelper::objectInfo.methods).func;
-    using Ms = decltype(T::MetaObjectCreatorHelper::objectInfo.methods);
+    constexpr auto f = binary::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.methods).func;
+    using Ms = decltype(T::W_MetaObjectCreatorHelper::objectInfo.methods);
     if ((binary::tree_element_t<I,Ms>::flags & 0xc) == W_MethodType::Signal.value
         && f == *reinterpret_cast<decltype(f)*>(func))
         return I;
@@ -528,7 +526,7 @@ static int indexOfMethod(void **func) {
 template <typename T, int I>
 static void invokeMethod(T *_o, int _id, void **_a) {
     if (_id == I) {
-        constexpr auto f = binary::get<I>(T::MetaObjectCreatorHelper::objectInfo.methods).func;
+        constexpr auto f = binary::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.methods).func;
         using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
         P::template call<typename P::Arguments, typename P::ReturnType>(f, _o, _a);
     }
@@ -537,7 +535,7 @@ static void invokeMethod(T *_o, int _id, void **_a) {
 template <typename T, int I>
 static void registerMethodArgumentType(int _id, void **_a) {
     if (_id == I) {
-        constexpr auto f = binary::get<I>(T::MetaObjectCreatorHelper::objectInfo.methods).func;
+        constexpr auto f = binary::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.methods).func;
         using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
         auto _t = QtPrivate::ConnectionTypes<typename P::Arguments>::types();
         uint arg = *reinterpret_cast<int*>(_a[1]);
@@ -550,7 +548,7 @@ template<typename T, int I>
 static void propertyOp(T *_o, QMetaObject::Call _c, int _id, void **_a) {
     if (_id != I)
         return;
-    constexpr auto p = binary::get<I>(T::MetaObjectCreatorHelper::objectInfo.properties);
+    constexpr auto p = binary::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.properties);
     using Type = typename decltype(p)::PropertyType;
     switch(+_c) {
     case QMetaObject::ReadProperty:
@@ -585,8 +583,8 @@ static void propertyOp(T *_o, QMetaObject::Call _c, int _id, void **_a) {
 template<typename T, int I>
 static void createInstance(int _id, void** _a) {
     if (_id == I) {
-        constexpr auto m = binary::get<I>(T::MetaObjectCreatorHelper::objectInfo.constructors);
-        m.template createInstance<T>(_a, simple::make_index_sequence<decltype(m)::argCount>{});
+        constexpr auto m = binary::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.constructors);
+        m.template createInstance<T>(_a, make_index_sequence<decltype(m)::argCount>{});
     }
 }
 
@@ -645,7 +643,7 @@ static void *qt_metacast_impl(T *o, const char *_clname, std::index_sequence<Int
     if (_clname == QByteArray(sd))
         return o;
     void *result = nullptr;
-    nop((metaCast(result, o, _clname, binary::get<InterfaceI>(T::MetaObjectCreatorHelper::objectInfo.interfaces)),0)...);
+    nop((metaCast(result, o, _clname, binary::get<InterfaceI>(T::W_MetaObjectCreatorHelper::objectInfo.interfaces)),0)...);
     return result ? result : o->T::W_BaseType::qt_metacast(_clname);
 }
 
@@ -655,42 +653,44 @@ template<typename T> constexpr auto createMetaObject() {  return FriendHelper2::
 template<typename T, typename... Ts> auto qt_metacall_impl(Ts &&...args)
 {  return FriendHelper2::qt_metacall_impl<T>(std::forward<Ts>(args)...); }
 template<typename T> auto qt_metacast_impl(T *o, const char *_clname) {
-    using ObjI = decltype(T::MetaObjectCreatorHelper::objectInfo);
+    using ObjI = decltype(T::W_MetaObjectCreatorHelper::objectInfo);
     return FriendHelper2::qt_metacast_impl<T>(o, _clname,
-                                              simple::make_index_sequence<ObjI::interfaceCount>{});
+                                              make_index_sequence<ObjI::interfaceCount>{});
 }
 
 template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args) {
-    using ObjI = decltype(T::MetaObjectCreatorHelper::objectInfo);
+    using ObjI = decltype(T::W_MetaObjectCreatorHelper::objectInfo);
     return FriendHelper2::qt_static_metacall_impl<T>(std::forward<Ts>(args)...,
-                                                     simple::make_index_sequence<ObjI::methodCount>{},
-                                                     simple::make_index_sequence<ObjI::constructorCount>{},
-                                                     simple::make_index_sequence<ObjI::propertyCount>{});
+                                                     make_index_sequence<ObjI::methodCount>{},
+                                                     make_index_sequence<ObjI::constructorCount>{},
+                                                     make_index_sequence<ObjI::propertyCount>{});
 }
 
+} // w_internal
 
 #define W_OBJECT_IMPL_COMMON(TYPE, ...) \
-    __VA_ARGS__ struct W_MACRO_REMOVEPAREN(TYPE)::MetaObjectCreatorHelper { \
+    __VA_ARGS__ struct W_MACRO_REMOVEPAREN(TYPE)::W_MetaObjectCreatorHelper { \
         static constexpr auto objectInfo = \
-            MetaObjectBuilder::makeObjectInfo<W_MACRO_REMOVEPAREN(TYPE)>(W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE))); \
-        static constexpr auto data = MetaObjectBuilder::generateDataArray<W_MACRO_REMOVEPAREN(TYPE)>(objectInfo); \
+            w_internal::MetaObjectBuilder::makeObjectInfo<W_MACRO_REMOVEPAREN(TYPE)>(W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE))); \
+        static constexpr auto data = w_internal::MetaObjectBuilder::generateDataArray<W_MACRO_REMOVEPAREN(TYPE)>(objectInfo); \
         static constexpr auto string_data = data.first; \
         static constexpr auto int_data = data.second; \
     }; \
-    __VA_ARGS__ constexpr const QMetaObject W_MACRO_REMOVEPAREN(TYPE)::staticMetaObject = createMetaObject<W_MACRO_REMOVEPAREN(TYPE)>();
+    __VA_ARGS__ constexpr const QMetaObject W_MACRO_REMOVEPAREN(TYPE)::staticMetaObject = \
+        w_internal::createMetaObject<W_MACRO_REMOVEPAREN(TYPE)>();
 
 #define W_OBJECT_IMPL(TYPE, ...) \
     W_OBJECT_IMPL_COMMON(TYPE, __VA_ARGS__) \
     __VA_ARGS__ void W_MACRO_REMOVEPAREN(TYPE)::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
-    { qt_static_metacall_impl<W_MACRO_REMOVEPAREN(TYPE)>(_o, _c, _id, _a); } \
+    { w_internal::qt_static_metacall_impl<W_MACRO_REMOVEPAREN(TYPE)>(_o, _c, _id, _a); } \
     __VA_ARGS__ const QMetaObject *W_MACRO_REMOVEPAREN(TYPE)::metaObject() const  { return &staticMetaObject; } \
     __VA_ARGS__ void *W_MACRO_REMOVEPAREN(TYPE)::qt_metacast(const char *_clname) \
-    { return qt_metacast_impl<W_MACRO_REMOVEPAREN(TYPE)>(this, _clname); } \
+    { return w_internal::qt_metacast_impl<W_MACRO_REMOVEPAREN(TYPE)>(this, _clname); } \
     __VA_ARGS__ int W_MACRO_REMOVEPAREN(TYPE)::qt_metacall(QMetaObject::Call _c, int _id, void** _a) \
-    { return qt_metacall_impl<W_MACRO_REMOVEPAREN(TYPE)>(this, _c, _id, _a); }
+    { return w_internal::qt_metacall_impl<W_MACRO_REMOVEPAREN(TYPE)>(this, _c, _id, _a); }
 
 
 #define W_GADGET_IMPL(TYPE, ...) \
     W_OBJECT_IMPL_COMMON(TYPE, __VA_ARGS__) \
     __VA_ARGS__ void W_MACRO_REMOVEPAREN(TYPE)::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
-    { qt_static_metacall_impl<W_MACRO_REMOVEPAREN(TYPE)>(reinterpret_cast<W_MACRO_REMOVEPAREN(TYPE)*>(_o), _c, _id, _a); }
+    { w_internal::qt_static_metacall_impl<W_MACRO_REMOVEPAREN(TYPE)>(reinterpret_cast<W_MACRO_REMOVEPAREN(TYPE)*>(_o), _c, _id, _a); }

@@ -6,23 +6,22 @@
 #include <utility>
 
 // FIXME: rename this namespace
-namespace simple {
-    /* The default std::make_index_sequence from libstdc++ is recursing O(N) times which is reaching
-       recursion limits level for big strings. This implementation has only O(log N) recursion */
-    using std::index_sequence;
-    template<size_t... I1, size_t... I2>
-    index_sequence<I1... , (I2 +(sizeof...(I1)))...>
-    make_index_sequence_helper_merge(index_sequence<I1...>, index_sequence<I2...>);
+namespace w_internal {
+/* The default std::make_index_sequence from libstdc++ is recursing O(N) times which is reaching
+    recursion limits level for big strings. This implementation has only O(log N) recursion */
+using std::index_sequence;
+template<size_t... I1, size_t... I2>
+index_sequence<I1... , (I2 +(sizeof...(I1)))...>
+make_index_sequence_helper_merge(index_sequence<I1...>, index_sequence<I2...>);
 
-    template<int N> struct make_index_sequence_helper {
-        using part1 = typename make_index_sequence_helper<(N+1)/2>::result;
-        using part2 = typename make_index_sequence_helper<N/2>::result;
-        using result = decltype(make_index_sequence_helper_merge(part1(), part2()));
-    };
-    template<> struct make_index_sequence_helper<1> { using result = index_sequence<0>; };
-    template<> struct make_index_sequence_helper<0> { using result = index_sequence<>; };
-    template<int N> using make_index_sequence = typename make_index_sequence_helper<N>::result;
-}
+template<int N> struct make_index_sequence_helper {
+    using part1 = typename make_index_sequence_helper<(N+1)/2>::result;
+    using part2 = typename make_index_sequence_helper<N/2>::result;
+    using result = decltype(make_index_sequence_helper_merge(part1(), part2()));
+};
+template<> struct make_index_sequence_helper<1> { using result = index_sequence<0>; };
+template<> struct make_index_sequence_helper<0> { using result = index_sequence<>; };
+template<int N> using make_index_sequence = typename make_index_sequence_helper<N>::result;
 
 
 /* In this namespace we find the implementation of a template binary tree container
@@ -158,44 +157,6 @@ namespace binary {
     constexpr auto tree_cat(A a, B b, C c, D... d) { return tree_cat(a, tree_cat(b, c, d...)); }
 }
 
-
-
-
-
-// Qt should have that https://codereview.qt-project.org/139583
-inline namespace ShouldBeInQt {
-
-template <typename... Args>
-struct QNonConstOverload
-{
-    template <typename R, typename T>
-    constexpr auto operator()(R (T::*ptr)(Args...)) const
-    { return ptr; }
-};
-
-template <typename... Args>
-struct QConstOverload
-{
-    template <typename R, typename T>
-    constexpr auto operator()(R (T::*ptr)(Args...) const) const
-    { return ptr; }
-};
-
-template <typename... Args>
-struct QOverload : QConstOverload<Args...>, QNonConstOverload<Args...>
-{
-    using QConstOverload<Args...>::operator();
-    using QNonConstOverload<Args...>::operator();
-
-    template <typename R>
-    constexpr auto operator()(R (*ptr)(Args...)) const
-    { return ptr; }
-};
-
-template <typename... Args> constexpr QOverload<Args...> qOverload = {};
-
-}
-
 /*-----------------------------------------------------------------------------------------------*/
 /* Helpers to play with tuple or strings at compile time                                         */
 /*-----------------------------------------------------------------------------------------------*/
@@ -219,7 +180,7 @@ template<int N> struct StaticString  {
     StaticStringArray<N> data;
     template <std::size_t... I>
     constexpr StaticString(StaticStringArray<N> &d, std::index_sequence<I...>) : data{ (d[I])... } { }
-    constexpr StaticString(StaticStringArray<N> &d) : StaticString(d, simple::make_index_sequence<N>()) {}
+    constexpr StaticString(StaticStringArray<N> &d) : StaticString(d, w_internal::make_index_sequence<N>()) {}
     static constexpr int size = N;
     constexpr char operator[](int p) const { return data[p]; }
 };
@@ -246,57 +207,8 @@ constexpr auto addString(const StaticStringList<T> &l, const StaticString<L> & s
 
 /*-----------*/
 
-template<int N = 255> struct w_number : public w_number<N - 1> {
-    static constexpr int value = N;
-    static constexpr w_number<N-1> prev() { return {}; }
-};
-template<> struct w_number<0> { static constexpr int value = 0; };
-
-template <int N> struct W_MethodFlags { static constexpr int value = N; };
-
-
-// Mirror of QMetaMethod::Access
-namespace W_Access {
-/* // From qmetaobject_p.h MethodFlags
-    AccessPrivate = 0x00,
-    AccessProtected = 0x01,
-    AccessPublic = 0x02,
-    AccessMask = 0x03, //mask
- */
-    constexpr W_MethodFlags<0x00> Public{};
-    constexpr W_MethodFlags<0x01> Protected{};
-    constexpr W_MethodFlags<0x02> Private{}; // Note: Public and Private are reversed so Public can be the default
-}
-
-// Mirror of QMetaMethod::MethodType
-namespace W_MethodType {
-/*  // From qmetaobject_p.h MethodFlags
-    MethodMethod = 0x00,
-    MethodSignal = 0x04,
-    MethodSlot = 0x08,
-    MethodConstructor = 0x0c,
-    MethodTypeMask = 0x0c,
-*/
-    constexpr W_MethodFlags<0x00> Method{};
-    constexpr W_MethodFlags<0x04> Signal{};
-    constexpr W_MethodFlags<0x08> Slot{};
-    constexpr W_MethodFlags<0x0c> Constructor{};
-}
-
-/*
-MethodCompatibility = 0x10,
-MethodCloned = 0x20,
-MethodScriptable = 0x40,
-MethodRevisioned = 0x80
-*/
-
-constexpr W_MethodFlags<0x10> W_Compat{};
-constexpr W_MethodFlags<0x40> W_Scriptable{};
-
-
-namespace MetaObjectBuilder {
-// From qmetaobject_p.h
-enum PropertyFlags  {
+    // From qmetaobject_p.h
+enum class PropertyFlags  {
     Invalid = 0x00000000,
     Readable = 0x00000001,
     Writable = 0x00000002,
@@ -319,27 +231,67 @@ enum PropertyFlags  {
     Notify = 0x00400000,
     Revisioned = 0x00800000
 };
+constexpr uint operator|(uint a, PropertyFlags b) { return a | uint(b); }
+
+template<int N = 255> struct w_number : public w_number<N - 1> {
+    static constexpr int value = N;
+    static constexpr w_number<N-1> prev() { return {}; }
+};
+template<> struct w_number<0> { static constexpr int value = 0; };
+
+template <int N> struct W_MethodFlags { static constexpr int value = N; };
+
+
+} // w_internal
+
+
+// Mirror of QMetaMethod::Access
+namespace W_Access {
+/* // From qmetaobject_p.h MethodFlags
+    AccessPrivate = 0x00,
+    AccessProtected = 0x01,
+    AccessPublic = 0x02,
+    AccessMask = 0x03, //mask
+ */
+    constexpr w_internal::W_MethodFlags<0x00> Public{};
+    constexpr w_internal::W_MethodFlags<0x01> Protected{};
+    constexpr w_internal::W_MethodFlags<0x02> Private{}; // Note: Public and Private are reversed so Public can be the default
 }
 
+// Mirror of QMetaMethod::MethodType
+namespace W_MethodType {
+    /*  // From qmetaobject_p.h MethodFlags
+        MethodMethod = 0x00,
+        MethodSignal = 0x04,
+        MethodSlot = 0x08,
+        MethodConstructor = 0x0c,
+        MethodTypeMask = 0x0c,
+    */
+    constexpr w_internal::W_MethodFlags<0x00> Method{};
+    constexpr w_internal::W_MethodFlags<0x04> Signal{};
+    constexpr w_internal::W_MethodFlags<0x08> Slot{};
+    constexpr w_internal::W_MethodFlags<0x0c> Constructor{};
+}
+
+/*
+MethodCompatibility = 0x10,
+MethodCloned = 0x20,
+MethodScriptable = 0x40,
+MethodRevisioned = 0x80
+*/
+constexpr w_internal::W_MethodFlags<0x10> W_Compat{};
+constexpr w_internal::W_MethodFlags<0x40> W_Scriptable{};
 constexpr struct {} W_Notify{};
 constexpr struct {} W_Reset{};
-constexpr std::integral_constant<int, MetaObjectBuilder::Constant> W_Constant{};
-constexpr std::integral_constant<int, MetaObjectBuilder::Final> W_Final{};
+constexpr std::integral_constant<int, int(w_internal::PropertyFlags::Constant)> W_Constant{};
+constexpr std::integral_constant<int, int(w_internal::PropertyFlags::Final)> W_Final{};
 
+namespace w_internal {
 
 // workaround to avoid leading coma in macro that can optionaly take a flag
 struct W_RemoveLeadingComa { constexpr W_MethodFlags<0> operator+() const { return {}; } };
 template <typename T> constexpr T operator+(T &&t, W_RemoveLeadingComa) { return t; }
 constexpr W_RemoveLeadingComa W_removeLeadingComa{};
-
-template<typename T> struct W_TypeRegistery { enum { registered = false }; };
-#define W_DECLARE_METATYPE(...) template<> struct W_TypeRegistery<__VA_ARGS__> { \
-    enum { registered = true }; \
-    static constexpr auto name = makeStaticString(#__VA_ARGS__); \
-};
-
-W_DECLARE_METATYPE(char*)
-W_DECLARE_METATYPE(const char*)
 
 /*-----------------------------------------------------------------------------------------------*/
 /* The code that generates the QMetaObject                                                          */
@@ -532,11 +484,52 @@ struct SignalImplementation<void (Obj::*)(Args...) const, Idx>{
     }
 };
 
-
-
 template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
 
 struct FriendHelper2;
+
+} // w_internal
+
+#if QT_VERSION < QT_VERSION_CHECK(5, 7, 0)
+inline namespace w_ShouldBeInQt {
+// This is already in Qt 5.7
+template <typename... Args>
+struct QNonConstOverload
+{
+    template <typename R, typename T>
+    constexpr auto operator()(R (T::*ptr)(Args...)) const
+    { return ptr; }
+};
+template <typename... Args>
+struct QConstOverload
+{
+    template <typename R, typename T>
+    constexpr auto operator()(R (T::*ptr)(Args...) const) const
+    { return ptr; }
+};
+template <typename... Args>
+struct QOverload : QConstOverload<Args...>, QNonConstOverload<Args...>
+{
+    using QConstOverload<Args...>::operator();
+    using QNonConstOverload<Args...>::operator();
+
+    template <typename R>
+    constexpr auto operator()(R (*ptr)(Args...)) const
+    { return ptr; }
+};
+template <typename... Args> constexpr QOverload<Args...> qOverload = {};
+}
+#endif // Qt < 5.7
+
+namespace w_internal { template<typename T> struct W_TypeRegistery { enum { registered = false }; }; }
+#define W_DECLARE_METATYPE(...) namespace w_internal { \
+    template<> struct W_TypeRegistery<__VA_ARGS__> { \
+    enum { registered = true }; \
+    static constexpr auto name = makeStaticString(#__VA_ARGS__); \
+  };}
+W_DECLARE_METATYPE(char*)
+W_DECLARE_METATYPE(const char*)
+
 
 // private macro helpers
 #define W_MACRO_EMPTY
@@ -552,7 +545,7 @@ struct FriendHelper2;
 // strignify and make a StaticStringList out of an array of arguments
 #define W_PARAM_TOSTRING(...) W_PARAM_TOSTRING2(__VA_ARGS__ ,,,,,,,,,,,,,,,,)
 #define W_PARAM_TOSTRING2(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
-makeParamStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
+    w_internal::makeParamStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
 
 // remove the surrounding parentheses
 #define W_MACRO_REMOVEPAREN(A) W_MACRO_DELAY(W_MACRO_REMOVEPAREN2, W_MACRO_REMOVEPAREN_HELPER A)
@@ -579,40 +572,41 @@ makeParamStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14
 #define W_OBJECT_COMMON(TYPE) \
         using W_ThisType = TYPE; /* This is the only reason why we need TYPE */ \
         static constexpr auto &W_UnscopedName = #TYPE; /* so we don't repeat it in W_CONSTRUCTOR */ \
-        friend struct MetaObjectBuilder::FriendHelper1; \
-        friend struct ::FriendHelper2; \
-        friend constexpr binary::tree<> w_SlotState(w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr binary::tree<> w_SignalState(w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr binary::tree<> w_MethodState(w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr binary::tree<> w_ConstructorState(w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr binary::tree<> w_PropertyState(w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr binary::tree<> w_EnumState(w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr binary::tree<> w_ClassInfoState(w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr binary::tree<> w_InterfaceState(w_number<0>, W_ThisType**) { return {}; } \
+        friend struct w_internal::MetaObjectBuilder::FriendHelper1; \
+        friend struct w_internal::FriendHelper2; \
+        friend constexpr w_internal::binary::tree<> w_SlotState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr w_internal::binary::tree<> w_SignalState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr w_internal::binary::tree<> w_MethodState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr w_internal::binary::tree<> w_ConstructorState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr w_internal::binary::tree<> w_PropertyState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr w_internal::binary::tree<> w_EnumState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr w_internal::binary::tree<> w_ClassInfoState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr w_internal::binary::tree<> w_InterfaceState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
     public: \
-        struct MetaObjectCreatorHelper;
+        struct W_MetaObjectCreatorHelper;
 
 
 #if defined Q_CC_GNU && !defined Q_CC_CLANG
 // workaround gcc bug  (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=69836)
 #define W_STATE_APPEND(STATE, ...) \
     static constexpr int W_MACRO_CONCAT(W_WORKAROUND_, __LINE__) = \
-            binary::tree_size<decltype(STATE(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1; \
-    friend constexpr auto STATE(w_number<W_MACRO_CONCAT(W_WORKAROUND_, __LINE__)> w_counter, W_ThisType **w_this) \
-        W_RETURN(binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
+        w_internal::binary::tree_size<decltype(STATE(w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1; \
+    friend constexpr auto STATE(w_internal::w_number<W_MACRO_CONCAT(W_WORKAROUND_, __LINE__)> w_counter, W_ThisType **w_this) \
+        W_RETURN(w_internal::binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
 #else
 #define W_STATE_APPEND(STATE, ...) \
-    friend constexpr auto STATE(w_number<binary::tree_size<decltype(STATE(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, W_ThisType **w_this) \
-        W_RETURN(binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
+    friend constexpr auto STATE(w_internal::w_number<binary::tree_size<decltype(STATE( \
+            w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, \
+            W_ThisType **w_this) \
+        W_RETURN(w_internal::binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
 #endif
-
 
 
 // public macros
 #define W_OBJECT(TYPE) \
     W_OBJECT_COMMON(TYPE) \
     public: \
-        using W_BaseType = decltype(getParentObjectHelper(&W_ThisType::qt_metacast)); \
+        using W_BaseType = decltype(w_internal::getParentObjectHelper(&W_ThisType::qt_metacast)); \
     Q_OBJECT
 
 #define W_GADGET(TYPE) \
@@ -620,66 +614,74 @@ makeParamStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14
     Q_GADGET
 
 #define W_SLOT(NAME, ...) \
-    W_STATE_APPEND(w_SlotState, MetaObjectBuilder::makeMetaSlotInfo( \
+    W_STATE_APPEND(w_SlotState, w_internal::MetaObjectBuilder::makeMetaSlotInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
-            W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa))
+            W_OVERLOAD_REMOVE(__VA_ARGS__) +w_internal::W_removeLeadingComa))
 
 #define W_INVOKABLE(NAME, ...) \
-    W_STATE_APPEND(w_MethodState, MetaObjectBuilder::makeMetaMethodInfo( \
+    W_STATE_APPEND(w_MethodState, w_internal::MetaObjectBuilder::makeMetaMethodInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
-            W_OVERLOAD_REMOVE(__VA_ARGS__) +W_removeLeadingComa))
+            W_OVERLOAD_REMOVE(__VA_ARGS__) +w_internal::W_removeLeadingComa))
 
 #define W_SIGNAL(NAME, ...) \
     { \
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
-        return SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
+        return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
     } \
-    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = binary::tree_size<decltype(w_SignalState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value; \
-    friend constexpr auto w_SignalState(w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> w_counter, W_ThisType **w_this) \
-        W_RETURN(binary::tree_append(w_SignalState(w_counter.prev(), w_this), MetaObjectBuilder::makeMetaSignalInfo( \
-            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
-            W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))))
+    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = \
+        w_internal::binary::tree_size<decltype(w_SignalState(w_internal::w_number<>{}, \
+                                            static_cast<W_ThisType**>(nullptr)))>::value; \
+    friend constexpr auto w_SignalState(w_internal::w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> w_counter, W_ThisType **w_this) \
+        W_RETURN(w_internal::binary::tree_append(w_SignalState(w_counter.prev(), w_this), \
+            w_internal::MetaObjectBuilder::makeMetaSignalInfo( \
+                W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
+                W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))))
 
 // Same as W_SIGNAL, but set the W_Compat flag
 #define W_SIGNAL_COMPAT(NAME, ...) \
     { \
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
-        return SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
+        return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
     } \
-    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = binary::tree_size<decltype(w_SignalState(w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value; \
-    friend constexpr auto w_SignalState(w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> w_counter, W_ThisType **w_this) \
-        W_RETURN(binary::tree_append(w_SignalState(w_counter.prev(), w_this), MetaObjectBuilder::makeMetaSignalInfo( \
-            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
-            W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat)))
+    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = \
+        w_internal::binary::tree_size<decltype(w_SignalState(w_internal::w_number<>{}, \
+                                            static_cast<W_ThisType**>(nullptr)))>::value; \
+    friend constexpr auto w_SignalState(w_internal::w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> w_counter, W_ThisType **w_this) \
+        W_RETURN(w_internal::binary::tree_append(w_SignalState(w_counter.prev(), w_this), \
+            w_internal::MetaObjectBuilder::makeMetaSignalInfo( \
+                W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
+                W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat)))
 
 #define W_CONSTRUCTOR(...) \
     W_STATE_APPEND(w_ConstructorState, \
-                   MetaObjectBuilder::makeMetaConstructorInfo<__VA_ARGS__>().setName(W_UnscopedName))
+                   w_internal::MetaObjectBuilder::makeMetaConstructorInfo<__VA_ARGS__>().setName(W_UnscopedName))
 
 #define W_PROPERTY(...) W_PROPERTY2(__VA_ARGS__) // expands the READ, WRITE, and other sub marcos
 #define W_PROPERTY2(TYPE, NAME, ...) \
     W_STATE_APPEND(w_PropertyState, \
-        MetaObjectBuilder::makeMetaPropertyInfo<W_MACRO_REMOVEPAREN(TYPE)>(\
+        w_internal::MetaObjectBuilder::makeMetaPropertyInfo<W_MACRO_REMOVEPAREN(TYPE)>(\
                             #NAME, W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE)), __VA_ARGS__))
 
 #define W_ENUM(NAME, ...) \
-    W_STATE_APPEND(w_EnumState, MetaObjectBuilder::makeMetaEnumInfo<NAME,false>( \
+    W_STATE_APPEND(w_EnumState, w_internal::MetaObjectBuilder::makeMetaEnumInfo<NAME,false>( \
             #NAME, std::integer_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
     Q_ENUM(NAME)
 
+namespace w_internal {
 template<typename T> struct QEnumOrQFlags { using Type = T; };
 template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
+}
 
 #define W_FLAG(NAME, ...) \
-    W_STATE_APPEND(w_EnumState, MetaObjectBuilder::makeMetaEnumInfo<QEnumOrQFlags<NAME>::Type,true>( \
-            #NAME, std::integer_sequence<QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
+    W_STATE_APPEND(w_EnumState, w_internal::MetaObjectBuilder::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type,true>( \
+            #NAME, std::integer_sequence<w_internal::QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
     Q_FLAG(NAME)
 
-    #define W_CLASSINFO(A, B) \
-        W_STATE_APPEND(w_ClassInfoState, \
-            std::pair<StaticString<sizeof(A)>, StaticString<sizeof(B)>>{ {A}, {B} })
+#define W_CLASSINFO(A, B) \
+    W_STATE_APPEND(w_ClassInfoState, \
+        std::pair<w_internal::StaticString<sizeof(A)>, w_internal::StaticString<sizeof(B)>>{ {A}, {B} })
 
 #define W_INTERFACE(A) \
     W_STATE_APPEND(w_InterfaceState, static_cast<A*>(nullptr))
