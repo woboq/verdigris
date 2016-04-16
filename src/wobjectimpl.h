@@ -85,70 +85,64 @@ constexpr int getSignalIndex(F func, Ms ms) {
 }
 
 
-        /** Holds information about a class,  includeing all the properties and methods */
-    template<int NameLength, typename Methods, typename Constructors, typename Properties,
-             typename Enums, typename ClassInfos, typename Interfaces, int SignalCount>
-    struct ObjectInfo {
-        StaticString<NameLength> name;
-        Methods methods;
-        Constructors constructors;
-        Properties properties;
-        Enums enums;
-        ClassInfos classInfos;
-        Interfaces interfaces;
+    /** Holds information about a class,  includeing all the properties and methods */
+template<int NameLength, typename Methods, typename Constructors, typename Properties,
+            typename Enums, typename ClassInfos, typename Interfaces, int SignalCount>
+struct ObjectInfo {
+    StaticString<NameLength> name;
+    Methods methods;
+    Constructors constructors;
+    Properties properties;
+    Enums enums;
+    ClassInfos classInfos;
+    Interfaces interfaces;
 
-        static constexpr int methodCount = binary::tree_size<Methods>::value;
-        static constexpr int constructorCount = binary::tree_size<Constructors>::value;
-        static constexpr int propertyCount = binary::tree_size<Properties>::value;
-        static constexpr int enumCount = binary::tree_size<Enums>::value;
-        static constexpr int classInfoCount = binary::tree_size<ClassInfos>::value;
-        static constexpr int interfaceCount = binary::tree_size<Interfaces>::value;
-        static constexpr int signalCount = SignalCount;
-    };
-
-struct FriendHelper1 { /* FIXME */
-
-    template<typename T, int I>
-    struct ResolveNotifySignal {
-        static constexpr auto propertyInfo = w_PropertyState(w_number<>{},static_cast<T**>(nullptr));
-        static constexpr auto property = binary::get<I>(propertyInfo);
-        static constexpr bool hasNotify = !getSignalIndexHelperCompare(property.notify, nullptr);
-        static constexpr int signalIndex = !hasNotify ? -1 :
-        getSignalIndex(property.notify, w_SignalState(w_number<>{},static_cast<T**>(nullptr)));
-        static_assert(signalIndex >= 0 || !hasNotify, "NOTIFY signal not registered as a signal");
-    };
-
-    /** Construct a ObjectInfo with just the name */
-    template<typename T, int N>
-    static constexpr auto makeObjectInfo(StaticStringArray<N> &name) {
-        constexpr auto sigState = w_SignalState(w_number<>{}, static_cast<T**>(nullptr));
-        constexpr auto methodInfo = binary::tree_cat(sigState, w_SlotState(w_number<>{}, static_cast<T**>(nullptr)),
-                                                     w_MethodState(w_number<>{}, static_cast<T**>(nullptr)));
-        constexpr auto constructorInfo = w_ConstructorState(w_number<>{}, static_cast<T**>(nullptr));
-        constexpr auto propertyInfo = w_PropertyState(w_number<>{}, static_cast<T**>(nullptr));
-        constexpr auto enumInfo = w_EnumState(w_number<>{}, static_cast<T**>(nullptr));
-        constexpr auto classInfo = w_ClassInfoState(w_number<>{}, static_cast<T**>(nullptr));
-        constexpr auto interfaceInfo = w_InterfaceState(w_number<>{}, static_cast<T**>(nullptr));
-        constexpr int sigCount = binary::tree_size<decltype(sigState)>::value;
-        return ObjectInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo),
-                          decltype(enumInfo), decltype(classInfo), decltype(interfaceInfo), sigCount>
-            { {name}, methodInfo, constructorInfo, propertyInfo, enumInfo, classInfo, interfaceInfo };
-    }
+    static constexpr int methodCount = binary::tree_size<Methods>::value;
+    static constexpr int constructorCount = binary::tree_size<Constructors>::value;
+    static constexpr int propertyCount = binary::tree_size<Properties>::value;
+    static constexpr int enumCount = binary::tree_size<Enums>::value;
+    static constexpr int classInfoCount = binary::tree_size<ClassInfos>::value;
+    static constexpr int interfaceCount = binary::tree_size<Interfaces>::value;
+    static constexpr int signalCount = SignalCount;
 };
 
-    template<typename T, int N>
-    constexpr auto makeObjectInfo(StaticStringArray<N> &name) { return FriendHelper1::makeObjectInfo<T>(name); }
+template<typename T, int I>
+struct ResolveNotifySignal {
+    static constexpr auto propertyInfo = w_PropertyState(w_number<>{},static_cast<T**>(nullptr));
+    static constexpr auto property = binary::get<I>(propertyInfo);
+    static constexpr bool hasNotify = !getSignalIndexHelperCompare(property.notify, nullptr);
+    static constexpr int signalIndex = !hasNotify ? -1 :
+    getSignalIndex(property.notify, w_SignalState(w_number<>{},static_cast<T**>(nullptr)));
+    static_assert(signalIndex >= 0 || !hasNotify, "NOTIFY signal not registered as a signal");
+};
+
+/** Construct a ObjectInfo with just the name */
+template<typename T, int N>
+static constexpr auto makeObjectInfo(StaticStringArray<N> &name) {
+    constexpr auto sigState = w_SignalState(w_number<>{}, static_cast<T**>(nullptr));
+    constexpr auto methodInfo = binary::tree_cat(sigState, w_SlotState(w_number<>{}, static_cast<T**>(nullptr)),
+                                                    w_MethodState(w_number<>{}, static_cast<T**>(nullptr)));
+    constexpr auto constructorInfo = w_ConstructorState(w_number<>{}, static_cast<T**>(nullptr));
+    constexpr auto propertyInfo = w_PropertyState(w_number<>{}, static_cast<T**>(nullptr));
+    constexpr auto enumInfo = w_EnumState(w_number<>{}, static_cast<T**>(nullptr));
+    constexpr auto classInfo = w_ClassInfoState(w_number<>{}, static_cast<T**>(nullptr));
+    constexpr auto interfaceInfo = w_InterfaceState(w_number<>{}, static_cast<T**>(nullptr));
+    constexpr int sigCount = binary::tree_size<decltype(sigState)>::value;
+    return ObjectInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo),
+                        decltype(enumInfo), decltype(classInfo), decltype(interfaceInfo), sigCount>
+        { {name}, methodInfo, constructorInfo, propertyInfo, enumInfo, classInfo, interfaceInfo };
+}
 
 template <typename T, typename State, std::size_t... I>
 static constexpr auto generateNotifySignals(State s, std::true_type, std::index_sequence<I...>)
-{ return s.template add<std::max(0, FriendHelper1::ResolveNotifySignal<T, I>::signalIndex)...>(); }
+{ return s.template add<std::max(0, ResolveNotifySignal<T, I>::signalIndex)...>(); }
 template <typename T, typename State, std::size_t... I>
 static constexpr auto generateNotifySignals(State s, std::false_type, std::index_sequence<I...>)
 { return s; }
 
 template <typename T, std::size_t... I>
 static constexpr bool hasNotifySignal(std::index_sequence<I...>)
-{ return sums(FriendHelper1::ResolveNotifySignal<T, I>::hasNotify...); }
+{ return sums(ResolveNotifySignal<T, I>::hasNotify...); }
 
 
 
@@ -466,14 +460,13 @@ struct ConstructorParametersGenerator {
     inline void propReset(T...) {}
 }
 
-struct FriendHelper2 {
 
 template<typename T>
 static constexpr auto parentMetaObject(int) W_RETURN(&T::W_BaseType::staticMetaObject)
-
 template<typename T>
 static constexpr auto parentMetaObject(...) { return nullptr; }
 
+struct FriendHelper {
 
 template<typename T>
 static constexpr QMetaObject createMetaObject()
@@ -649,18 +642,18 @@ static void *qt_metacast_impl(T *o, const char *_clname, std::index_sequence<Int
 
 };
 
-template<typename T> constexpr auto createMetaObject() {  return FriendHelper2::createMetaObject<T>(); }
+template<typename T> constexpr auto createMetaObject() {  return FriendHelper::createMetaObject<T>(); }
 template<typename T, typename... Ts> auto qt_metacall_impl(Ts &&...args)
-{  return FriendHelper2::qt_metacall_impl<T>(std::forward<Ts>(args)...); }
+{  return FriendHelper::qt_metacall_impl<T>(std::forward<Ts>(args)...); }
 template<typename T> auto qt_metacast_impl(T *o, const char *_clname) {
     using ObjI = decltype(T::W_MetaObjectCreatorHelper::objectInfo);
-    return FriendHelper2::qt_metacast_impl<T>(o, _clname,
+    return FriendHelper::qt_metacast_impl<T>(o, _clname,
                                               make_index_sequence<ObjI::interfaceCount>{});
 }
 
 template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args) {
     using ObjI = decltype(T::W_MetaObjectCreatorHelper::objectInfo);
-    return FriendHelper2::qt_static_metacall_impl<T>(std::forward<Ts>(args)...,
+    return FriendHelper::qt_static_metacall_impl<T>(std::forward<Ts>(args)...,
                                                      make_index_sequence<ObjI::methodCount>{},
                                                      make_index_sequence<ObjI::constructorCount>{},
                                                      make_index_sequence<ObjI::propertyCount>{});

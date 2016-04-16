@@ -442,8 +442,6 @@ namespace MetaObjectBuilder {
                     StaticStringArray<NameLength> &name, std::integer_sequence<T, Values...>, Names names) {
         return { {name}, names };
     }
-
-struct FriendHelper1;
 }
 
 template<typename Func, int Idx> struct SignalImplementation {};
@@ -486,7 +484,7 @@ struct SignalImplementation<void (Obj::*)(Args...) const, Idx>{
 
 template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
 
-struct FriendHelper2;
+struct FriendHelper;
 
 } // w_internal
 
@@ -572,8 +570,7 @@ W_DECLARE_METATYPE(const char*)
 #define W_OBJECT_COMMON(TYPE) \
         using W_ThisType = TYPE; /* This is the only reason why we need TYPE */ \
         static constexpr auto &W_UnscopedName = #TYPE; /* so we don't repeat it in W_CONSTRUCTOR */ \
-        friend struct w_internal::MetaObjectBuilder::FriendHelper1; \
-        friend struct w_internal::FriendHelper2; \
+        friend struct w_internal::FriendHelper; \
         friend constexpr w_internal::binary::tree<> w_SlotState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
         friend constexpr w_internal::binary::tree<> w_SignalState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
         friend constexpr w_internal::binary::tree<> w_MethodState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
