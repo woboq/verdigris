@@ -320,7 +320,7 @@ namespace MetaObjectBuilder {
     { return { f, {name}, paramTypes, {} }; }
 
     template<typename F, int N, typename ParamTypes, typename ParamNames, int... Flags>
-    constexpr MetaMethodInfo<F, N, sums(Flags...) | W_MethodType::Signal.value | W_Access::Public.value,
+    constexpr MetaMethodInfo<F, N, sums(Flags...) | W_MethodType::Signal.value,
                              ParamTypes, ParamNames>
     makeMetaSignalInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes,
                        const ParamNames &paramNames, W_MethodFlags<Flags>...)
@@ -568,7 +568,7 @@ W_DECLARE_METATYPE(const char*)
 #define W_RETURN(R) -> decltype(R) { return R; }
 
 #define W_OBJECT_COMMON(TYPE) \
-        using W_ThisType = TYPE; /* This is the only reason why we need TYPE */ \
+        using W_ThisType = TYPE; \
         static constexpr auto &W_UnscopedName = #TYPE; /* so we don't repeat it in W_CONSTRUCTOR */ \
         friend struct w_internal::FriendHelper; \
         friend constexpr w_internal::binary::tree<> w_SlotState(w_internal::w_number<0>, W_ThisType**) { return {}; } \

@@ -3,7 +3,6 @@
 /**
  This file presents a "fork" of CopperSpice.
 
- What is CopperSpice:
   CopperSpice is a fork of Qt 4 which has been done mainly to get rid of moc. In order to get rid
   of moc, they changed the Qt macro to be less optimal dropped many compilers to require C++11
   (even more than what is still supported in Qt 5.7). And they made a complete, incompatible fork
@@ -20,17 +19,14 @@
   I am using C++14 for simplicity because it is much more easy to handle constexpr in C++14 although
   I think everything should be possible in C++11.  The code is originally taken from my previous work
   https://woboq.com/blog/reflection-in-cpp-and-qt-moc.html
-  But in there i was trying to do so with the same kind of annotation that Qt does (keeping source
+  But in there I was trying to do so with the same kind of annotation that Qt does (keeping source
   compatibility). When using uglier macro (CopperSpice style) we can do it without the moc.
 
 
  Name of this library: ###
   currently, all the macro and identifier starts with W_ or w_.
   the 'W' stands for Woboq.
-  I did not find a real name and once one is found, things should be moved in a namespace and macro
-  renamed.
 
- Code:
  */
 
 
@@ -38,43 +34,38 @@
 /** INTRODUCTION **/
 
 // In a header file you would include the wobjectdefs.h header
+// This is equivalent to the qobjectdefs.h header
 #include <wobjectdefs.h>
-//### The name 'wobjectdefs' is taken from the name qobjectdefs. But perhaps it should have a better name?
 
 // And because you will inherit from QObject you also need to QObject header
 #include <QObject>
 
-//### Should QObject be included by wobjectdefs?  If you inherit from anything else you need another
-//    header. And also you can have Q_GADGET.
-
-
 // Now declare your class:
 class MyObject : public QObject
 {
-    /* The W_OBJECT macro is equivalent to the Q_OBJECT macro. The difference is that it must
+    /** The W_OBJECT macro is equivalent to the Q_OBJECT macro. The difference is that it must
        contains the class name as a parameter and need to be put before any other W_ macro in the
        class. So it's the same as the CS_OBJECT macro from CopperSpice */
     W_OBJECT(MyObject)
 
 public /* slots */:
-    
-    //Here we declare a slot:
+
+    // Here we declare a slot:
     void mySlot(const QString &name) { qDebug("hello %s", qPrintable(name));  }
     /* If you're going to use the new connection syntax, no need to do anything else for slots.
        But if you want to use the other connection syntax, or QML, you need to register the slot
        just like so: */
     W_SLOT(mySlot)
-    /* The W_SLOT has optional argument we will see them later. But notice how much simpler it
+    /* The W_SLOT has optional arguments we will see them later. But notice how much simpler it
        is than the two CS_SLOT_ macro.  Also, CopperSpice slot cannot be declared inline in the
        class definition. */
 
 public /* signals */:
 
-    // Now a signal
+    // Now a signal:
     void mySignal(const QString &name)
     W_SIGNAL(mySignal, name)
-
-    /* Slightly more complicated than a slot. This is actually just like CopperSpice */
+    /* Note the absence of semi colon after the signal declaration */
 
 };
 
@@ -89,7 +80,7 @@ public /* signals */:
 // It's an additional macro compared to Qt and moc but it is required
 W_OBJECT_IMPL(MyObject)
 
-// That's it. our MyObject is a QObject that can be used in QML or connected
+// That's it. MyObject is a QObject that can be used in QML or connected
 void aaa(MyObject *obj1) {
     bool ok = true;
     // new syntax
@@ -160,9 +151,6 @@ class SignalTutorial : public QObject {
 
        Unlike W_SLOT, W_SIGNAL must be placed directly after the signal signature declaration.
        There should not be a semi collon after the signal signature.
-       Almost Exactly like CS_SIGNAL, but
-        - It is not possible to specify anything else than public signals
-        - CS_SIGNAL_OVERLOAD is merged with W_SIGNAL_2
      */
 
 public:
@@ -226,7 +214,7 @@ class PropertyTutorial  : public QObject {
 public:
     /** W_PROPERTY(<type>, <name> [, <flags>]*)
 
-        In addition, there are the macro READ WRITE MEMBER and so on which have been defined so
+        There are the macro READ WRITE MEMBER and so on which have been defined so
         you can just add a comma after the type, just like in a Q_PROPERTY.
 
         W_PROPERTY need to be put after all the setter member and co have been declared
@@ -241,7 +229,7 @@ public:
     void valueChanged()
     W_SIGNAL(valueChanged)
 
-    // So just like in Qt only with one additional coma
+    // So just like in Qt only with one additional coma  after the type
     W_PROPERTY(QString, prop1 READ value WRITE setValue NOTIFY valueChanged)
 
     // Is equivalent to:
@@ -278,8 +266,8 @@ public:
 
     W_ENUM(MyEnum, Blue, Red, Green, Yellow)
 
-    // CS_ENUM is a bit better, but i don't believe this works with complex expression like
-    // "Blue + Green*3".
+    // CS_ENUM is a bit better, but i don't believe CopperSpice works with complex expressions
+    // such as "Blue + Green*3".
 
     // W_ENUM is currently limited to 16 enum values.
     // enum class are not yet supported
@@ -378,7 +366,7 @@ void templ() {
 }
 
 /** ******************************************************************************************** **/
-// This show nested class:
+// Nested classes are possible:
 struct MyStruct {
     class Nested : public QObject {
         W_OBJECT(Nested)
@@ -390,7 +378,6 @@ struct MyStruct {
 W_OBJECT_IMPL(MyStruct::Nested)
 
 /** ******************************************************************************************** **/
-
 
 int main() {
     MyObject o;
