@@ -592,7 +592,7 @@ W_DECLARE_METATYPE(const char*)
         W_RETURN(w_internal::binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
 #else
 #define W_STATE_APPEND(STATE, ...) \
-    friend constexpr auto STATE(w_internal::w_number<binary::tree_size<decltype(STATE( \
+    friend constexpr auto STATE(w_internal::w_number<w_internal::binary::tree_size<decltype(STATE( \
             w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, \
             W_ThisType **w_this) \
         W_RETURN(w_internal::binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
