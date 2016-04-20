@@ -1,0 +1,10 @@
+This library can be used to create QObject with signals and slots or properties without the need of moc.
+It works by using different macro to declare the signals and slot.
+
+Tested with Qt 5.6 but should work with earlier version of Qt 5
+Requires a C++14 capable compiler.
+
+For the documentation, see the tutorial.
+
+
+
