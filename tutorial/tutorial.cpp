@@ -287,7 +287,7 @@ W_GADGET_IMPL(EnumTutorial)
 
    To use a type as a return type or signal slot parameter, it needs to:
     - be a builtin QMetaType; or
-    - be registered with W_REGISTER_METATYPE; or
+    - be registered with W_REGISTER_ARGTYPE; or
     - use the overload syntax, but not with const reference.
 */
 
@@ -295,22 +295,20 @@ struct CustomType1 {};
 struct CustomType2 {};
 struct CustomType3 {};
 
-/** W_DECLARE_METATYPE(TYPE)
+/** W_REGISTER_ARGTYPE(TYPE)
    register  TYPE so it can be used as a parameter of a signal/slot or return value
    One must use the normalized signature.
    Note: This does not imply Q_DECLARE_METATYPE, and Q_DECLARE_METATYPE does not implies this
-
-   //FIXME! renome W_DECLARE_ARGTYPE
   */
-W_DECLARE_METATYPE(CustomType1)
-W_DECLARE_METATYPE(CustomType1*)
-W_DECLARE_METATYPE(CustomType2)
+W_REGISTER_ARGTYPE(CustomType1)
+W_REGISTER_ARGTYPE(CustomType1*)
+W_REGISTER_ARGTYPE(CustomType2)
 
 class FooBar : public QObject {
     W_OBJECT(FooBar)
 public:
     void slot1(CustomType1 a, CustomType2 b) {}
-    W_SLOT(slot1) // OK, all arguments register with W_DECLARE_METATYPE
+    W_SLOT(slot1) // OK, all arguments register with W_REGISTER_ARGTYPE
 
     void slot2(CustomType1 *a, CustomType2 *b) {}
     W_SLOT(slot2, (CustomType1*,CustomType2*)) // Need to use the overload syntax because

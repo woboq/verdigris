@@ -26,8 +26,8 @@ struct MyStruct2 {};
 
 Q_DECLARE_METATYPE(MyStruct)
 Q_DECLARE_METATYPE(MyStruct*)
-W_DECLARE_METATYPE(MyStruct)
-W_DECLARE_METATYPE(MyStruct*)
+W_REGISTER_ARGTYPE(MyStruct)
+W_REGISTER_ARGTYPE(MyStruct*)
 
 template<typename T, int I = 5 + 4, bool = (I > 5), class S = void>
 class TestTemplate : public QObject {
@@ -192,7 +192,7 @@ void tst_Templates::connectTemplate()
 
 QTEST_MAIN(tst_Templates)
 
-W_DECLARE_METATYPE(ReduceKernel<Functor,Functor,int>*)
+W_REGISTER_ARGTYPE(ReduceKernel<Functor,Functor,int>*)
 
 #include <wobjectimpl.h>
 W_OBJECT_IMPL(tst_Templates)

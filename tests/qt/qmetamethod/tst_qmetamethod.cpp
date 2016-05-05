@@ -53,10 +53,10 @@ private slots:
 
 struct CustomType { };
 Q_DECLARE_METATYPE(CustomType)
-W_DECLARE_METATYPE(CustomType)
+W_REGISTER_ARGTYPE(CustomType)
 
 struct CustomUnregisteredType { };
-W_DECLARE_METATYPE(CustomUnregisteredType)
+W_REGISTER_ARGTYPE(CustomUnregisteredType)
 
 Q_DECLARE_METATYPE(QMetaMethod::Access)
 Q_DECLARE_METATYPE(QMetaMethod::MethodType)

@@ -520,13 +520,13 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 #endif // Qt < 5.7
 
 namespace w_internal { template<typename T> struct W_TypeRegistery { enum { registered = false }; }; }
-#define W_DECLARE_METATYPE(...) namespace w_internal { \
+#define W_REGISTER_ARGTYPE(...) namespace w_internal { \
     template<> struct W_TypeRegistery<__VA_ARGS__> { \
     enum { registered = true }; \
     static constexpr auto name = makeStaticString(#__VA_ARGS__); \
   };}
-W_DECLARE_METATYPE(char*)
-W_DECLARE_METATYPE(const char*)
+W_REGISTER_ARGTYPE(char*)
+W_REGISTER_ARGTYPE(const char*)
 
 
 // private macro helpers

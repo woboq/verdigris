@@ -57,11 +57,11 @@
 
 #include <wobjectimpl.h>
 
-W_DECLARE_METATYPE(int&)
-W_DECLARE_METATYPE(short&)
-W_DECLARE_METATYPE(bool&)
-W_DECLARE_METATYPE(QObject)
-W_DECLARE_METATYPE(QObject&)
+W_REGISTER_ARGTYPE(int&)
+W_REGISTER_ARGTYPE(short&)
+W_REGISTER_ARGTYPE(bool&)
+W_REGISTER_ARGTYPE(QObject)
+W_REGISTER_ARGTYPE(QObject&)
 
 
 class tst_QObject : public QObject
@@ -1425,11 +1425,11 @@ struct CustomType
 };
 
 Q_DECLARE_METATYPE(CustomType*)
-W_DECLARE_METATYPE(CustomType*)
+W_REGISTER_ARGTYPE(CustomType*)
 Q_DECLARE_METATYPE(CustomType)
-W_DECLARE_METATYPE(CustomType)
+W_REGISTER_ARGTYPE(CustomType)
 
-W_DECLARE_METATYPE(QList<CustomType>)
+W_REGISTER_ARGTYPE(QList<CustomType>)
 
 class QCustomTypeChecker: public QObject
 {
@@ -2505,27 +2505,27 @@ struct Struct { };
 class Class { };
 template <typename T> class Template { };
 
-W_DECLARE_METATYPE(uint*)
-W_DECLARE_METATYPE(ulong*)
-W_DECLARE_METATYPE(const uint*)
-W_DECLARE_METATYPE(const ulong*)
-W_DECLARE_METATYPE(Struct)
-W_DECLARE_METATYPE(Class)
-W_DECLARE_METATYPE(Enum)
-W_DECLARE_METATYPE(Struct*)
-W_DECLARE_METATYPE(Class*)
-W_DECLARE_METATYPE(Enum*)
-W_DECLARE_METATYPE(const Struct*)
-W_DECLARE_METATYPE(const Class*)
-W_DECLARE_METATYPE(const Enum*)
-W_DECLARE_METATYPE(const Struct*const*)
-W_DECLARE_METATYPE(const Class*const*)
-W_DECLARE_METATYPE(const Enum*const*)
-W_DECLARE_METATYPE(Template<Class&>&)
-W_DECLARE_METATYPE(Template<const Class&>)
-W_DECLARE_METATYPE(Class*const&)
-W_DECLARE_METATYPE(Template<int>)
-W_DECLARE_METATYPE(Template<const int>)
+W_REGISTER_ARGTYPE(uint*)
+W_REGISTER_ARGTYPE(ulong*)
+W_REGISTER_ARGTYPE(const uint*)
+W_REGISTER_ARGTYPE(const ulong*)
+W_REGISTER_ARGTYPE(Struct)
+W_REGISTER_ARGTYPE(Class)
+W_REGISTER_ARGTYPE(Enum)
+W_REGISTER_ARGTYPE(Struct*)
+W_REGISTER_ARGTYPE(Class*)
+W_REGISTER_ARGTYPE(Enum*)
+W_REGISTER_ARGTYPE(const Struct*)
+W_REGISTER_ARGTYPE(const Class*)
+W_REGISTER_ARGTYPE(const Enum*)
+W_REGISTER_ARGTYPE(const Struct*const*)
+W_REGISTER_ARGTYPE(const Class*const*)
+W_REGISTER_ARGTYPE(const Enum*const*)
+W_REGISTER_ARGTYPE(Template<Class&>&)
+W_REGISTER_ARGTYPE(Template<const Class&>)
+W_REGISTER_ARGTYPE(Class*const&)
+W_REGISTER_ARGTYPE(Template<int>)
+W_REGISTER_ARGTYPE(Template<const int>)
 
 
 class NormalizeObject : public QObject
@@ -5121,9 +5121,9 @@ void tst_QObject::connectConvert()
     QCOMPARE(var, obj.var);
 }
 
-W_DECLARE_METATYPE(QString&)
-W_DECLARE_METATYPE(bool*)
-W_DECLARE_METATYPE(QString*)
+W_REGISTER_ARGTYPE(QString&)
+W_REGISTER_ARGTYPE(bool*)
+W_REGISTER_ARGTYPE(QString*)
 
 
 class ConnectWithReferenceObject : public QObject {
@@ -5391,7 +5391,7 @@ void tst_QObject::connectManyArguments()
 }
 
 class ForwardDeclared;
-W_DECLARE_METATYPE(ForwardDeclared)
+W_REGISTER_ARGTYPE(ForwardDeclared)
 
 class ForwardDeclareArguments : public QObject
 {
@@ -5417,7 +5417,7 @@ public:
     NoDefaultConstructor(int) {}
 };
 
-W_DECLARE_METATYPE(NoDefaultConstructor)
+W_REGISTER_ARGTYPE(NoDefaultConstructor)
 
 class NoDefaultContructorArguments : public QObject
 {
@@ -5484,7 +5484,7 @@ public:
     };
 };
 
-W_DECLARE_METATYPE(ReturnValue*)
+W_REGISTER_ARGTYPE(ReturnValue*)
 
 QString someFunctionReturningString(int i) {
     return '\'' + QString::number(i) + '\'';
@@ -6208,7 +6208,7 @@ struct CountedStruct
     GetSenderObject *sender;
 };
 
-W_DECLARE_METATYPE(CountedStruct)
+W_REGISTER_ARGTYPE(CountedStruct)
 
 void tst_QObject::disconnectDoesNotLeakFunctor()
 {

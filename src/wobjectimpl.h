@@ -186,7 +186,7 @@ struct MethodGenerator {
         template<typename Strings, typename TypeStr = int>
         static constexpr auto result(const Strings &ss, TypeStr = {}) {
             return ss.addTypeString(W_TypeRegistery<T>::name);
-            static_assert(W_TypeRegistery<T>::registered, "Please Register T with W_DECLARE_METATYPE");
+            static_assert(W_TypeRegistery<T>::registered, "Please Register T with W_REGISTER_ARGTYPE");
         }
         template<typename Strings, int N>
         static constexpr auto result(const Strings &ss, StaticString<N> typeStr,
