@@ -48,6 +48,12 @@ public:
     // And the body must be empty with the exception of the W_SIGNAL macro.
     // Also it is not allowed to put that outside of the class definition in the .cpp file or so.
 
+    // Option 4: longer macro: put the declaration as the first argument
+    W_SIGNAL(void clicked(bool checked), clicked, checked)
+    // can also be wrapped as
+    W_SIGNAL(void clicked(bool checked),
+             clicked, checked)
+
 
     // In every cases, if the user add a semicolon too many, or do something wrong, the error message
     // will be a very ugly messages about template something being wrong in the instentation of the macro.
@@ -56,6 +62,7 @@ public:
     // Option 1  is the simplest to write but the fact that you must omit the semicolon in annoying.
     // Option 2 looks ugly but is what copperspice do.
     // Option 3 looks nice but is strange for the declaration of a signal.
+    // Option 4 is nice too but it gets awkward a macro with that many arguments.
 
     // What do you say?
 };
