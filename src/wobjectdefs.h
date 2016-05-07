@@ -1,6 +1,8 @@
 /* Copyright 2016 Olivier Goffart, Woboq GmbH */
 #pragma once
 
+#ifndef Q_MOC_RUN // don't define anything when moc is run
+
 #include <QtCore/qobjectdefs.h>
 #include <QtCore/qmetatype.h>
 #include <utility>
@@ -530,7 +532,6 @@ namespace w_internal { template<typename T> struct W_TypeRegistery { enum { regi
 W_REGISTER_ARGTYPE(char*)
 W_REGISTER_ARGTYPE(const char*)
 
-
 // private macro helpers
 #define W_MACRO_EMPTY
 #define W_MACRO_EVAL(...) __VA_ARGS__
@@ -694,3 +695,5 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 #define MEMBER , &W_ThisType::
 #define CONSTANT , W_Constant
 #define FINAL , W_Final
+
+#endif // Q_MOC_RUN
