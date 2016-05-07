@@ -482,7 +482,9 @@ struct SignalImplementation<void (Obj::*)(Args...) const, Idx>{
     }
 };
 
-template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
+// Helper for W_BaseType.
+// Needs to return a reference to support abstract classes
+template<typename T> T &getParentObjectHelper(void* (T::*)(const char*));
 
 struct FriendHelper;
 
@@ -603,7 +605,8 @@ W_REGISTER_ARGTYPE(const char*)
 #define W_OBJECT(TYPE) \
     W_OBJECT_COMMON(TYPE) \
     public: \
-        using W_BaseType = decltype(w_internal::getParentObjectHelper(&W_ThisType::qt_metacast)); \
+        using W_BaseType = std::remove_reference_t<decltype(\
+            w_internal::getParentObjectHelper(&W_ThisType::qt_metacast))>; \
     Q_OBJECT
 
 #define W_GADGET(TYPE) \
