@@ -523,16 +523,10 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 }
 #endif // Qt < 5.7
 
-namespace w_internal { template<typename T> struct W_TypeRegistery { enum { registered = false }; }; }
-#define W_REGISTER_ARGTYPE(...) namespace w_internal { \
-    template<> struct W_TypeRegistery<__VA_ARGS__> { \
-    enum { registered = true }; \
-    static constexpr auto name = makeStaticString(#__VA_ARGS__); \
-  };}
-W_REGISTER_ARGTYPE(char*)
-W_REGISTER_ARGTYPE(const char*)
+//
+// private macros
 
-// private macro helpers
+// usual helpers for preprocessor programming
 #define W_MACRO_EMPTY
 #define W_MACRO_EVAL(...) __VA_ARGS__
 #define W_MACRO_DELAY(X,...) X(__VA_ARGS__)
@@ -601,7 +595,7 @@ W_REGISTER_ARGTYPE(const char*)
         W_RETURN(w_internal::binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
 #endif
 
-
+//
 // public macros
 #define W_OBJECT(TYPE) \
     W_OBJECT_COMMON(TYPE) \
@@ -627,7 +621,7 @@ W_REGISTER_ARGTYPE(const char*)
             W_OVERLOAD_REMOVE(__VA_ARGS__) +w_internal::W_removeLeadingComa))
 
 #define W_SIGNAL(NAME, ...) \
-    { \
+    { /* W_SIGNAL need to be placed directly after the signal declaration, without semicolon. */\
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
         return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
     } \
@@ -695,5 +689,14 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 #define MEMBER , &W_ThisType::
 #define CONSTANT , W_Constant
 #define FINAL , W_Final
+
+namespace w_internal { template<typename T> struct W_TypeRegistery { enum { registered = false }; }; }
+#define W_REGISTER_ARGTYPE(...) namespace w_internal { \
+    template<> struct W_TypeRegistery<__VA_ARGS__> { \
+    enum { registered = true }; \
+    static constexpr auto name = makeStaticString(#__VA_ARGS__); \
+  };}
+W_REGISTER_ARGTYPE(char*)
+W_REGISTER_ARGTYPE(const char*)
 
 #endif // Q_MOC_RUN
