@@ -699,4 +699,15 @@ namespace w_internal { template<typename T> struct W_TypeRegistery { enum { regi
 W_REGISTER_ARGTYPE(char*)
 W_REGISTER_ARGTYPE(const char*)
 
-#endif // Q_MOC_RUN
+#else // Q_MOC_RUN
+// just to avoid parse errors when moc is run over things that it should ignore
+#define W_SIGNAL(...)        ;
+#define W_SIGNAL_COMPAT(...) ;
+#define W_PROPERTY(...)
+#define W_SLOT(...)
+#define W_CLASSINFO(...)
+#define W_INTERFACE(...)
+#define W_CONSTRUCTOR(...)
+#define W_FLAG(...)
+#define W_ENUM(...)
+#endif

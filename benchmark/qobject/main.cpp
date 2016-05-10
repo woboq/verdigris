@@ -43,12 +43,6 @@ Q_OBJECT
 private slots:
     void signal_slot_benchmark();
     void signal_slot_benchmark_data();
-    void qproperty_benchmark_data();
-    void qproperty_benchmark();
-    void dynamic_property_benchmark();
-    void connect_disconnect_benchmark_data();
-    void connect_disconnect_benchmark();
-    void receiver_destroyed_benchmark();
 };
 
 struct Functor {
@@ -58,15 +52,25 @@ struct Functor {
 void QObjectBenchmark::signal_slot_benchmark_data()
 {
     QTest::addColumn<int>("type");
-    QTest::newRow("simple function") << 0;
-    QTest::newRow("single signal/slot") << 1;
-    QTest::newRow("multi signal/slot") << 2;
-    QTest::newRow("unconnected signal") << 3;
-    QTest::newRow("single signal/ptr") << 4;
-    QTest::newRow("functor") << 5;
+    QTest::addColumn<bool>("w");
+    QTest::newRow("simple function") << 0    << false;
+    QTest::newRow("single signal/slot") << 1 << false;
+    QTest::newRow("multi signal/slot") << 2  << false;
+    QTest::newRow("unconnected signal") << 3 << false;
+    QTest::newRow("single signal/ptr") << 4  << false;
+    QTest::newRow("functor") << 5            << false;
+
+    QTest::newRow("w simple function") << 0    << true;
+    QTest::newRow("w single signal/slot") << 1 << true;
+    QTest::newRow("w multi signal/slot") << 2  << true;
+    QTest::newRow("w unconnected signal") << 3 << true;
+    QTest::newRow("w single signal/ptr") << 4  << true;
+    QTest::newRow("w functor") << 5            << true;
+
 }
 
-void QObjectBenchmark::signal_slot_benchmark()
+template<typename Object>
+void signal_slot_benchmark()
 {
     QFETCH(int, type);
 
@@ -127,110 +131,11 @@ void QObjectBenchmark::signal_slot_benchmark()
     }
 }
 
-void QObjectBenchmark::qproperty_benchmark_data()
+void QObjectBenchmark::signal_slot_benchmark()
 {
-    QTest::addColumn<QByteArray>("name");
-    const QMetaObject *mo = &QTreeView::staticMetaObject;
-    for (int i = 0; i < mo->propertyCount(); ++i) {
-        QMetaProperty prop = mo->property(i);
-        QTest::newRow(prop.name()) << QByteArray(prop.name());
-    }
-}
-
-void QObjectBenchmark::qproperty_benchmark()
-{
-    QFETCH(QByteArray, name);
-    const char *p = name.constData();
-    QTreeView obj;
-    QVariant v = obj.property(p);
-    QBENCHMARK {
-        obj.setProperty(p, v);
-        (void)obj.property(p);
-    }
-}
-
-void QObjectBenchmark::dynamic_property_benchmark()
-{
-    QTreeView obj;
-    QBENCHMARK {
-        obj.setProperty("myProperty", 123);
-        (void)obj.property("myProperty");
-        obj.setProperty("myOtherProperty", 123);
-        (void)obj.property("myOtherProperty");
-    }
-}
-
-void QObjectBenchmark::connect_disconnect_benchmark_data()
-{
-    QTest::addColumn<int>("type");
-    QTest::newRow("normalized signature") << 0;
-    QTest::newRow("unormalized signature") << 1;
-    QTest::newRow("function pointer") << 2;
-    QTest::newRow("normalized signature/handle") << 3;
-    QTest::newRow("unormalized signature/handle") << 4;
-    QTest::newRow("function pointer/handle") << 5;
-    QTest::newRow("functor/handle") << 6;}
-
-void QObjectBenchmark::connect_disconnect_benchmark()
-{
-    QFETCH(int, type);
-    switch (type) {
-        case 0: {
-            QTreeView obj;
-            QBENCHMARK {
-                QObject::connect   (&obj, SIGNAL(viewportEntered()), &obj, SLOT(expandAll()));
-                QObject::disconnect(&obj, SIGNAL(viewportEntered()), &obj, SLOT(expandAll()));
-            }
-        } break;
-        case 1: {
-            QTreeView obj;
-            QBENCHMARK {
-                QObject::connect   (&obj, SIGNAL(viewportEntered(  )), &obj, SLOT(expandAll(  ))); // sic: non-normalised
-                QObject::disconnect(&obj, SIGNAL(viewportEntered(  )), &obj, SLOT(expandAll(  ))); // sic: non-normalised
-            }
-        } break;
-        case 2: {
-            QTreeView obj;
-            QBENCHMARK {
-                QObject::connect   (&obj, &QAbstractItemView::viewportEntered, &obj, &QTreeView::expandAll);
-                QObject::disconnect(&obj, &QAbstractItemView::viewportEntered, &obj, &QTreeView::expandAll);
-            }
-        } break;
-        case 3: {
-            QTreeView obj;
-            QBENCHMARK {
-                QObject::disconnect(QObject::connect(&obj, SIGNAL(viewportEntered()), &obj, SLOT(expandAll())));
-            }
-        } break;
-        case 4: {
-            QTreeView obj;
-            QBENCHMARK {
-                QObject::disconnect(QObject::connect(&obj, SIGNAL(viewportEntered(  )), &obj, SLOT(expandAll(  )))); // sic: non-normalised
-            }
-        } break;
-        case 5: {
-            QTreeView obj;
-            QBENCHMARK {
-                QObject::disconnect(QObject::connect(&obj, &QAbstractItemView::viewportEntered, &obj, &QTreeView::expandAll));
-            }
-        } break;
-        case 6: {
-            QTreeView obj;
-            Functor functor;
-            QBENCHMARK {
-                QObject::disconnect(QObject::connect(&obj, &QAbstractItemView::viewportEntered, functor));
-            }
-        } break;
-    }
-}
-
-void QObjectBenchmark::receiver_destroyed_benchmark()
-{
-    Object sender;
-    QBENCHMARK {
-        Object receiver;
-        QObject::connect(&sender, &Object::signal0, &receiver, &Object::slot0);
-    }
+    QFETCH(bool, w);
+    if (w) ::signal_slot_benchmark<ObjectW>();
+    else ::signal_slot_benchmark<Object>();
 }
 
 QTEST_MAIN(QObjectBenchmark)

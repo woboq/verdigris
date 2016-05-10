@@ -53,3 +53,33 @@ void Object::slot8()
 { }
 void Object::slot9()
 { }
+
+
+
+void ObjectW::emitSignal0()
+{ emit signal0(); }
+void ObjectW::emitSignal1()
+{ emit signal1(); }
+
+void ObjectW::slot0()
+{ }
+void ObjectW::slot1()
+{ }
+void ObjectW::slot2()
+{ }
+void ObjectW::slot3()
+{ }
+void ObjectW::slot4()
+{ }
+void ObjectW::slot5()
+{ }
+void ObjectW::slot6()
+{ }
+void ObjectW::slot7()
+{ }
+void ObjectW::slot8()
+{ }
+void ObjectW::slot9()
+{ }
+
+W_OBJECT_IMPL(ObjectW)
