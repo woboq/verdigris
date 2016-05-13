@@ -508,7 +508,7 @@ template<typename T> static int qt_metacall_impl(T *_o, QMetaObject::Call _c, in
  */
 template<typename T, int I>
 static int indexOfMethod(void **func) {
-    constexpr auto f = binary::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.methods).func;
+    /*constexpr */auto f = binary::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.methods).func;
     using Ms = decltype(T::W_MetaObjectCreatorHelper::objectInfo.methods);
     if ((binary::tree_element_t<I,Ms>::flags & 0xc) == W_MethodType::Signal.value
         && f == *reinterpret_cast<decltype(f)*>(func))
