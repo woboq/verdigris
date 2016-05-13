@@ -110,7 +110,7 @@ template<typename T, int I>
 struct ResolveNotifySignal {
     static constexpr auto propertyInfo = w_PropertyState(w_number<>{},static_cast<T**>(nullptr));
     static constexpr auto property = binary::get<I>(propertyInfo);
-    static constexpr bool hasNotify = !getSignalIndexHelperCompare(property.notify, nullptr);
+    static constexpr bool hasNotify = !std::is_same<decltype(property.notify), std::nullptr_t>::value;
     static constexpr int signalIndex = !hasNotify ? -1 :
     getSignalIndex(property.notify, w_SignalState(w_number<>{},static_cast<T**>(nullptr)));
     static_assert(signalIndex >= 0 || !hasNotify, "NOTIFY signal not registered as a signal");
