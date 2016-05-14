@@ -7,8 +7,9 @@
 
 namespace w_internal {
 
-/** concatenate() : returns a StaticString which is the concatenation of all the strings in a StaticStringList
- *     Note:  keeps the \0 between the strings
+/** concatenate()
+ * Returns a StaticString which is the concatenation of all the strings in a StaticStringList
+ * Note:  keeps the \0 between the strings
  */
 template<typename I1, typename I2> struct concatenate_helper;
 template<std::size_t... I1, std::size_t... I2> struct concatenate_helper<std::index_sequence<I1...>, std::index_sequence<I2...>> {
@@ -26,14 +27,20 @@ template<typename A, typename B> constexpr auto concatenate(StaticStringList<bin
     return concatenate_helper<make_index_sequence<a.size>, make_index_sequence<b.size>>::concatenate(a, b);
 }
 
-
-
 namespace MetaObjectBuilder {
 
 enum { IsUnresolvedType = 0x80000000 };
 
-/** A generator has a static function generate which takes a StringState and return a
-  * IntermediateState */
+/*
+ * The QMetaObject is basically an array of int and an array of string.
+ * Some of the int in the array are index in the string array.
+ *
+ * The IntermediateState class helps building the QMetaObject.
+ * It contains the StaticStringList of strings within this meta object, and the array of int as
+ * template parametter.
+ *
+ * It has helper method that helps extending the state
+ */
 template<typename Strings, uint... Ints>
 struct IntermediateState {
     Strings strings;
@@ -60,8 +67,21 @@ struct IntermediateState {
     static constexpr std::index_sequence<Ints ...> sequence = {};
 };
 
-/** Iterate over all the items of a tuple and call the Generator::generate function */
-template<typename Generator, int, typename State>
+/**
+ * Iterate over all the items of a tree and call the Generator::generate function
+ *
+ * The first parameter f the function is the IntermediateState, and it returns a new
+ * InterMediateState with all the information from the tree added to it.
+ *
+ * The 'Ofst' template parameter is the offset in the interger array to which new data can be added.
+ *
+ * The Generator template type has a method generate which will be called for every element of the
+ * tree with the IntermediateState. It is called with the offset as a template parameter.
+ *
+ * The Generator also has an offset() method that returns how much things will be added later in
+ * the array for this element.
+ */
+template<typename Generator, int Ofst, typename State>
 constexpr auto generate(State s, binary::tree<>)
 { return s; }
 template<typename Generator, int Ofst, typename State, typename Tree>
@@ -70,11 +90,13 @@ constexpr auto generate(State s, Tree t) {
         Generator::template generate<Ofst>(s, binary::tree_head(t)), binary::tree_tail(t));
 }
 
+/**
+ * Helper comparator that compare function pointers and return true if they are the same or
+ * false if they are different. If they are of different type, they are different */
 template <typename T1, typename T2> constexpr bool getSignalIndexHelperCompare(T1, T2) { return false; }
 template <typename T> constexpr bool getSignalIndexHelperCompare(T f1, T f2) { return f1 == f2; }
 
-//////
-// Helper to get the signal index
+/** Returns the index of a pointer to member function F within the given signal state */
 template <typename F> constexpr int getSignalIndex(F,binary::tree<>) { return -1; }
 template <typename F, typename Ms>
 constexpr int getSignalIndex(F func, Ms ms) {
@@ -84,8 +106,31 @@ constexpr int getSignalIndex(F func, Ms ms) {
     return x >= 0 ? x + 1 : x;
 }
 
+/** Helper to get information bout the notify signal of the property with index I of the object T */
+template<typename T, int I>
+struct ResolveNotifySignal {
+    static constexpr auto propertyInfo = w_PropertyState(w_number<>{},static_cast<T**>(nullptr));
+    static constexpr auto property = binary::get<I>(propertyInfo);
+    static constexpr bool hasNotify = !std::is_same<decltype(property.notify), std::nullptr_t>::value;
+    static constexpr int signalIndex = !hasNotify ? -1 :
+        getSignalIndex(property.notify, w_SignalState(w_number<>{},static_cast<T**>(nullptr)));
+    static_assert(signalIndex >= 0 || !hasNotify, "NOTIFY signal not registered as a signal");
+};
 
-    /** Holds information about a class,  includeing all the properties and methods */
+/** Add the notfy signal index to the intermediate state, for each properties  */
+template <typename T, typename State, std::size_t... I>
+static constexpr auto generateNotifySignals(State s, std::true_type, std::index_sequence<I...>)
+{ return s.template add<std::max(0, ResolveNotifySignal<T, I>::signalIndex)...>(); }
+template <typename T, typename State, std::size_t... I>
+static constexpr auto generateNotifySignals(State s, std::false_type, std::index_sequence<I...>)
+{ return s; }
+/** returns true if the object T has at least one property with a notify signal */
+template <typename T, std::size_t... I>
+static constexpr bool hasNotifySignal(std::index_sequence<I...>)
+{ return sums(ResolveNotifySignal<T, I>::hasNotify...); }
+
+
+/** Holds information about a class, including all the properties and methods */
 template<int NameLength, typename Methods, typename Constructors, typename Properties,
             typename Enums, typename ClassInfos, typename Interfaces, int SignalCount>
 struct ObjectInfo {
@@ -106,17 +151,11 @@ struct ObjectInfo {
     static constexpr int signalCount = SignalCount;
 };
 
-template<typename T, int I>
-struct ResolveNotifySignal {
-    static constexpr auto propertyInfo = w_PropertyState(w_number<>{},static_cast<T**>(nullptr));
-    static constexpr auto property = binary::get<I>(propertyInfo);
-    static constexpr bool hasNotify = !std::is_same<decltype(property.notify), std::nullptr_t>::value;
-    static constexpr int signalIndex = !hasNotify ? -1 :
-    getSignalIndex(property.notify, w_SignalState(w_number<>{},static_cast<T**>(nullptr)));
-    static_assert(signalIndex >= 0 || !hasNotify, "NOTIFY signal not registered as a signal");
-};
-
-/** Construct a ObjectInfo with just the name */
+/**
+ * Constructs a ObjectInfo for the object T.
+ * Pass the (quallified) name as a static string.
+ * Called from W_OBJECT_IMPL
+ */
 template<typename T, int N>
 static constexpr auto makeObjectInfo(StaticStringArray<N> &name) {
     constexpr auto sigState = w_SignalState(w_number<>{}, static_cast<T**>(nullptr));
@@ -133,19 +172,7 @@ static constexpr auto makeObjectInfo(StaticStringArray<N> &name) {
         { {name}, methodInfo, constructorInfo, propertyInfo, enumInfo, classInfo, interfaceInfo };
 }
 
-template <typename T, typename State, std::size_t... I>
-static constexpr auto generateNotifySignals(State s, std::true_type, std::index_sequence<I...>)
-{ return s.template add<std::max(0, ResolveNotifySignal<T, I>::signalIndex)...>(); }
-template <typename T, typename State, std::size_t... I>
-static constexpr auto generateNotifySignals(State s, std::false_type, std::index_sequence<I...>)
-{ return s; }
-
-template <typename T, std::size_t... I>
-static constexpr bool hasNotifySignal(std::index_sequence<I...>)
-{ return sums(ResolveNotifySignal<T, I>::hasNotify...); }
-
-
-
+// Generator for Q_CLASSINFO to be used in generate<>()
 struct ClassInfoGenerator {
     template<typename> static constexpr int offset() { return 0; }
     template<int, typename State, typename CI>
@@ -154,7 +181,7 @@ struct ClassInfoGenerator {
     }
 };
 
-
+// Generator for methods to be used in generate<>()
 struct MethodGenerator {
     template<typename Method> static constexpr int offset() { return 1 + Method::argCount * 2; }
     template<int ParamIndex, typename State, typename Method>
@@ -171,30 +198,36 @@ struct MethodGenerator {
     }
 };
 
-    template <typename T, typename = void> struct MetaTypeIdIsBuiltIn : std::false_type {};
-    template <typename T> struct MetaTypeIdIsBuiltIn<T, typename std::enable_if<QMetaTypeId2<T>::IsBuiltIn>::type> : std::true_type{};
+/** Helper that computes if type T is a builtin QMetaType  */
+template <typename T, typename = void> struct MetaTypeIdIsBuiltIn : std::false_type {};
+template <typename T> struct MetaTypeIdIsBuiltIn<T, typename std::enable_if<QMetaTypeId2<T>::IsBuiltIn>::type> : std::true_type{};
 
+/**
+ * Helper to generate the type infromation of type 'T':
+ * If T is a builtin QMetaType, it's metatype id need to be added in the state.
+ * If it's not builtin, then it would be an reference to T's name in the string array.
+ */
+template<typename T, bool Builtin = MetaTypeIdIsBuiltIn<T>::value>
+struct HandleType {
+    template<typename S, typename TypeStr = int>
+    static constexpr auto result(const S&s, TypeStr = {})
+    { return s.template add<QMetaTypeId2<T>::MetaType>(); }
+};
+template<typename T>
+struct HandleType<T, false> {
+    template<typename Strings, typename TypeStr = int>
+    static constexpr auto result(const Strings &ss, TypeStr = {}) {
+        return ss.addTypeString(W_TypeRegistery<T>::name);
+        static_assert(W_TypeRegistery<T>::registered, "Please Register T with W_REGISTER_ARGTYPE");
+    }
+    template<typename Strings, int N>
+    static constexpr auto result(const Strings &ss, StaticString<N> typeStr,
+                                    typename std::enable_if<(N>1),int>::type=0) {
+        return ss.addTypeString(typeStr);
+    }
+};
 
-    template<typename T, bool Builtin = MetaTypeIdIsBuiltIn<T>::value>
-    struct HandleType {
-        template<typename S, typename TypeStr = int>
-        static constexpr auto result(const S&s, TypeStr = {})
-        { return s.template add<QMetaTypeId2<T>::MetaType>(); }
-    };
-    template<typename T>
-    struct HandleType<T, false> {
-        template<typename Strings, typename TypeStr = int>
-        static constexpr auto result(const Strings &ss, TypeStr = {}) {
-            return ss.addTypeString(W_TypeRegistery<T>::name);
-            static_assert(W_TypeRegistery<T>::registered, "Please Register T with W_REGISTER_ARGTYPE");
-        }
-        template<typename Strings, int N>
-        static constexpr auto result(const Strings &ss, StaticString<N> typeStr,
-                                     typename std::enable_if<(N>1),int>::type=0) {
-            return ss.addTypeString(typeStr);
-        }
-    };
-
+// Generator for properties to be used in generate<>()
 struct PropertyGenerator {
     template<typename> static constexpr int offset() { return 0; }
     template<int, typename State, typename Prop>
@@ -207,6 +240,7 @@ struct PropertyGenerator {
     }
 };
 
+// Generator for enums to be used in generate<>()
 struct EnumGenerator {
     template<typename Enum> static constexpr int offset() { return Enum::count * 2; }
     template<int DataIndex, typename State, typename Enum>
@@ -219,8 +253,8 @@ struct EnumGenerator {
     }
 };
 
+// Generator for enum values
 struct EnumValuesGenerator {
-
     template<typename Strings>
     static constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<>, binary::tree<>)
     { return s; }
@@ -238,43 +272,43 @@ struct EnumValuesGenerator {
     }
 };
 
-    //Helper class for generateSingleMethodParameter:  generate the parametter array
+/** Helper classes for generateSingleMethodParameter:  generate the parametter array */
+template<typename ...Args> struct HandleArgsHelper {
+    template<typename Strings, typename ParamTypes>
+    static constexpr auto result(const Strings &ss, const ParamTypes&)
+    { return ss; }
+};
+template<typename A, typename... Args>
+struct HandleArgsHelper<A, Args...> {
+    template<typename Strings, typename ParamTypes>
+    static constexpr auto result(const Strings &ss, const ParamTypes &paramTypes) {
+        using Type = typename QtPrivate::RemoveConstRef<A>::Type;
+        auto typeStr = binary::tree_head(paramTypes);
+        using ts_t = decltype(typeStr);
+        // This way, the overload of result will not pick the StaticString one if it is a tuple (because registered types have the priority)
+        auto typeStr2 = std::conditional_t<std::is_same<A, Type>::value, ts_t, std::tuple<ts_t>>{typeStr};
+        auto r1 = HandleType<Type>::result(ss, typeStr2);
+        return HandleArgsHelper<Args...>::result(r1, binary::tree_tail(paramTypes));
+    }
+};
 
-    template<typename ...Args> struct HandleArgsHelper {
-        template<typename Strings, typename ParamTypes>
-        static constexpr auto result(const Strings &ss, const ParamTypes&)
-        { return ss; }
-    };
-    template<typename A, typename... Args>
-    struct HandleArgsHelper<A, Args...> {
-        template<typename Strings, typename ParamTypes>
-        static constexpr auto result(const Strings &ss, const ParamTypes &paramTypes) {
-            using Type = typename QtPrivate::RemoveConstRef<A>::Type;
-            auto typeStr = binary::tree_head(paramTypes);
-            using ts_t = decltype(typeStr);
-            // This way, the overload of result will not pick the StaticString one if it is a tuple (because registered types have the priority)
-            auto typeStr2 = std::conditional_t<std::is_same<A, Type>::value, ts_t, std::tuple<ts_t>>{typeStr};
-            auto r1 = HandleType<Type>::result(ss, typeStr2);
-            return HandleArgsHelper<Args...>::result(r1, binary::tree_tail(paramTypes));
-        }
-    };
+template<int N> struct HandleArgNames {
+    template<typename Strings, typename Str>
+    static constexpr auto result(const Strings &ss, StaticStringList<Str> pn)
+    {
+        auto s2 = ss.addString(binary::tree_head(pn));
+        auto tail = binary::tree_tail(pn);
+        return HandleArgNames<N-1>::result(s2, tail);
+    }
+    template<typename Strings> static constexpr auto result(const Strings &ss, StaticStringList<> pn)
+    { return HandleArgNames<N-1>::result(ss.template add<1>(), pn); }
+};
+template<> struct HandleArgNames<0> {
+    template<typename Strings, typename PN> static constexpr auto result(const Strings &ss, PN)
+    { return ss; }
+};
 
-    template<int N> struct HandleArgNames{
-        template<typename Strings, typename Str>
-        static constexpr auto result(const Strings &ss, StaticStringList<Str> pn)
-        {
-            auto s2 = ss.addString(binary::tree_head(pn));
-            auto tail = binary::tree_tail(pn);
-            return HandleArgNames<N-1>::result(s2, tail);
-        }
-        template<typename Strings> static constexpr auto result(const Strings &ss, StaticStringList<> pn)
-        { return HandleArgNames<N-1>::result(ss.template add<1>(), pn); }
-    };
-    template<> struct HandleArgNames<0> {
-        template<typename Strings, typename PN> static constexpr auto result(const Strings &ss, PN)
-        { return ss; }
-    };
-
+// Generator for method parameters to be used in generate<>()
 struct MethodParametersGenerator {
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
     static constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...),
@@ -303,6 +337,7 @@ struct MethodParametersGenerator {
     }
 };
 
+// Generator for contructor parameter to be used in generate<>()
 struct ConstructorParametersGenerator {
     template<typename> static constexpr int offset() { return 0; }
     template<int, typename State, int N, typename... Args>
@@ -313,158 +348,159 @@ struct ConstructorParametersGenerator {
     }
 };
 
+/** Given method, a binary::tree containing information about methods or constructor,
+ *  return the amount of item it will add in the int array. */
+template<typename Methods, std::size_t... I>
+constexpr int paramOffset(std::index_sequence<I...>)
+{ return sums(int(1 + binary::tree_element_t<I, Methods>::argCount * 2)...); }
 
+/**
+ * Generate the integer array and the lists of string
+ */
+template<typename T, typename ObjI>
+constexpr auto generateDataArray(const ObjI &objectInfo) {
 
-    template<typename Methods, std::size_t... I>
-    constexpr int paramOffset(std::index_sequence<I...>)
-    { return sums(int(1 + binary::tree_element_t<I, Methods>::argCount * 2)...); }
+    constexpr bool hasNotify = hasNotifySignal<T>(make_index_sequence<ObjI::propertyCount>{});
+    constexpr int classInfoOffstet = 14;
+    constexpr int methodOffset = classInfoOffstet + ObjI::classInfoCount * 2;
+    constexpr int propertyOffset = methodOffset + ObjI::methodCount * 5;
+    constexpr int enumOffset = propertyOffset + ObjI::propertyCount * (hasNotify ? 4: 3);
+    constexpr int constructorOffset = enumOffset + ObjI::enumCount* 4;
+    constexpr int paramIndex = constructorOffset + ObjI::constructorCount * 5 ;
+    constexpr int constructorParamIndex = paramIndex +
+        paramOffset<decltype(objectInfo.methods)>(make_index_sequence<ObjI::methodCount>{});
+    constexpr int enumValueOffset = constructorParamIndex +
+        paramOffset<decltype(objectInfo.constructors)>(make_index_sequence<ObjI::constructorCount>{});
 
-    // generate the integer array and the lists of string
-    template<typename T, typename ObjI>
-    constexpr auto generateDataArray(const ObjI &objectInfo) {
+    auto stringData = binary::tree_append(binary::tree_append(binary::tree<>{} , objectInfo.name), StaticString<1>(""));
+    IntermediateState<decltype(stringData),
+            7,       // revision
+            0,       // classname
+            ObjI::classInfoCount,  classInfoOffstet, // classinfo
+            ObjI::methodCount,   methodOffset, // methods
+            ObjI::propertyCount,    propertyOffset, // properties
+            ObjI::enumCount,    enumOffset, // enums/sets
+            ObjI::constructorCount, constructorOffset, // constructors
+            0x4 /* PropertyAccessInStaticMetaCall */,   // flags
+            ObjI::signalCount
+        > header = { stringData };
 
-        constexpr bool hasNotify = hasNotifySignal<T>(make_index_sequence<ObjI::propertyCount>{});
-        constexpr int classInfoOffstet = 14;
-        constexpr int methodOffset = classInfoOffstet + ObjI::classInfoCount * 2;
-        constexpr int propertyOffset = methodOffset + ObjI::methodCount * 5;
-        constexpr int enumOffset = propertyOffset + ObjI::propertyCount * (hasNotify ? 4: 3);
-        constexpr int constructorOffset = enumOffset + ObjI::enumCount* 4;
-        constexpr int paramIndex = constructorOffset + ObjI::constructorCount * 5 ;
-        constexpr int constructorParamIndex = paramIndex +
-            paramOffset<decltype(objectInfo.methods)>(make_index_sequence<ObjI::methodCount>{});
-        constexpr int enumValueOffset = constructorParamIndex +
-            paramOffset<decltype(objectInfo.constructors)>(make_index_sequence<ObjI::constructorCount>{});
+    auto classInfos = generate<ClassInfoGenerator, paramIndex>(header , objectInfo.classInfos);
+    auto methods = generate<MethodGenerator, paramIndex>(classInfos , objectInfo.methods);
+    auto properties = generate<PropertyGenerator, 0>(methods, objectInfo.properties);
+    auto notify = generateNotifySignals<T>(properties, std::integral_constant<bool, hasNotify>{},
+                                            make_index_sequence<ObjI::propertyCount>{});
+    auto enums = generate<EnumGenerator, enumValueOffset>(notify, objectInfo.enums);
+    auto constructors = generate<MethodGenerator, constructorParamIndex>(enums, objectInfo.constructors);
+    auto parametters = generate<MethodParametersGenerator, 0>(constructors, objectInfo.methods);
+    auto parametters2 = generate<ConstructorParametersGenerator, 0>(parametters, objectInfo.constructors);
+    auto enumValues = generate<EnumValuesGenerator, 0>(parametters2, objectInfo.enums);
+    return std::make_pair(enumValues.strings, enumValues.sequence);
+}
 
-        auto stringData = binary::tree_append(binary::tree_append(binary::tree<>{} , objectInfo.name), StaticString<1>(""));
-        IntermediateState<decltype(stringData),
-                7,       // revision
-                0,       // classname
-                ObjI::classInfoCount,  classInfoOffstet, // classinfo
-                ObjI::methodCount,   methodOffset, // methods
-                ObjI::propertyCount,    propertyOffset, // properties
-                ObjI::enumCount,    enumOffset, // enums/sets
-                ObjI::constructorCount, constructorOffset, // constructors
-                0x4 /* PropertyAccessInStaticMetaCall */,   // flags
-                ObjI::signalCount
-            > header = { stringData };
+/**
+ * Holder for the string data.  Just like in the moc generated code.
+ */
+template<int N, int L> struct qt_meta_stringdata_t {
+     QByteArrayData data[N];
+     char stringdata[L];
+};
 
-        auto classInfos = generate<ClassInfoGenerator, paramIndex>(header , objectInfo.classInfos);
-        auto methods = generate<MethodGenerator, paramIndex>(classInfos , objectInfo.methods);
-        auto properties = generate<PropertyGenerator, 0>(methods, objectInfo.properties);
-        auto notify = generateNotifySignals<T>(properties, std::integral_constant<bool, hasNotify>{},
-                                               make_index_sequence<ObjI::propertyCount>{});
-        auto enums = generate<EnumGenerator, enumValueOffset>(notify, objectInfo.enums);
-        auto constructors = generate<MethodGenerator, constructorParamIndex>(enums, objectInfo.constructors);
-        auto parametters = generate<MethodParametersGenerator, 0>(constructors, objectInfo.methods);
-        auto parametters2 = generate<ConstructorParametersGenerator, 0>(parametters, objectInfo.constructors);
-        auto enumValues = generate<EnumValuesGenerator, 0>(parametters2, objectInfo.enums);
-        return std::make_pair(enumValues.strings, enumValues.sequence);
-    }
+/** Builds the string data
+ * \param S: a index_sequence that goes from 0 to the full size of the strings
+ * \param I: a index_sequence that goes from 0 to the number of string
+ * \param O: a index_sequence of the offsets
+ * \param N: a index_sequence of the size of each strings
+ * \param T: the W_MetaObjectCreatorHelper
+ */
+template<typename S, typename I, typename O, typename N, typename T> struct BuildStringDataHelper;
+template<std::size_t... S, std::size_t... I, std::size_t... O, std::size_t...N, typename T>
+struct BuildStringDataHelper<std::index_sequence<S...>, std::index_sequence<I...>, std::index_sequence<O...>, std::index_sequence<N...>, T> {
+    using meta_stringdata_t = const qt_meta_stringdata_t<sizeof...(I), sizeof...(S)>;
+    static meta_stringdata_t qt_meta_stringdata;
+};
+template<std::size_t... S, std::size_t... I, std::size_t... O, std::size_t...N, typename T>
+const qt_meta_stringdata_t<sizeof...(I), sizeof...(S)>
+BuildStringDataHelper<std::index_sequence<S...>, std::index_sequence<I...>, std::index_sequence<O...>, std::index_sequence<N...>, T>::qt_meta_stringdata = {
+    {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(N-1,
+            qptrdiff(offsetof(meta_stringdata_t, stringdata) + O - I * sizeof(QByteArrayData)) )...},
+    { concatenate(T::string_data)[S]... }
+};
 
-    /**
-     * Holder for the string data.  Just like in the moc generated code.
-     */
-    template<int N, int L> struct qt_meta_stringdata_t {
-         QByteArrayData data[N];
-         char stringdata[L];
-    };
+/**
+ * Given N a list of string sizes, compute the list offsets to each of the strings.
+ */
+template<std::size_t... N> struct ComputeOffsets;
+template<> struct ComputeOffsets<> {
+    using Result = std::index_sequence<>;
+};
+template<std::size_t H, std::size_t... T> struct ComputeOffsets<H, T...> {
+    template<std::size_t ... I> static std::index_sequence<0, (I+H)...> func(std::index_sequence<I...>);
+    using Result = decltype(func(typename ComputeOffsets<T...>::Result()));
+};
 
-    /** Builds the string data
-     * \param S: a index_sequence that goes from 0 to the full size of the strings
-     * \param I: a index_sequence that goes from 0 to the number of string
-     * \param O: a index_sequence of the offsets
-     * \param N: a index_sequence of the size of each strings
-     * \param T: the W_MetaObjectCreatorHelper
-     */
-    template<typename S, typename I, typename O, typename N, typename T> struct BuildStringDataHelper;
-    template<std::size_t... S, std::size_t... I, std::size_t... O, std::size_t...N, typename T>
-    struct BuildStringDataHelper<std::index_sequence<S...>, std::index_sequence<I...>, std::index_sequence<O...>, std::index_sequence<N...>, T> {
-        using meta_stringdata_t = const qt_meta_stringdata_t<sizeof...(I), sizeof...(S)>;
-        static meta_stringdata_t qt_meta_stringdata;
-    };
-    template<std::size_t... S, std::size_t... I, std::size_t... O, std::size_t...N, typename T>
-    const qt_meta_stringdata_t<sizeof...(I), sizeof...(S)>
-    BuildStringDataHelper<std::index_sequence<S...>, std::index_sequence<I...>, std::index_sequence<O...>, std::index_sequence<N...>, T>::qt_meta_stringdata = {
-        {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(N-1,
-                qptrdiff(offsetof(meta_stringdata_t, stringdata) + O - I * sizeof(QByteArrayData)) )...},
-        { concatenate(T::string_data)[S]... }
-    };
-
-
-    /**
-     * Given N a list of string sizes, compute the list offsets to each of the strings.
-     */
-    template<std::size_t... N> struct ComputeOffsets;
-    template<> struct ComputeOffsets<> {
-        using Result = std::index_sequence<>;
-    };
-    template<std::size_t H, std::size_t... T> struct ComputeOffsets<H, T...> {
-        template<std::size_t ... I> static std::index_sequence<0, (I+H)...> func(std::index_sequence<I...>);
-        using Result = decltype(func(typename ComputeOffsets<T...>::Result()));
-    };
-
-    /**
-     * returns the string data suitable for the QMetaObject from a list of string
-     * T is W_MetaObjectCreatorHelper<ObjectType>
-     */
-    // N... are all the sizes of the strings
-    template<typename T, int... N>
-    constexpr const QByteArrayData *build_string_data()  {
-        return BuildStringDataHelper<make_index_sequence<sums(N...)>,
-                                     make_index_sequence<sizeof...(N)>,
-                                     typename ComputeOffsets<N...>::Result,
-                                     std::index_sequence<N...>,
-                                      T>
-            ::qt_meta_stringdata.data;
-    }
-    template<typename T, std::size_t... I>
-    constexpr const QByteArrayData *build_string_data(std::index_sequence<I...>)  {
-        return build_string_data<T, decltype(binary::get<I>(T::string_data))::size...>();
-    }
-
-
-    /**
-     * returns a pointer to an array of string built at compile time.
-     */
-    template<typename I> struct build_int_data;
-    template<std::size_t... I> struct build_int_data<std::index_sequence<I...>> {
-        static const uint data[sizeof...(I)];
-    };
-    template<std::size_t... I> const uint build_int_data<std::index_sequence<I...>>::data[sizeof...(I)] = { uint(I)... };
-
-    // Helpers for propertyOp
-    template <typename F, typename O, typename T>
-    inline auto propSet(F f, O *o, const T &t) W_RETURN(((o->*f)(t),0))
-    template <typename F, typename O, typename T>
-    inline auto propSet(F f, O *o, const T &t) W_RETURN(o->*f = t)
-    template <typename O, typename T>
-    inline void propSet(std::nullptr_t, O *, const T &) {}
-
-    template <typename F, typename O, typename T>
-    inline auto propGet(F f, O *o, T &t) W_RETURN(t = (o->*f)())
-    template <typename F, typename O, typename T>
-    inline auto propGet(F f, O *o, T &t) W_RETURN(t = o->*f)
-    template <typename O, typename T>
-    inline void propGet(std::nullptr_t, O *, T &) {}
-
-    template <typename F, typename M, typename O>
-    inline auto propNotify(F f, M m, O *o) W_RETURN(((o->*f)(o->*m),0))
-    template <typename F, typename M, typename O>
-    inline auto propNotify(F f, M, O *o) W_RETURN(((o->*f)(),0))
-    template <typename... T>
-    inline void propNotify(T...) {}
-
-    template <typename F, typename O>
-    inline auto propReset(F f, O *o) W_RETURN(((o->*f)(),0))
-    template <typename... T>
-    inline void propReset(T...) {}
+/**
+ * returns the string data suitable for the QMetaObject from a list of string
+ * T is W_MetaObjectCreatorHelper<ObjectType>
+ */
+// N... are all the sizes of the strings
+template<typename T, int... N>
+constexpr const QByteArrayData *build_string_data()  {
+    return BuildStringDataHelper<make_index_sequence<sums(N...)>,
+                                 make_index_sequence<sizeof...(N)>,
+                                 typename ComputeOffsets<N...>::Result,
+                                 std::index_sequence<N...>,
+                                  T>
+        ::qt_meta_stringdata.data;
+}
+template<typename T, std::size_t... I>
+constexpr const QByteArrayData *build_string_data(std::index_sequence<I...>)  {
+    return build_string_data<T, decltype(binary::get<I>(T::string_data))::size...>();
 }
 
 
+/**
+ * returns a pointer to an array of string built at compile time.
+ */
+template<typename I> struct build_int_data;
+template<std::size_t... I> struct build_int_data<std::index_sequence<I...>> {
+    static const uint data[sizeof...(I)];
+};
+template<std::size_t... I> const uint build_int_data<std::index_sequence<I...>>::data[sizeof...(I)] = { uint(I)... };
+
+// Helpers for propertyOp
+template <typename F, typename O, typename T>
+inline auto propSet(F f, O *o, const T &t) W_RETURN(((o->*f)(t),0))
+template <typename F, typename O, typename T>
+inline auto propSet(F f, O *o, const T &t) W_RETURN(o->*f = t)
+template <typename O, typename T>
+inline void propSet(std::nullptr_t, O *, const T &) {}
+
+template <typename F, typename O, typename T>
+inline auto propGet(F f, O *o, T &t) W_RETURN(t = (o->*f)())
+template <typename F, typename O, typename T>
+inline auto propGet(F f, O *o, T &t) W_RETURN(t = o->*f)
+template <typename O, typename T>
+inline void propGet(std::nullptr_t, O *, T &) {}
+
+template <typename F, typename M, typename O>
+inline auto propNotify(F f, M m, O *o) W_RETURN(((o->*f)(o->*m),0))
+template <typename F, typename M, typename O>
+inline auto propNotify(F f, M, O *o) W_RETURN(((o->*f)(),0))
+template <typename... T>
+inline void propNotify(T...) {}
+
+template <typename F, typename O>
+inline auto propReset(F f, O *o) W_RETURN(((o->*f)(),0))
+template <typename... T>
+inline void propReset(T...) {}
+}
+
+/** Returns the QMetaObject* of the base type. Use SFINAE to only return it if it exists */
 template<typename T>
 static constexpr auto parentMetaObject(int) W_RETURN(&T::W_BaseType::staticMetaObject)
 template<typename T>
-static constexpr auto parentMetaObject(...) { return nullptr; }
+static constexpr const QMetaObject *parentMetaObject(...) { return nullptr; }
 
 struct FriendHelper {
 
