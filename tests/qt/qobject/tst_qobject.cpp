@@ -1,32 +1,27 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Copyright (C) 2015 Olivier Goffart <ogoffart@woboq.com>
-** Contact: http://www.qt.io/licensing/
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL21$
+** $QT_BEGIN_LICENSE:GPL-EXCEPT$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 or version 3 as published by the Free
-** Software Foundation and appearing in the file LICENSE.LGPLv21 and
-** LICENSE.LGPLv3 included in the packaging of this file. Please review the
-** following information to ensure the GNU Lesser General Public License
-** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** As a special exception, The Qt Company gives you certain additional
-** rights. These rights are described in The Qt Company LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -156,6 +151,7 @@ private slots:
     void qmlConnect(); W_SLOT(qmlConnect, W_Access::Private)
     void exceptions(); W_SLOT(exceptions, W_Access::Private)
     void noDeclarativeParentChangedOnDestruction(); W_SLOT(noDeclarativeParentChangedOnDestruction, W_Access::Private)
+    void deleteLaterInAboutToBlockHandler(); W_SLOT(deleteLaterInAboutToBlockHandler, W_Access::Private)
 };
 
 struct QObjectCreatedOnShutdown
@@ -293,8 +289,10 @@ static void playWithObjects()
 
 void tst_QObject::initTestCase()
 {
+#ifndef QT_NO_PROCESS
     const QString testDataDir = QFileInfo(QFINDTESTDATA("signalbug")).absolutePath();
     QVERIFY2(QDir::setCurrent(testDataDir), qPrintable("Could not chdir to " + testDataDir));
+#endif
 }
 
 void tst_QObject::disconnect()
@@ -1894,6 +1892,8 @@ void tst_QObject::moveToThread()
         thread.wait();
     }
 
+    // WinRT does not allow connection to localhost
+#ifndef Q_OS_WINRT
     {
         // make sure socket notifiers are moved with the object
         MoveToThreadThread thread;
@@ -1929,6 +1929,7 @@ void tst_QObject::moveToThread()
         QMetaObject::invokeMethod(socket, "deleteLater", Qt::QueuedConnection);
         thread.wait();
     }
+#endif
 }
 
 
@@ -5990,6 +5991,112 @@ void tst_QObject::connectFunctorWithContext()
     context->deleteLater();
 }
 
+class StatusChanger : public QObject
+{
+    W_OBJECT(StatusChanger)
+public:
+    StatusChanger(int *status) : m_status(status)
+    {
+    }
+    ~StatusChanger()
+    {
+        *m_status = 2;
+    }
+private:
+    int *m_status;
+};
+W_OBJECT_IMPL(StatusChanger)
+
+class DispatcherWatcher : public QObject
+{
+    W_OBJECT(DispatcherWatcher)
+public:
+    DispatcherWatcher(QEventLoop &e, int *statusAwake, int *statusAboutToBlock) :
+        m_eventLoop(&e),
+        m_statusAwake(statusAwake),
+        m_statusAboutToBlock(statusAboutToBlock),
+        m_aboutToBlocks(0),
+        m_awakes(0)
+    {
+        awake = new StatusChanger(statusAwake);
+        abouttoblock = new StatusChanger(statusAboutToBlock);
+        QCOMPARE(*statusAwake, 1);
+        QCOMPARE(*statusAboutToBlock, 1);
+        connect(QAbstractEventDispatcher::instance(), SIGNAL(awake()), this, SLOT(onAwake()));
+        connect(QAbstractEventDispatcher::instance(), SIGNAL(aboutToBlock()), this, SLOT(onAboutToBlock()));
+
+    }
+
+    ~DispatcherWatcher()
+    {
+        if (awake)
+            awake->deleteLater();
+        if (abouttoblock)
+            abouttoblock->deleteLater();
+    }
+
+public slots:
+    // The order of these 2 handlers differs on different event dispatchers
+    void onAboutToBlock()
+    {
+        if (abouttoblock) {
+            abouttoblock->deleteLater();
+            abouttoblock = 0;
+        }
+        ++m_aboutToBlocks;
+    }
+    W_SLOT(onAboutToBlock)
+    void onAwake()
+    {
+        if (awake) {
+            awake->deleteLater();
+            awake = 0;
+        }
+        ++m_awakes;
+
+    }
+    W_SLOT(onAwake)
+    void onSignal1()
+    {
+        // Status check. At this point the event loop should have spinned enough to delete all the objects.
+        QCOMPARE(*m_statusAwake, 2);
+        QCOMPARE(*m_statusAboutToBlock, 2);
+        QMetaObject::invokeMethod(m_eventLoop, "quit", Qt::QueuedConnection);
+    }
+    W_SLOT(onSignal1)
+
+private:
+    StatusChanger *awake;
+    StatusChanger *abouttoblock;
+    QEventLoop    *m_eventLoop;
+    int *m_statusAwake;
+    int *m_statusAboutToBlock;
+    int m_aboutToBlocks;
+    int m_awakes;
+};
+W_OBJECT_IMPL(DispatcherWatcher)
+
+void tst_QObject::deleteLaterInAboutToBlockHandler()
+{
+#if QT_VERSION < QT_VERSION_CHECK(5, 7, 0)
+    if (qVersion() < QByteArray("5.7.0"))
+        QSKIP("Fixed in 5.7 only");
+#endif
+
+    int statusAwake        = 1;
+    int statusAboutToBlock = 1;
+    QEventLoop e;
+    DispatcherWatcher dw(e, &statusAwake, &statusAboutToBlock);
+    QTimer::singleShot(2000, &dw, &DispatcherWatcher::onSignal1);
+
+    QCOMPARE(statusAwake, 1);
+    QCOMPARE(statusAboutToBlock, 1);
+    e.exec();
+    QCOMPARE(statusAwake, 2);
+    QCOMPARE(statusAboutToBlock, 2);
+}
+
+
 class MyFunctor
 {
 public:
@@ -6184,7 +6291,7 @@ class GetSenderObject : public QObject
 {
     W_OBJECT(GetSenderObject)
 public:
-    QObject *accessSender() { return sender(); }
+    using QObject::sender; // make public
 
 public Q_SLOTS:
     void triggerSignal() { Q_EMIT aSignal(); }
@@ -6201,8 +6308,8 @@ struct CountedStruct
     CountedStruct(GetSenderObject *sender) : sender(sender) { ++countedStructObjectsCount; }
     CountedStruct(const CountedStruct &o) : sender(o.sender) { ++countedStructObjectsCount; }
     CountedStruct &operator=(const CountedStruct &) { return *this; }
-    // accessSender here allows us to check if there's a deadlock
-    ~CountedStruct() { --countedStructObjectsCount; if (sender != Q_NULLPTR) (void)sender->accessSender(); }
+    // calling sender() here allows us to check if there's a deadlock
+    ~CountedStruct() { --countedStructObjectsCount; if (sender) (void)sender->sender(); }
     void operator()() const { }
 
     GetSenderObject *sender;
@@ -6597,7 +6704,8 @@ void tst_QObject::noDeclarativeParentChangedOnDestruction()
     QObject *parent = new QObject;
     QObject *child = new QObject;
 
-    QAbstractDeclarativeData dummy;
+    QAbstractDeclarativeDataImpl dummy;
+    dummy.ownedByQml1 = false;
     QObjectPrivate::get(child)->declarativeData = &dummy;
 
     parentChangeCalled = false;
