@@ -290,159 +290,155 @@ struct W_RemoveLeadingComa { constexpr W_MethodFlags<0> operator+() const { retu
 template <typename T> constexpr T operator+(T &&t, W_RemoveLeadingComa) { return t; }
 constexpr W_RemoveLeadingComa W_removeLeadingComa{};
 
-// The data structures that holds all the data that will be put in a QMetaObject
-namespace MetaObjectBuilder {
+/** Holds information about a method */
+template<typename F, int NameLength, int Flags, typename ParamTypes, typename ParamNames = StaticStringList<>>
+struct MetaMethodInfo {
+    F func;
+    StaticString<NameLength> name;
+    ParamTypes paramTypes;
+    ParamNames paramNames;
+    static constexpr int argCount = QtPrivate::FunctionPointer<F>::ArgumentCount;
+    static constexpr int flags = Flags;
+};
 
-    /** Holds information about a method */
-    template<typename F, int NameLength, int Flags, typename ParamTypes, typename ParamNames = StaticStringList<>>
-    struct MetaMethodInfo {
-        F func;
-        StaticString<NameLength> name;
-        ParamTypes paramTypes;
-        ParamNames paramNames;
-        static constexpr int argCount = QtPrivate::FunctionPointer<F>::ArgumentCount;
-        static constexpr int flags = Flags;
-    };
+// Called from the W_SLOT macro
+template<typename F, int N, typename ParamTypes, int... Flags>
+constexpr MetaMethodInfo<F, N, sums(Flags...) | W_MethodType::Slot.value, ParamTypes>
+makeMetaSlotInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
+{ return { f, {name}, paramTypes, {} }; }
 
-    // Called from the W_SLOT macro
-    template<typename F, int N, typename ParamTypes, int... Flags>
-    constexpr MetaMethodInfo<F, N, sums(Flags...) | W_MethodType::Slot.value, ParamTypes>
-    makeMetaSlotInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
-    { return { f, {name}, paramTypes, {} }; }
+// Called from the W_METHOD macro
+template<typename F, int N, typename ParamTypes, int... Flags>
+constexpr MetaMethodInfo<F, N, sums(Flags...) | W_MethodType::Method.value, ParamTypes>
+makeMetaMethodInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
+{ return { f, {name}, paramTypes, {} }; }
 
-    // Called from the W_METHOD macro
-    template<typename F, int N, typename ParamTypes, int... Flags>
-    constexpr MetaMethodInfo<F, N, sums(Flags...) | W_MethodType::Method.value, ParamTypes>
-    makeMetaMethodInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
-    { return { f, {name}, paramTypes, {} }; }
+// Called from the W_SIGNAL macro
+template<typename F, int N, typename ParamTypes, typename ParamNames, int... Flags>
+constexpr MetaMethodInfo<F, N, sums(Flags...) | W_MethodType::Signal.value,
+                            ParamTypes, ParamNames>
+makeMetaSignalInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes,
+                    const ParamNames &paramNames, W_MethodFlags<Flags>...)
+{ return { f, {name}, paramTypes, paramNames }; }
 
-    // Called from the W_SIGNAL macro
-    template<typename F, int N, typename ParamTypes, typename ParamNames, int... Flags>
-    constexpr MetaMethodInfo<F, N, sums(Flags...) | W_MethodType::Signal.value,
-                             ParamTypes, ParamNames>
-    makeMetaSignalInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes,
-                       const ParamNames &paramNames, W_MethodFlags<Flags>...)
-    { return { f, {name}, paramTypes, paramNames }; }
-
-    /** Holds information about a constructor */
-    template<int NameLength, typename... Args> struct MetaConstructorInfo {
-        static constexpr int argCount = sizeof...(Args);
-        static constexpr int flags = W_MethodType::Constructor.value | W_Access::Public.value;
-        StaticString<NameLength> name;
-        template<int N>
-        constexpr MetaConstructorInfo<N, Args...> setName(StaticStringArray<N> &name)
-        { return { { name } }; }
-        template<typename T, std::size_t... I>
-        void createInstance(void **_a, std::index_sequence<I...>) const {
-            *reinterpret_cast<T**>(_a[0]) =
-                new T(*reinterpret_cast<std::remove_reference_t<Args> *>(_a[I+1])...);
-        }
-    };
-    // called from the W_CONSTRUCTOR macro
-    template<typename...  Args> constexpr MetaConstructorInfo<1,Args...> makeMetaConstructorInfo()
-    { return { {""} }; }
-
-    /** Holds information about a property */
-    template<typename Type, int NameLength, int TypeLength, typename Getter = std::nullptr_t,
-             typename Setter = std::nullptr_t, typename Member = std::nullptr_t,
-             typename Notify = std::nullptr_t, typename Reset = std::nullptr_t, int Flags = 0>
-    struct MetaPropertyInfo {
-        using PropertyType = Type;
-        StaticString<NameLength> name;
-        StaticString<TypeLength> typeStr;
-        Getter getter;
-        Setter setter;
-        Member member;
-        Notify notify;
-        Reset reset;
-        static constexpr uint flags = Flags;
-
-        template <typename S> constexpr auto setGetter(const S&s) const {
-            return MetaPropertyInfo<Type, NameLength, TypeLength, S, Setter, Member, Notify, Reset,
-                                    Flags | PropertyFlags::Readable>
-            {name, typeStr, s, setter, member, notify, reset};
-        }
-        template <typename S> constexpr auto setSetter(const S&s) const {
-            return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, S, Member, Notify, Reset,
-                                    Flags | PropertyFlags::Writable>
-            {name, typeStr, getter, s, member, notify, reset};
-        }
-        template <typename S> constexpr auto setMember(const S&s) const {
-            return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, S, Notify, Reset,
-                                    Flags | PropertyFlags::Writable | PropertyFlags::Readable>
-            {name, typeStr, getter, setter, s, notify, reset};
-        }
-        template <typename S> constexpr auto setNotify(const S&s) const {
-            return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, Member, S, Reset,
-                                    Flags | PropertyFlags::Notify>
-            { name, typeStr, getter, setter, member, s, reset};
-        }
-        template <typename S> constexpr auto setReset(const S&s) const {
-            return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, Member, Notify, S,
-                                    Flags | PropertyFlags::Resettable>
-            { name, typeStr, getter, setter, member, notify, s};
-        }
-        template <int Flag> constexpr auto addFlag() const {
-            return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, Member, Notify, Reset,
-                                    Flags | Flag>
-            { name, typeStr, getter, setter, member, notify, reset};
-        }
-    };
-
-    /** Parse a property and fill a MetaPropertyInfo (called from W_PRPERTY macro) */
-    // base case
-    template <typename PropInfo> constexpr auto parseProperty(const PropInfo &p) { return p; }
-    // setter
-    template <typename PropInfo, typename Obj, typename Arg, typename Ret, typename... Tail>
-    constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)(Arg), Tail... t)
-    { return parseProperty(p.setSetter(s) , t...); }
-    // getter
-    template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
-    constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)(), Tail... t)
-    { return parseProperty(p.setGetter(s), t...); }
-    template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
-    constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)() const, Tail... t)
-    { return parseProperty(p.setGetter(s), t...); }
-    // member
-    template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
-    constexpr auto parseProperty(const PropInfo &p, Ret Obj::*s, Tail... t)
-    { return parseProperty(p.setMember(s) ,t...); }
-    // notify
-    template <typename PropInfo, typename F, typename... Tail>
-    constexpr auto parseProperty(const PropInfo &p, decltype(W_Notify), F f, Tail... t)
-    { return parseProperty(p.setNotify(f) ,t...); }
-    // reset
-    template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
-    constexpr auto parseProperty(const PropInfo &p, decltype(W_Reset), Ret (Obj::*s)(), Tail... t)
-    { return parseProperty(p.setReset(s) ,t...); }
-    // other flags flags
-    template <typename PropInfo, int Flag, typename... Tail>
-    constexpr auto parseProperty(const PropInfo &p, std::integral_constant<int, Flag>, Tail... t)
-    { return parseProperty(p.template addFlag<Flag>() ,t...); }
-
-    template<typename T, int N1, int N2, typename ... Args>
-    constexpr auto makeMetaPropertyInfo(StaticStringArray<N1> &name, StaticStringArray<N2> &type, Args... args) {
-        MetaPropertyInfo<T, N1, N2> meta
-        { {name}, {type}, {}, {}, {}, {}, {} };
-        return parseProperty(meta, args...);
+/** Holds information about a constructor */
+template<int NameLength, typename... Args> struct MetaConstructorInfo {
+    static constexpr int argCount = sizeof...(Args);
+    static constexpr int flags = W_MethodType::Constructor.value | W_Access::Public.value;
+    StaticString<NameLength> name;
+    template<int N>
+    constexpr MetaConstructorInfo<N, Args...> setName(StaticStringArray<N> &name)
+    { return { { name } }; }
+    template<typename T, std::size_t... I>
+    void createInstance(void **_a, std::index_sequence<I...>) const {
+        *reinterpret_cast<T**>(_a[0]) =
+            new T(*reinterpret_cast<std::remove_reference_t<Args> *>(_a[I+1])...);
     }
+};
+// called from the W_CONSTRUCTOR macro
+template<typename...  Args> constexpr MetaConstructorInfo<1,Args...> makeMetaConstructorInfo()
+{ return { {""} }; }
 
-    /** Holds information about an enum */
-    template<int NameLength, typename Values_, typename Names, int Flags>
-    struct MetaEnumInfo {
-        StaticString<NameLength> name;
-        Names names;
-        using Values = Values_;
-        static constexpr uint flags = Flags;
-        static constexpr uint count = Values::size();
-    };
-    // called from W_ENUM and W_FLAG
-    template<typename T, int Flag, int NameLength, T... Values, typename Names>
-    constexpr MetaEnumInfo<NameLength, std::index_sequence<size_t(Values)...> , Names, Flag> makeMetaEnumInfo(
-                    StaticStringArray<NameLength> &name, std::integer_sequence<T, Values...>, Names names) {
-        return { {name}, names };
+/** Holds information about a property */
+template<typename Type, int NameLength, int TypeLength, typename Getter = std::nullptr_t,
+            typename Setter = std::nullptr_t, typename Member = std::nullptr_t,
+            typename Notify = std::nullptr_t, typename Reset = std::nullptr_t, int Flags = 0>
+struct MetaPropertyInfo {
+    using PropertyType = Type;
+    StaticString<NameLength> name;
+    StaticString<TypeLength> typeStr;
+    Getter getter;
+    Setter setter;
+    Member member;
+    Notify notify;
+    Reset reset;
+    static constexpr uint flags = Flags;
+
+    template <typename S> constexpr auto setGetter(const S&s) const {
+        return MetaPropertyInfo<Type, NameLength, TypeLength, S, Setter, Member, Notify, Reset,
+                                Flags | PropertyFlags::Readable>
+        {name, typeStr, s, setter, member, notify, reset};
     }
-} // namespace MetaObjectBuilder
+    template <typename S> constexpr auto setSetter(const S&s) const {
+        return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, S, Member, Notify, Reset,
+                                Flags | PropertyFlags::Writable>
+        {name, typeStr, getter, s, member, notify, reset};
+    }
+    template <typename S> constexpr auto setMember(const S&s) const {
+        return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, S, Notify, Reset,
+                                Flags | PropertyFlags::Writable | PropertyFlags::Readable>
+        {name, typeStr, getter, setter, s, notify, reset};
+    }
+    template <typename S> constexpr auto setNotify(const S&s) const {
+        return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, Member, S, Reset,
+                                Flags | PropertyFlags::Notify>
+        { name, typeStr, getter, setter, member, s, reset};
+    }
+    template <typename S> constexpr auto setReset(const S&s) const {
+        return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, Member, Notify, S,
+                                Flags | PropertyFlags::Resettable>
+        { name, typeStr, getter, setter, member, notify, s};
+    }
+    template <int Flag> constexpr auto addFlag() const {
+        return MetaPropertyInfo<Type, NameLength, TypeLength, Getter, Setter, Member, Notify, Reset,
+                                Flags | Flag>
+        { name, typeStr, getter, setter, member, notify, reset};
+    }
+};
+
+/** Parse a property and fill a MetaPropertyInfo (called from W_PRPERTY macro) */
+// base case
+template <typename PropInfo> constexpr auto parseProperty(const PropInfo &p) { return p; }
+// setter
+template <typename PropInfo, typename Obj, typename Arg, typename Ret, typename... Tail>
+constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)(Arg), Tail... t)
+{ return parseProperty(p.setSetter(s) , t...); }
+// getter
+template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
+constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)(), Tail... t)
+{ return parseProperty(p.setGetter(s), t...); }
+template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
+constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)() const, Tail... t)
+{ return parseProperty(p.setGetter(s), t...); }
+// member
+template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
+constexpr auto parseProperty(const PropInfo &p, Ret Obj::*s, Tail... t)
+{ return parseProperty(p.setMember(s) ,t...); }
+// notify
+template <typename PropInfo, typename F, typename... Tail>
+constexpr auto parseProperty(const PropInfo &p, decltype(W_Notify), F f, Tail... t)
+{ return parseProperty(p.setNotify(f) ,t...); }
+// reset
+template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
+constexpr auto parseProperty(const PropInfo &p, decltype(W_Reset), Ret (Obj::*s)(), Tail... t)
+{ return parseProperty(p.setReset(s) ,t...); }
+// other flags flags
+template <typename PropInfo, int Flag, typename... Tail>
+constexpr auto parseProperty(const PropInfo &p, std::integral_constant<int, Flag>, Tail... t)
+{ return parseProperty(p.template addFlag<Flag>() ,t...); }
+
+template<typename T, int N1, int N2, typename ... Args>
+constexpr auto makeMetaPropertyInfo(StaticStringArray<N1> &name, StaticStringArray<N2> &type, Args... args) {
+    MetaPropertyInfo<T, N1, N2> meta
+    { {name}, {type}, {}, {}, {}, {}, {} };
+    return parseProperty(meta, args...);
+}
+
+/** Holds information about an enum */
+template<int NameLength, typename Values_, typename Names, int Flags>
+struct MetaEnumInfo {
+    StaticString<NameLength> name;
+    Names names;
+    using Values = Values_;
+    static constexpr uint flags = Flags;
+    static constexpr uint count = Values::size();
+};
+// called from W_ENUM and W_FLAG
+template<typename T, int Flag, int NameLength, T... Values, typename Names>
+constexpr MetaEnumInfo<NameLength, std::index_sequence<size_t(Values)...> , Names, Flag> makeMetaEnumInfo(
+                StaticStringArray<NameLength> &name, std::integer_sequence<T, Values...>, Names names) {
+    return { {name}, names };
+}
 
 /**
  * Helper for the implementation of a signal.
@@ -643,7 +639,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
  * - W_Compat: for deprecated methods (equivalent of Q_MOC_COMPAT)
  */
 #define W_SLOT(NAME, ...) \
-    W_STATE_APPEND(w_SlotState, w_internal::MetaObjectBuilder::makeMetaSlotInfo( \
+    W_STATE_APPEND(w_SlotState, w_internal::makeMetaSlotInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__) +w_internal::W_removeLeadingComa))
@@ -653,7 +649,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
  * Exactly like W_SLOT but for Q_INVOKABLE methods.
  */
 #define W_INVOKABLE(NAME, ...) \
-    W_STATE_APPEND(w_MethodState, w_internal::MetaObjectBuilder::makeMetaMethodInfo( \
+    W_STATE_APPEND(w_MethodState, w_internal::makeMetaMethodInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__) +w_internal::W_removeLeadingComa))
@@ -677,7 +673,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
         decltype(w_SignalState(w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))::size; \
     friend constexpr auto w_SignalState(w_internal::w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> w_counter, W_ThisType **w_this) \
         W_RETURN(w_internal::binary::tree_append(w_SignalState(w_counter.prev(), w_this), \
-            w_internal::MetaObjectBuilder::makeMetaSignalInfo( \
+            w_internal::makeMetaSignalInfo( \
                 W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
                 W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))))
 
@@ -693,7 +689,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
         decltype(w_SignalState(w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))::size; \
     friend constexpr auto w_SignalState(w_internal::w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> w_counter, W_ThisType **w_this) \
         W_RETURN(w_internal::binary::tree_append(w_SignalState(w_counter.prev(), w_this), \
-            w_internal::MetaObjectBuilder::makeMetaSignalInfo( \
+            w_internal::makeMetaSignalInfo( \
                 W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
                 W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat)))
 
@@ -704,7 +700,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
  */
 #define W_CONSTRUCTOR(...) \
     W_STATE_APPEND(w_ConstructorState, \
-                   w_internal::MetaObjectBuilder::makeMetaConstructorInfo<__VA_ARGS__>().setName(W_UnscopedName))
+                   w_internal::makeMetaConstructorInfo<__VA_ARGS__>().setName(W_UnscopedName))
 
 
 /** W_PROPERTY(<type>, <name> [, <flags>]*)
@@ -721,7 +717,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 #define W_PROPERTY(...) W_PROPERTY2(__VA_ARGS__) // expands the READ, WRITE, and other sub marcos
 #define W_PROPERTY2(TYPE, NAME, ...) \
     W_STATE_APPEND(w_PropertyState, \
-        w_internal::MetaObjectBuilder::makeMetaPropertyInfo<W_MACRO_REMOVEPAREN(TYPE)>(\
+        w_internal::makeMetaPropertyInfo<W_MACRO_REMOVEPAREN(TYPE)>(\
                             #NAME, W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE)), __VA_ARGS__))
 
 #define WRITE , &W_ThisType::
@@ -737,7 +733,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
  * Similar to Q_ENUM, but one must also manually write all the values.
  */
 #define W_ENUM(NAME, ...) \
-    W_STATE_APPEND(w_EnumState, w_internal::MetaObjectBuilder::makeMetaEnumInfo<NAME,false>( \
+    W_STATE_APPEND(w_EnumState, w_internal::makeMetaEnumInfo<NAME,false>( \
             #NAME, std::integer_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
     Q_ENUM(NAME)
 
@@ -749,7 +745,7 @@ template<typename T> struct QEnumOrQFlags { using Type = T; };
 template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 }
 #define W_FLAG(NAME, ...) \
-    W_STATE_APPEND(w_EnumState, w_internal::MetaObjectBuilder::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type,true>( \
+    W_STATE_APPEND(w_EnumState, w_internal::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type,true>( \
             #NAME, std::integer_sequence<w_internal::QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
     Q_FLAG(NAME)
 

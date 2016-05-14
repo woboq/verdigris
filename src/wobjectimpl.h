@@ -27,8 +27,6 @@ template<typename A, typename B> constexpr auto concatenate(StaticStringList<bin
     return concatenate_helper<make_index_sequence<a.size>, make_index_sequence<b.size>>::concatenate(a, b);
 }
 
-namespace MetaObjectBuilder {
-
 enum { IsUnresolvedType = 0x80000000 };
 
 /*
@@ -494,7 +492,6 @@ template <typename F, typename O>
 inline auto propReset(F f, O *o) W_RETURN(((o->*f)(),0))
 template <typename... T>
 inline void propReset(T...) {}
-}
 
 /** Returns the QMetaObject* of the base type. Use SFINAE to only return it if it exists */
 template<typename T>
@@ -510,8 +507,8 @@ static constexpr QMetaObject createMetaObject()
 
     using Creator = typename T::W_MetaObjectCreatorHelper;
 
-    auto string_data = MetaObjectBuilder::build_string_data<Creator>(make_index_sequence<Creator::string_data.size>());
-    auto int_data = MetaObjectBuilder::build_int_data<typename std::remove_const<decltype(Creator::int_data)>::type>::data;
+    auto string_data = build_string_data<Creator>(make_index_sequence<Creator::string_data.size>());
+    auto int_data = build_int_data<typename std::remove_const<decltype(Creator::int_data)>::type>::data;
 
     return { { parentMetaObject<T>(0) , string_data , int_data,  T::qt_static_metacall, {}, {} }  };
 }
@@ -582,22 +579,22 @@ static void propertyOp(T *_o, QMetaObject::Call _c, int _id, void **_a) {
     switch(+_c) {
     case QMetaObject::ReadProperty:
         if (p.getter != nullptr) {
-            MetaObjectBuilder::propGet(p.getter, _o, *reinterpret_cast<Type*>(_a[0]));
+            propGet(p.getter, _o, *reinterpret_cast<Type*>(_a[0]));
         } else if (p.member != nullptr) {
-            MetaObjectBuilder::propGet(p.member, _o, *reinterpret_cast<Type*>(_a[0]));
+            propGet(p.member, _o, *reinterpret_cast<Type*>(_a[0]));
         }
         break;
     case QMetaObject::WriteProperty:
         if (p.setter != nullptr) {
-            MetaObjectBuilder::propSet(p.setter, _o, *reinterpret_cast<Type*>(_a[0]));
+            propSet(p.setter, _o, *reinterpret_cast<Type*>(_a[0]));
         } else if (p.member != nullptr) {
-            MetaObjectBuilder::propSet(p.member, _o, *reinterpret_cast<Type*>(_a[0]));
-            MetaObjectBuilder::propNotify(p.notify, p.member, _o);
+            propSet(p.member, _o, *reinterpret_cast<Type*>(_a[0]));
+            propNotify(p.notify, p.member, _o);
         }
         break;
     case QMetaObject::ResetProperty:
         if (p.reset != nullptr) {
-            MetaObjectBuilder::propReset(p.reset, _o);
+            propReset(p.reset, _o);
         }
         break;
     case QMetaObject::RegisterPropertyMetaType:
@@ -700,8 +697,8 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
 #define W_OBJECT_IMPL_COMMON(TYPE, ...) \
     __VA_ARGS__ struct W_MACRO_REMOVEPAREN(TYPE)::W_MetaObjectCreatorHelper { \
         static constexpr auto objectInfo = \
-            w_internal::MetaObjectBuilder::makeObjectInfo<W_MACRO_REMOVEPAREN(TYPE)>(W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE))); \
-        static constexpr auto data = w_internal::MetaObjectBuilder::generateDataArray<W_MACRO_REMOVEPAREN(TYPE)>(objectInfo); \
+            w_internal::makeObjectInfo<W_MACRO_REMOVEPAREN(TYPE)>(W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE))); \
+        static constexpr auto data = w_internal::generateDataArray<W_MACRO_REMOVEPAREN(TYPE)>(objectInfo); \
         static constexpr auto string_data = data.first; \
         static constexpr auto int_data = data.second; \
     }; \
