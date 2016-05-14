@@ -172,7 +172,7 @@ constexpr int sums(int i, Args... args) { return i + sums(args...);  }
 /** A compile time character array of size N  */
 template<int N> using StaticStringArray = const char [N];
 
-/** Represents a string of size N  (N includes the 0 at the end) */
+/** Represents a string of size N  (N includes the '\0' at the end) */
 template<int N> struct StaticString  {
     StaticStringArray<N> data;
     template <std::size_t... I>
@@ -183,17 +183,17 @@ template<int N> struct StaticString  {
 };
 template <int N> constexpr StaticString<N> makeStaticString(StaticStringArray<N> &d) { return {d}; }
 
-/* A tuple containing many  StaticString with possibly different sizes */
+/** A list containing many StaticString with possibly different sizes */
 template<typename T = void> using StaticStringList = binary::tree<T>;
 
-
-constexpr binary::tree<> makeParamStringList() { return {}; }
+/** Make a StaticStringList out of many char array  */
+constexpr StaticStringList<> makeStaticStringList() { return {}; }
 template<typename... T>
-constexpr binary::tree<> makeParamStringList(StaticStringArray<1> &, T...)
+constexpr StaticStringList<> makeStaticStringList(StaticStringArray<1> &, T...)
 { return {}; }
 template<int N, typename... T>
-constexpr auto makeParamStringList(StaticStringArray<N> &h, T&...t)
-{ return binary::tree_prepend(makeParamStringList(t...), StaticString<N>(h)); }
+constexpr auto makeStaticStringList(StaticStringArray<N> &h, T&...t)
+{ return binary::tree_prepend(makeStaticStringList(t...), StaticString<N>(h)); }
 
 /** Add a string in a StaticStringList */
 template<int L, typename T>
@@ -230,6 +230,7 @@ enum class PropertyFlags  {
 };
 constexpr uint operator|(uint a, PropertyFlags b) { return a | uint(b); }
 
+/** w_number<I> is a elper to implement state */
 template<int N = 255> struct w_number : public w_number<N - 1> {
     static constexpr int value = N;
     static constexpr w_number<N-1> prev() { return {}; }
@@ -237,10 +238,9 @@ template<int N = 255> struct w_number : public w_number<N - 1> {
 template<> struct w_number<0> { static constexpr int value = 0; };
 
 template <int N> struct W_MethodFlags { static constexpr int value = N; };
-
-
 } // w_internal
 
+/** Objects that can be used as flags in the W_SLOT macro */
 
 // Mirror of QMetaMethod::Access
 namespace W_Access {
@@ -290,9 +290,7 @@ struct W_RemoveLeadingComa { constexpr W_MethodFlags<0> operator+() const { retu
 template <typename T> constexpr T operator+(T &&t, W_RemoveLeadingComa) { return t; }
 constexpr W_RemoveLeadingComa W_removeLeadingComa{};
 
-/*-----------------------------------------------------------------------------------------------*/
-/* The code that generates the QMetaObject                                                          */
-/*-----------------------------------------------------------------------------------------------*/
+// The data structures that holds all the data that will be put in a QMetaObject
 namespace MetaObjectBuilder {
 
     /** Holds information about a method */
@@ -306,16 +304,19 @@ namespace MetaObjectBuilder {
         static constexpr int flags = Flags;
     };
 
+    // Called from the W_SLOT macro
     template<typename F, int N, typename ParamTypes, int... Flags>
     constexpr MetaMethodInfo<F, N, sums(Flags...) | W_MethodType::Slot.value, ParamTypes>
     makeMetaSlotInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
     { return { f, {name}, paramTypes, {} }; }
 
+    // Called from the W_METHOD macro
     template<typename F, int N, typename ParamTypes, int... Flags>
     constexpr MetaMethodInfo<F, N, sums(Flags...) | W_MethodType::Method.value, ParamTypes>
     makeMetaMethodInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
     { return { f, {name}, paramTypes, {} }; }
 
+    // Called from the W_SIGNAL macro
     template<typename F, int N, typename ParamTypes, typename ParamNames, int... Flags>
     constexpr MetaMethodInfo<F, N, sums(Flags...) | W_MethodType::Signal.value,
                              ParamTypes, ParamNames>
@@ -323,7 +324,7 @@ namespace MetaObjectBuilder {
                        const ParamNames &paramNames, W_MethodFlags<Flags>...)
     { return { f, {name}, paramTypes, paramNames }; }
 
-
+    /** Holds information about a constructor */
     template<int NameLength, typename... Args> struct MetaConstructorInfo {
         static constexpr int argCount = sizeof...(Args);
         static constexpr int flags = W_MethodType::Constructor.value | W_Access::Public.value;
@@ -334,9 +335,10 @@ namespace MetaObjectBuilder {
         template<typename T, std::size_t... I>
         void createInstance(void **_a, std::index_sequence<I...>) const {
             *reinterpret_cast<T**>(_a[0]) =
-                new T(*reinterpret_cast<typename std::remove_reference<Args>::type *>(_a[I+1])...);
+                new T(*reinterpret_cast<std::remove_reference_t<Args> *>(_a[I+1])...);
         }
     };
+    // called from the W_CONSTRUCTOR macro
     template<typename...  Args> constexpr MetaConstructorInfo<1,Args...> makeMetaConstructorInfo()
     { return { {""} }; }
 
@@ -387,7 +389,7 @@ namespace MetaObjectBuilder {
         }
     };
 
-    /** Parse a property and fill a MetaPropertyInfo */
+    /** Parse a property and fill a MetaPropertyInfo (called from W_PRPERTY macro) */
     // base case
     template <typename PropInfo> constexpr auto parseProperty(const PropInfo &p) { return p; }
     // setter
@@ -425,6 +427,7 @@ namespace MetaObjectBuilder {
         return parseProperty(meta, args...);
     }
 
+    /** Holds information about an enum */
     template<int NameLength, typename Values_, typename Names, int Flags>
     struct MetaEnumInfo {
         StaticString<NameLength> name;
@@ -433,14 +436,24 @@ namespace MetaObjectBuilder {
         static constexpr uint flags = Flags;
         static constexpr uint count = Values::size();
     };
-
+    // called from W_ENUM and W_FLAG
     template<typename T, int Flag, int NameLength, T... Values, typename Names>
     constexpr MetaEnumInfo<NameLength, std::index_sequence<size_t(Values)...> , Names, Flag> makeMetaEnumInfo(
                     StaticStringArray<NameLength> &name, std::integer_sequence<T, Values...>, Names names) {
         return { {name}, names };
     }
-}
+} // namespace MetaObjectBuilder
 
+/**
+ * Helper for the implementation of a signal.
+ * Called from the signal implementation within the W_SIGNAL macro.
+ *
+ * 'Func' is the type of the signal. 'Idx' is the signal index (relative).
+ * It is implemented as a functor so the operator() has exactly the same amout of argument of the
+ * signal so the __VA_ARGS__ works also if there is no arguments (no leading commas)
+ *
+ * There is specialisation for const and non-const,  and for void and non-void signals.
+ */
 template<typename Func, int Idx> struct SignalImplementation {};
 template<typename Ret, typename Obj, typename... Args, int Idx>
 struct SignalImplementation<Ret (Obj::*)(Args...), Idx>{
@@ -479,15 +492,25 @@ struct SignalImplementation<void (Obj::*)(Args...) const, Idx>{
     }
 };
 
-template<typename T> T getParentObjectHelper(void* (T::*)(const char*));
+/**
+ * Used in the W_OBJECT macro to compute the base type.
+ * Used like this:
+ *  using W_BaseType = std::remove_reference_t<decltype(getParentObjectHelper(&W_ThisType::qt_metacast))>;
+ * Since qt_metacast for W_ThisType will be declared later, the pointer to member function will be
+ * pointing to the qt_metacast of the base class, so T will be deduced to the base class type.
+ *
+ * Returns a reference so this work if T is an abstract class.
+ */
+template<typename T> T &getParentObjectHelper(void* (T::*)(const char*));
 
+// helper class that can access the private member of any class with W_OBJECT
 struct FriendHelper;
 
 } // w_internal
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 7, 0)
 inline namespace w_ShouldBeInQt {
-// This is already in Qt 5.7
+// This is already in Qt 5.7, but added in an inline namespace so it works with previous version of Qt
 template <typename... Args>
 struct QNonConstOverload
 {
@@ -516,17 +539,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 }
 #endif // Qt < 5.7
 
-namespace w_internal { template<typename T> struct W_TypeRegistery { enum { registered = false }; }; }
-#define W_REGISTER_ARGTYPE(...) namespace w_internal { \
-    template<> struct W_TypeRegistery<__VA_ARGS__> { \
-    enum { registered = true }; \
-    static constexpr auto name = makeStaticString(#__VA_ARGS__); \
-  };}
-W_REGISTER_ARGTYPE(char*)
-W_REGISTER_ARGTYPE(const char*)
-
-
-// private macro helpers
+// Private macro helpers for classical macro programming
 #define W_MACRO_EMPTY
 #define W_MACRO_EVAL(...) __VA_ARGS__
 #define W_MACRO_DELAY(X,...) X(__VA_ARGS__)
@@ -540,7 +553,7 @@ W_REGISTER_ARGTYPE(const char*)
 // strignify and make a StaticStringList out of an array of arguments
 #define W_PARAM_TOSTRING(...) W_PARAM_TOSTRING2(__VA_ARGS__ ,,,,,,,,,,,,,,,,)
 #define W_PARAM_TOSTRING2(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
-    w_internal::makeParamStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
+    w_internal::makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
 
 // remove the surrounding parentheses
 #define W_MACRO_REMOVEPAREN(A) W_MACRO_DELAY(W_MACRO_REMOVEPAREN2, W_MACRO_REMOVEPAREN_HELPER A)
@@ -579,7 +592,6 @@ W_REGISTER_ARGTYPE(const char*)
     public: \
         struct W_MetaObjectCreatorHelper;
 
-
 #if defined Q_CC_GNU && !defined Q_CC_CLANG
 // workaround gcc bug  (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=69836)
 #define W_STATE_APPEND(STATE, ...) \
@@ -595,30 +607,67 @@ W_REGISTER_ARGTYPE(const char*)
         W_RETURN(w_internal::binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
 #endif
 
-
 // public macros
+
+/** \macro W_OBJECT(TYPE)
+ * Like the Q_OBJECT macro, this declare that the object might have signals, slots or properties.
+ * Must contains the class name as a parameter and need to be put before any other W_ macro in the class.
+ */
 #define W_OBJECT(TYPE) \
     W_OBJECT_COMMON(TYPE) \
     public: \
-        using W_BaseType = decltype(w_internal::getParentObjectHelper(&W_ThisType::qt_metacast)); \
+        using W_BaseType = std::remove_reference_t<decltype(\
+                                w_internal::getParentObjectHelper(&W_ThisType::qt_metacast))>; \
     Q_OBJECT
 
+/** \macro W_OBJECT(TYPE)
+ * Like the Q_GADGET macro, this declare that the object might have properties.
+ * Must contains the class name as a parameter and need to be put before any other W_ macro in the class.
+ */
 #define W_GADGET(TYPE) \
     W_OBJECT_COMMON(TYPE) \
     Q_GADGET
 
+/**
+ * W_SLOT( <slot name> [, (<parameters types>) ]  [, <flags>]* )
+ *
+ * The W_SLOT macro needs to be put after the slot declaration.
+ *
+ * The W_SLOT macro can optionally have a list of parameter types as second argument to disambiguate
+ * overloads or use types that are not registered with W_REGISTER_ARGTYPE. The list of parameter
+ * need to be within parentheses (even if there is 0 or 1 argument).
+ *
+ * The W_SLOT macro can have flags:
+ * - Specifying the the access:  W_Access::Protected, W_Access::Private
+ *   or W_Access::Public (the default)
+ * - W_Compat: for deprecated methods (equivalent of Q_MOC_COMPAT)
+ */
 #define W_SLOT(NAME, ...) \
     W_STATE_APPEND(w_SlotState, w_internal::MetaObjectBuilder::makeMetaSlotInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__) +w_internal::W_removeLeadingComa))
 
+/**
+ * W_INVOKABLE( <slot name> [, (<parameters types>) ]  [, <flags>]* )
+ * Exactly like W_SLOT but for Q_INVOKABLE methods.
+ */
 #define W_INVOKABLE(NAME, ...) \
     W_STATE_APPEND(w_MethodState, w_internal::MetaObjectBuilder::makeMetaMethodInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__) +w_internal::W_removeLeadingComa))
 
+/**
+ * <signal signature>
+ * W_SIGNAL(<signal name> [, (<parameter types>) ] , <parameter names> )
+ *
+ * Unlike W_SLOT, W_SIGNAL must be placed directly after the signal signature declaration.
+ * There should not be a semi collon between the signal signature and the macro
+ *
+ * Like W_SLOT, there can be the types of the parametter as a second argument, within parentheses.
+ * You must then follow with the parameter names
+ */
 #define W_SIGNAL(NAME, ...) \
     { \
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
@@ -632,7 +681,9 @@ W_REGISTER_ARGTYPE(const char*)
                 W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
                 W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))))
 
-// Same as W_SIGNAL, but set the W_Compat flag
+/** \macro W_SIGNAL_COMPAT
+ * Same as W_SIGNAL, but set the W_Compat flag
+ */
 #define W_SIGNAL_COMPAT(NAME, ...) \
     { \
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
@@ -646,38 +697,32 @@ W_REGISTER_ARGTYPE(const char*)
                 W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
                 W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat)))
 
+/** W_CONSTRUCTOR(<parameter types>)
+ * Declares that this class can be constructed with this list of argument.
+ * Equivalent to Q_INVOKABLE constructor.
+ * One can have W_CONSTRUCTOR() for the default constructor even if it is implicit.
+ */
 #define W_CONSTRUCTOR(...) \
     W_STATE_APPEND(w_ConstructorState, \
                    w_internal::MetaObjectBuilder::makeMetaConstructorInfo<__VA_ARGS__>().setName(W_UnscopedName))
 
+
+/** W_PROPERTY(<type>, <name> [, <flags>]*)
+ *
+ * Declare a property <name> with the type <type>.
+ * The flags can be function pointers that are detected to be setter, getters, notify signal or
+ * other flags. Use the macro READ, WRITE, MEMBER, ... for the flag so you can write W_PROPERTY
+ * just like in a Q_PROPERTY. The only difference with Q_PROPERTY would be the semicolon before the
+ * name.
+ * W_PROPERTY need to be put after all the setters, getters, signals have been declared.
+ *
+ * <type> can optionaly be put in parentheses, if you have a type containing a coma
+ */
 #define W_PROPERTY(...) W_PROPERTY2(__VA_ARGS__) // expands the READ, WRITE, and other sub marcos
 #define W_PROPERTY2(TYPE, NAME, ...) \
     W_STATE_APPEND(w_PropertyState, \
         w_internal::MetaObjectBuilder::makeMetaPropertyInfo<W_MACRO_REMOVEPAREN(TYPE)>(\
                             #NAME, W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE)), __VA_ARGS__))
-
-#define W_ENUM(NAME, ...) \
-    W_STATE_APPEND(w_EnumState, w_internal::MetaObjectBuilder::makeMetaEnumInfo<NAME,false>( \
-            #NAME, std::integer_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
-    Q_ENUM(NAME)
-
-namespace w_internal {
-template<typename T> struct QEnumOrQFlags { using Type = T; };
-template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
-}
-
-#define W_FLAG(NAME, ...) \
-    W_STATE_APPEND(w_EnumState, w_internal::MetaObjectBuilder::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type,true>( \
-            #NAME, std::integer_sequence<w_internal::QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
-    Q_FLAG(NAME)
-
-#define W_CLASSINFO(A, B) \
-    W_STATE_APPEND(w_ClassInfoState, \
-        std::pair<w_internal::StaticString<sizeof(A)>, w_internal::StaticString<sizeof(B)>>{ {A}, {B} })
-
-#define W_INTERFACE(A) \
-    W_STATE_APPEND(w_InterfaceState, static_cast<A*>(nullptr))
-
 
 #define WRITE , &W_ThisType::
 #define READ , &W_ThisType::
@@ -686,3 +731,48 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 #define MEMBER , &W_ThisType::
 #define CONSTANT , W_Constant
 #define FINAL , W_Final
+
+
+/** W_ENUM(<name>, <values>)
+ * Similar to Q_ENUM, but one must also manually write all the values.
+ */
+#define W_ENUM(NAME, ...) \
+    W_STATE_APPEND(w_EnumState, w_internal::MetaObjectBuilder::makeMetaEnumInfo<NAME,false>( \
+            #NAME, std::integer_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
+    Q_ENUM(NAME)
+
+/** W_FLAG<name>, <values>)
+ * Similar to Q_FLAG, but one must also manually write all the values.
+ */
+namespace w_internal {
+template<typename T> struct QEnumOrQFlags { using Type = T; };
+template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
+}
+#define W_FLAG(NAME, ...) \
+    W_STATE_APPEND(w_EnumState, w_internal::MetaObjectBuilder::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type,true>( \
+            #NAME, std::integer_sequence<w_internal::QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
+    Q_FLAG(NAME)
+
+/** Same as Q_CLASSINFO */
+#define W_CLASSINFO(A, B) \
+    W_STATE_APPEND(w_ClassInfoState, \
+        std::pair<w_internal::StaticString<sizeof(A)>, w_internal::StaticString<sizeof(B)>>{ {A}, {B} })
+
+/** Same as Q_INTERFACE */
+#define W_INTERFACE(A) \
+    W_STATE_APPEND(w_InterfaceState, static_cast<A*>(nullptr))
+
+
+/** \macro W_REGISTER_ARGTYPE(TYPE)
+ Registers TYPE so it can be used as a parameter of a signal/slot or return value.
+ The normalized signature must be used.
+ Note: This does not imply Q_DECLARE_METATYPE, and Q_DECLARE_METATYPE does not implies this
+*/
+namespace w_internal { template<typename T> struct W_TypeRegistery { enum { registered = false }; }; }
+#define W_REGISTER_ARGTYPE(...) namespace w_internal { \
+    template<> struct W_TypeRegistery<__VA_ARGS__> { \
+    enum { registered = true }; \
+    static constexpr auto name = makeStaticString(#__VA_ARGS__); \
+  };}
+W_REGISTER_ARGTYPE(char*)
+W_REGISTER_ARGTYPE(const char*)
