@@ -5,11 +5,11 @@
 #include <QtCore/qmetatype.h>
 #include <utility>
 
-// FIXME: rename this namespace
 namespace w_internal {
+using std::index_sequence;  // From C++14, make sure to enable the C++14 option in your compiler
+
 /* The default std::make_index_sequence from libstdc++ is recursing O(N) times which is reaching
     recursion limits level for big strings. This implementation has only O(log N) recursion */
-using std::index_sequence;
 template<size_t... I1, size_t... I2>
 index_sequence<I1... , (I2 +(sizeof...(I1)))...>
 make_index_sequence_helper_merge(index_sequence<I1...>, index_sequence<I2...>);
@@ -24,7 +24,8 @@ template<> struct make_index_sequence_helper<0> { using result = index_sequence<
 template<int N> using make_index_sequence = typename make_index_sequence_helper<N>::result;
 
 
-/* In this namespace we find the implementation of a template binary tree container
+/**
+ * In this namespace we find the implementation of a template binary tree container
  * It has a similar API than std::tuple, but is stored in a binary way.
  * the libstdc++ std::tuple recurse something like 16*N for a tuple of N elements. (Because the copy
  * constructor uses traits for stuff like noexcept.) Which means we are quickly reaching the
@@ -51,7 +52,7 @@ namespace binary {
         static constexpr bool Balanced = A::Depth == B::Depth && B::Balanced;
     };
 
-    /* Add the node 'N' to thre tree 'T' */
+    /** Add the node 'N' to the tree 'T'  (helper for tree_append) */
     template <class T, typename N, bool Balanced = T::Balanced > struct Add {
         typedef Node<T, Leaf<N> > Result;
         static constexpr Result add(T t, N n) { return {t, {n} }; }
@@ -61,6 +62,7 @@ namespace binary {
         static constexpr Result add(Node<A, B> t, N n) { return {t.a , Add<B, N>::add(t.b, n) }; }
     };
 
+    /** Add the node 'N' to the tree 'T', on the left  (helper for tree_prepend) */
     template <class T, typename N, bool Balanced = T::Balanced > struct AddPre {
         typedef Node<Leaf<N> , T > Result;
         static constexpr Result add(T t, N n) { return {{n}, t}; }
@@ -70,18 +72,16 @@ namespace binary {
         static constexpr Result add(Node<A, B> t, N n) { return {AddPre<A, N>::add(t.a, n) , t.b }; }
     };
 
-
+    /** helper for binary::get<> */
     template <class T, int I, typename = void> struct Get;
-    template <class N> struct Get<Leaf<N>, 0> {
-        static constexpr N get(Leaf<N> t) { return t.data; }
-    };
-    template <class A, class B, int I> struct Get<Node<A,B>, I, std::enable_if_t<(A::Count <= I)>> {
-        static constexpr auto get(Node<A,B> t) { return Get<B,I - A::Count>::get(t.b); }
-    };
-    template <class A, class B, int I> struct Get<Node<A,B>, I, std::enable_if_t<(A::Count > I)>> {
-        static constexpr auto get(Node<A,B> t) { return Get<A,I>::get(t.a); }
-    };
+    template <class N> struct Get<Leaf<N>, 0>
+    { static constexpr N get(Leaf<N> t) { return t.data; } };
+    template <class A, class B, int I> struct Get<Node<A,B>, I, std::enable_if_t<(A::Count <= I)>>
+    { static constexpr auto get(Node<A,B> t) { return Get<B,I - A::Count>::get(t.b); } };
+    template <class A, class B, int I> struct Get<Node<A,B>, I, std::enable_if_t<(A::Count > I)>>
+    { static constexpr auto get(Node<A,B> t) { return Get<A,I>::get(t.a); } };
 
+    /** helper for tree_tail */
     template<typename A, typename B> struct Tail;
     template<typename A, typename B> struct Tail<Leaf<A>, B> {
         using Result = B;
@@ -92,39 +92,41 @@ namespace binary {
         static constexpr Result tail(Node<Node<A,B>, C> t) { return { Tail<A,B>::tail(t.a) , t.b }; }
     };
 
+    /** An equivalent of std::tuple hold in a binary tree for faster compile time */
     template<typename T = void> struct tree {
         static constexpr int size = T::Count;
         T root;
     };
     template<> struct tree<> { static constexpr int size = 0; };
 
-    template<typename T> struct tree_size { static constexpr int value = T::size; };
-    //template<typename... Ts> tuple<Ts...> make_tuple(Ts... ts) { return {ts...}; }
+    /**
+     * tree_append(tree, T):  append an element at the end of the tree.
+     */
+    template<typename T>
+    constexpr tree<Leaf<T>> tree_append(tree<>, T n)
+    { return {{n}}; }
+    template<typename Root, typename T>
+    constexpr tree<typename Add<Root,T>::Result> tree_append(tree<Root> t, T n)
+    { return {Add<Root,T>::add(t.root,n)}; }
 
     /**
-     * tree_append(tree, T)  append an element at the end of the tree
+     * tree_append(tree, T):  prepend an element at the beginning of the tree.
      */
-    template<typename N>
-    constexpr tree<Leaf<N>> tree_append(tree<>, N n)
+    template<typename T>
+    constexpr tree<Leaf<T>> tree_prepend(tree<>, T n)
     { return {{n}}; }
-    template<typename Root, typename N>
-    constexpr tree<typename Add<Root,N>::Result> tree_append(tree<Root> t, N n)
-    { return {Add<Root,N>::add(t.root,n)}; }
+    template<typename Root, typename T>
+    constexpr tree<typename AddPre<Root,T>::Result> tree_prepend(tree<Root> t, T n)
+    { return {AddPre<Root,T>::add(t.root,n)}; }
 
-    template<typename N>
-    constexpr tree<Leaf<N>> tree_prepend(tree<>, N n)
-    { return {{n}}; }
-    template<typename Root, typename N>
-    constexpr tree<typename AddPre<Root,N>::Result> tree_prepend(tree<Root> t, N n)
-    { return {AddPre<Root,N>::add(t.root,n)}; }
-
-
+    /**
+     * get<N>(tree): Returns the element from the tree at index N.
+     */
     template<int N, typename Root> constexpr auto get(tree<Root> t)
     { return Get<Root, N>::get(t.root); }
 
-
     /**
-     *  tree_tail()  Returns a tree with the first element removed
+     * tree_tail(tree):  Returns a tree with the first element removed.
      */
     template<typename A, typename B>
     constexpr tree<typename Tail<A,B>::Result> tree_tail(tree<Node<A, B>> t)
@@ -134,7 +136,7 @@ namespace binary {
     constexpr tree<> tree_tail(tree<>) { return {}; }
 
     /**
-     * tree_head()  same as get<O> but return something in case the tuple is too small
+     * tree_head(tree): same as get<O> but return something invalid in case the tuple is too small.
      */
     template<typename T> constexpr auto tree_head(tree<T> t) { return get<0>(t); }
     constexpr auto tree_head(tree<void>) { struct _{}; return _{}; }
@@ -143,7 +145,7 @@ namespace binary {
     template<int I, typename T> using tree_element_t = decltype(get<I>(std::declval<T>()));
 
     /**
-     * tree_cat()  concatenate trees  (like tuple_cat)
+     * tree_cat(tree1, tree2, ....): concatenate trees (like tuple_cat)
      */
     // FIXME: Should we balance?
     template<class A, class B>
@@ -155,18 +157,13 @@ namespace binary {
     constexpr tree<> tree_cat(tree<>, tree<>) { return {}; }
     template<class A, class B, class C, class...D>
     constexpr auto tree_cat(A a, B b, C c, D... d) { return tree_cat(a, tree_cat(b, c, d...)); }
-}
-
-/*-----------------------------------------------------------------------------------------------*/
-/* Helpers to play with tuple or strings at compile time                                         */
-/*-----------------------------------------------------------------------------------------------*/
+} // namespace binary
 
 
-/* Compute the sum of many integers */
+/** Compute the sum of many integers */
 constexpr int sums() { return 0; }
 template<typename... Args>
 constexpr int sums(int i, Args... args) { return i + sums(args...);  }
-
 
 /*
  * Helpers to play with static strings
@@ -587,13 +584,13 @@ W_REGISTER_ARGTYPE(const char*)
 // workaround gcc bug  (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=69836)
 #define W_STATE_APPEND(STATE, ...) \
     static constexpr int W_MACRO_CONCAT(W_WORKAROUND_, __LINE__) = \
-        w_internal::binary::tree_size<decltype(STATE(w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1; \
+        decltype(STATE(w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))::size+1; \
     friend constexpr auto STATE(w_internal::w_number<W_MACRO_CONCAT(W_WORKAROUND_, __LINE__)> w_counter, W_ThisType **w_this) \
         W_RETURN(w_internal::binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
 #else
 #define W_STATE_APPEND(STATE, ...) \
-    friend constexpr auto STATE(w_internal::w_number<w_internal::binary::tree_size<decltype(STATE( \
-            w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::value+1> w_counter, \
+    friend constexpr auto STATE(w_internal::w_number<decltype(STATE( \
+            w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))::size+1> w_counter, \
             W_ThisType **w_this) \
         W_RETURN(w_internal::binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
 #endif
@@ -628,8 +625,7 @@ W_REGISTER_ARGTYPE(const char*)
         return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
     } \
     static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = \
-        w_internal::binary::tree_size<decltype(w_SignalState(w_internal::w_number<>{}, \
-                                            static_cast<W_ThisType**>(nullptr)))>::value; \
+        decltype(w_SignalState(w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))::size; \
     friend constexpr auto w_SignalState(w_internal::w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> w_counter, W_ThisType **w_this) \
         W_RETURN(w_internal::binary::tree_append(w_SignalState(w_counter.prev(), w_this), \
             w_internal::MetaObjectBuilder::makeMetaSignalInfo( \
@@ -643,8 +639,7 @@ W_REGISTER_ARGTYPE(const char*)
         return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
     } \
     static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = \
-        w_internal::binary::tree_size<decltype(w_SignalState(w_internal::w_number<>{}, \
-                                            static_cast<W_ThisType**>(nullptr)))>::value; \
+        decltype(w_SignalState(w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))::size; \
     friend constexpr auto w_SignalState(w_internal::w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> w_counter, W_ThisType **w_this) \
         W_RETURN(w_internal::binary::tree_append(w_SignalState(w_counter.prev(), w_this), \
             w_internal::MetaObjectBuilder::makeMetaSignalInfo( \

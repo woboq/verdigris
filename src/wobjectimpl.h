@@ -41,7 +41,7 @@ struct IntermediateState {
     template<int L>
     constexpr auto addString(const StaticString<L> & s) const {
         auto s2 = binary::tree_append(strings, s);
-        return IntermediateState<decltype(s2), Ints..., binary::tree_size<Strings>::value>{s2};
+        return IntermediateState<decltype(s2), Ints..., Strings::size>{s2};
     }
 
     /// same as before but ass the IsUnresolvedType flag
@@ -49,7 +49,7 @@ struct IntermediateState {
     constexpr auto addTypeString(const StaticString<L> & s) const {
         auto s2 = binary::tree_append(strings, s);
         return IntermediateState<decltype(s2), Ints...,
-            IsUnresolvedType | binary::tree_size<Strings>::value>{s2};
+            IsUnresolvedType | Strings::size>{s2};
     }
 
 
@@ -97,12 +97,12 @@ struct ObjectInfo {
     ClassInfos classInfos;
     Interfaces interfaces;
 
-    static constexpr int methodCount = binary::tree_size<Methods>::value;
-    static constexpr int constructorCount = binary::tree_size<Constructors>::value;
-    static constexpr int propertyCount = binary::tree_size<Properties>::value;
-    static constexpr int enumCount = binary::tree_size<Enums>::value;
-    static constexpr int classInfoCount = binary::tree_size<ClassInfos>::value;
-    static constexpr int interfaceCount = binary::tree_size<Interfaces>::value;
+    static constexpr int methodCount = Methods::size;
+    static constexpr int constructorCount = Constructors::size;
+    static constexpr int propertyCount = Properties::size;
+    static constexpr int enumCount = Enums::size;
+    static constexpr int classInfoCount = ClassInfos::size;
+    static constexpr int interfaceCount = Interfaces::size;
     static constexpr int signalCount = SignalCount;
 };
 
@@ -127,7 +127,7 @@ static constexpr auto makeObjectInfo(StaticStringArray<N> &name) {
     constexpr auto enumInfo = w_EnumState(w_number<>{}, static_cast<T**>(nullptr));
     constexpr auto classInfo = w_ClassInfoState(w_number<>{}, static_cast<T**>(nullptr));
     constexpr auto interfaceInfo = w_InterfaceState(w_number<>{}, static_cast<T**>(nullptr));
-    constexpr int sigCount = binary::tree_size<decltype(sigState)>::value;
+    constexpr int sigCount = sigState.size;
     return ObjectInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo),
                         decltype(enumInfo), decltype(classInfo), decltype(interfaceInfo), sigCount>
         { {name}, methodInfo, constructorInfo, propertyInfo, enumInfo, classInfo, interfaceInfo };
