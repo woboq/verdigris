@@ -270,7 +270,10 @@ struct EnumValuesGenerator {
     }
 };
 
-/** Helper classes for generateSingleMethodParameter:  generate the parametter array */
+/**
+ * Helper classes for MethodParametersGenerator::generateSingleMethodParameter:
+ * generate the parametter array
+ */
 template<typename ...Args> struct HandleArgsHelper {
     template<typename Strings, typename ParamTypes>
     static constexpr auto result(const Strings &ss, const ParamTypes&)
@@ -289,7 +292,6 @@ struct HandleArgsHelper<A, Args...> {
         return HandleArgsHelper<Args...>::result(r1, binary::tree_tail(paramTypes));
     }
 };
-
 template<int N> struct HandleArgNames {
     template<typename Strings, typename Str>
     static constexpr auto result(const Strings &ss, StaticStringList<Str> pn)
@@ -308,6 +310,8 @@ template<> struct HandleArgNames<0> {
 
 // Generator for method parameters to be used in generate<>()
 struct MethodParametersGenerator {
+private:
+    // non-const function
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
     static constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...),
                                                         const ParamTypes &paramTypes, const ParamNames &paramNames ) {
@@ -315,6 +319,7 @@ struct MethodParametersGenerator {
         return HandleArgNames<sizeof...(Args)>::result(types, paramNames);
     }
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
+    // const function
     static constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...) const,
                                                  const ParamTypes &paramTypes, const ParamNames &paramNames ) {
         auto types = HandleArgsHelper<Ret, Args...>::result(ss, binary::tree_prepend(paramTypes, 0));
@@ -327,10 +332,12 @@ struct MethodParametersGenerator {
         auto types = HandleArgsHelper<Ret, Args...>::result(ss, binary::tree_prepend(paramTypes, 0));
         return HandleArgNames<sizeof...(Args)>::result(types, paramNames);
     }
+public:
 
     template<typename> static constexpr int offset() { return 0; }
     template<int, typename State, typename Method>
     static constexpr auto generate(State s, Method method) {
+        // Dispatch either  non const function, const function or static function
         return generateSingleMethodParameter(s, method.func, method.paramTypes, method.paramNames);
     }
 };
@@ -466,7 +473,15 @@ template<std::size_t... I> struct build_int_data<std::index_sequence<I...>> {
 };
 template<std::size_t... I> const uint build_int_data<std::index_sequence<I...>>::data[sizeof...(I)] = { uint(I)... };
 
-// Helpers for propertyOp
+/** Returns the QMetaObject* of the base type. Use SFINAE to only return it if it exists */
+template<typename T>
+static constexpr auto parentMetaObject(int) W_RETURN(&T::W_BaseType::staticMetaObject)
+template<typename T>
+static constexpr const QMetaObject *parentMetaObject(...) { return nullptr; }
+
+// Bunch of helpers for propertyOperation
+// this uses SFINAE of the return value to work either with F a pointer to member, or to member function
+// or nullptr.
 template <typename F, typename O, typename T>
 inline auto propSet(F f, O *o, const T &t) W_RETURN(((o->*f)(t),0))
 template <typename F, typename O, typename T>
@@ -493,27 +508,18 @@ inline auto propReset(F f, O *o) W_RETURN(((o->*f)(),0))
 template <typename... T>
 inline void propReset(T...) {}
 
-/** Returns the QMetaObject* of the base type. Use SFINAE to only return it if it exists */
-template<typename T>
-static constexpr auto parentMetaObject(int) W_RETURN(&T::W_BaseType::staticMetaObject)
-template<typename T>
-static constexpr const QMetaObject *parentMetaObject(...) { return nullptr; }
-
 struct FriendHelper {
-
+/** Instancies the QMetaObject forr class T */
 template<typename T>
 static constexpr QMetaObject createMetaObject()
 {
-
     using Creator = typename T::W_MetaObjectCreatorHelper;
-
     auto string_data = build_string_data<Creator>(make_index_sequence<Creator::string_data.size>());
     auto int_data = build_int_data<typename std::remove_const<decltype(Creator::int_data)>::type>::data;
-
     return { { parentMetaObject<T>(0) , string_data , int_data,  T::qt_static_metacall, {}, {} }  };
 }
 
-
+/** Implementation of qt_metacall */
 template<typename T> static int qt_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void** _a) {
     using Creator = typename T::W_MetaObjectCreatorHelper;
     _id = _o->T::W_BaseType::qt_metacall(_c, _id, _a);
@@ -534,10 +540,10 @@ template<typename T> static int qt_metacall_impl(T *_o, QMetaObject::Call _c, in
     return _id;
 }
 
-
-
 /**
- * Helper for QMetaObject::IndexOfMethod
+ * Helper for implementation of qt_static_metacall for QMetaObject::IndexOfMethod
+ * T is the class, and I is the index of a method.
+ * Returns I if the argument is equal to the pointer to member function of the signal of index 'I'
  */
 template<typename T, int I>
 static int indexOfMethod(void **func) {
@@ -549,6 +555,11 @@ static int indexOfMethod(void **func) {
     return -1;
 }
 
+/**
+ * Helper for implementation of qt_static_metacall for QMetaObject::InvokeMetaMethod
+ * T is the class, and I is the index of a method.
+ * Invoke the methd with index I if id == I.
+ */
 template <typename T, int I>
 static void invokeMethod(T *_o, int _id, void **_a) {
     if (_id == I) {
@@ -558,6 +569,10 @@ static void invokeMethod(T *_o, int _id, void **_a) {
     }
 }
 
+/**
+ * Helper for implementation of qt_static_metacall for QMetaObject::RegisterMethodArgumentMetaType
+ * T is the class, and I is the index of a method.
+ */
 template <typename T, int I>
 static void registerMethodArgumentType(int _id, void **_a) {
     if (_id == I) {
@@ -570,8 +585,12 @@ static void registerMethodArgumentType(int _id, void **_a) {
     }
 }
 
+/**
+ * Helper for implementation of qt_static_metacall for any of the operations in a property
+ * T is the class, and I is the index of a property.
+ */
 template<typename T, int I>
-static void propertyOp(T *_o, QMetaObject::Call _c, int _id, void **_a) {
+static void propertyOperation(T *_o, QMetaObject::Call _c, int _id, void **_a) {
     if (_id != I)
         return;
     constexpr auto p = binary::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.properties);
@@ -602,9 +621,9 @@ static void propertyOp(T *_o, QMetaObject::Call _c, int _id, void **_a) {
     }
 }
 
-
 /**
- * helper for QMetaObject::createInstance
+ * Helper for implementation of qt_static_metacall for QMetaObject::CreateInstance
+ * T is the class, and I is the index of a onstructor.
  */
 template<typename T, int I>
 static void createInstance(int _id, void** _a) {
@@ -614,8 +633,15 @@ static void createInstance(int _id, void** _a) {
     }
 }
 
+/**
+ * Function that does nothing but helps to expand template packs.
+ */
 template<typename...Ts> static constexpr void nop(Ts...) {}
 
+/**
+ * Implementation of qt_static_metacall for W_OBJECT_IMPL which should be called with
+ * std::index_sequence for the amount of method, constructor, and properties.
+ */
 template<typename T, size_t...MethI, size_t ...ConsI, size_t...PropI>
 static void qt_static_metacall_impl(QObject *_o, QMetaObject::Call _c, int _id, void** _a,
                         std::index_sequence<MethI...>, std::index_sequence<ConsI...>, std::index_sequence<PropI...>) {
@@ -631,11 +657,11 @@ static void qt_static_metacall_impl(QObject *_o, QMetaObject::Call _c, int _id, 
         nop((createInstance<T, ConsI>(_id, _a),0)...);
     } else if ((_c >= QMetaObject::ReadProperty && _c <= QMetaObject::QueryPropertyUser)
             || _c == QMetaObject::RegisterPropertyMetaType) {
-        nop((propertyOp<T,PropI>(static_cast<T*>(_o), _c, _id, _a),0)...);
+        nop((propertyOperation<T,PropI>(static_cast<T*>(_o), _c, _id, _a),0)...);
     }
 }
 
-// for Q_GADGET
+/** Same for W_GADGET */
 template<typename T, size_t...MethI, size_t ...ConsI, size_t...PropI>
 static void qt_static_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void** _a,
                         std::index_sequence<MethI...>, std::index_sequence<ConsI...>, std::index_sequence<PropI...>) {
@@ -650,10 +676,11 @@ static void qt_static_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void**
         nop((createInstance<T, ConsI>(_id, _a),0)...);
     } else if ((_c >= QMetaObject::ReadProperty && _c <= QMetaObject::QueryPropertyUser)
             || _c == QMetaObject::RegisterPropertyMetaType) {
-        nop((propertyOp<T,PropI>(_o, _c, _id, _a),0)...);
+        nop((propertyOperation<T,PropI>(_o, _c, _id, _a),0)...);
     }
 }
 
+/** helper for the impleentation of qt_metacast */
 template <typename T1, typename T2>
 static void metaCast(void *&result, T1 *o, const char *clname, T2*) {
     const char *iid = qobject_interface_iid<T2*>();
@@ -661,6 +688,7 @@ static void metaCast(void *&result, T1 *o, const char *clname, T2*) {
         result = static_cast<T2*>(o);
 }
 
+/** implementation of qt_metacast */
 template<typename T, size_t... InterfaceI>
 static void *qt_metacast_impl(T *o, const char *_clname, std::index_sequence<InterfaceI...>) {
     if (!_clname)
@@ -673,17 +701,17 @@ static void *qt_metacast_impl(T *o, const char *_clname, std::index_sequence<Int
     return result ? result : o->T::W_BaseType::qt_metacast(_clname);
 }
 
-};
+}; // FriendHelper
 
+// Forward to the FriendHelper
 template<typename T> constexpr auto createMetaObject() {  return FriendHelper::createMetaObject<T>(); }
 template<typename T, typename... Ts> auto qt_metacall_impl(Ts &&...args)
-{  return FriendHelper::qt_metacall_impl<T>(std::forward<Ts>(args)...); }
+{ return FriendHelper::qt_metacall_impl<T>(std::forward<Ts>(args)...); }
 template<typename T> auto qt_metacast_impl(T *o, const char *_clname) {
     using ObjI = decltype(T::W_MetaObjectCreatorHelper::objectInfo);
     return FriendHelper::qt_metacast_impl<T>(o, _clname,
                                               make_index_sequence<ObjI::interfaceCount>{});
 }
-
 template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args) {
     using ObjI = decltype(T::W_MetaObjectCreatorHelper::objectInfo);
     return FriendHelper::qt_static_metacall_impl<T>(std::forward<Ts>(args)...,
@@ -691,7 +719,6 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
                                                      make_index_sequence<ObjI::constructorCount>{},
                                                      make_index_sequence<ObjI::propertyCount>{});
 }
-
 } // w_internal
 
 #define W_OBJECT_IMPL_COMMON(TYPE, ...) \
