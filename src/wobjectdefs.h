@@ -775,9 +775,6 @@ namespace w_internal { template<typename T> struct W_TypeRegistery { enum { regi
   };}
 W_REGISTER_ARGTYPE(char*)
 W_REGISTER_ARGTYPE(const char*)
-  };}
-W_REGISTER_ARGTYPE(char*)
-W_REGISTER_ARGTYPE(const char*)
 
 #else // Q_MOC_RUN
 // just to avoid parse errors when moc is run over things that it should ignore
