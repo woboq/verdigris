@@ -1,6 +1,8 @@
 /* Copyright 2016 Olivier Goffart, Woboq GmbH */
 #pragma once
 
+#ifndef Q_MOC_RUN // don't define anything when moc is run
+
 #include <QtCore/qobjectdefs.h>
 #include <QtCore/qmetatype.h>
 #include <utility>
@@ -603,6 +605,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
         W_RETURN(w_internal::binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
 #endif
 
+//
 // public macros
 
 /** \macro W_OBJECT(TYPE)
@@ -613,7 +616,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
     W_OBJECT_COMMON(TYPE) \
     public: \
         using W_BaseType = std::remove_reference_t<decltype(\
-                                w_internal::getParentObjectHelper(&W_ThisType::qt_metacast))>; \
+            w_internal::getParentObjectHelper(&W_ThisType::qt_metacast))>; \
     Q_OBJECT
 
 /** \macro W_OBJECT(TYPE)
@@ -665,7 +668,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
  * You must then follow with the parameter names
  */
 #define W_SIGNAL(NAME, ...) \
-    { \
+    { /* W_SIGNAL need to be placed directly after the signal declaration, without semicolon. */\
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
         return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
     } \
@@ -772,3 +775,19 @@ namespace w_internal { template<typename T> struct W_TypeRegistery { enum { regi
   };}
 W_REGISTER_ARGTYPE(char*)
 W_REGISTER_ARGTYPE(const char*)
+  };}
+W_REGISTER_ARGTYPE(char*)
+W_REGISTER_ARGTYPE(const char*)
+
+#else // Q_MOC_RUN
+// just to avoid parse errors when moc is run over things that it should ignore
+#define W_SIGNAL(...)        ;
+#define W_SIGNAL_COMPAT(...) ;
+#define W_PROPERTY(...)
+#define W_SLOT(...)
+#define W_CLASSINFO(...)
+#define W_INTERFACE(...)
+#define W_CONSTRUCTOR(...)
+#define W_FLAG(...)
+#define W_ENUM(...)
+#endif

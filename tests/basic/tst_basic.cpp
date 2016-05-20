@@ -32,6 +32,9 @@ private /*slots*/:
 
     void subObject();
     W_SLOT(subObject, W_Access::Private)
+
+    void abstractParent();
+    W_SLOT(abstractParent, W_Access::Private)
 };
 
 #include <wobjectimpl.h>
@@ -182,7 +185,37 @@ void tst_Basic::subObject()
     QVERIFY(QMetaMethod::fromSignal(&tst_Basic::SubObject::mySignal).isValid());
 }
 
+class AbstractClass : public QObject {
+    W_OBJECT(AbstractClass)
+    int prop;
+    W_PROPERTY(int, prop MEMBER prop)
 
+public:
+    void mySignal() W_SIGNAL(mySignal);
+    virtual void pureSlot() = 0; W_SLOT(pureSlot)
+};
+W_OBJECT_IMPL(AbstractClass)
 
+class ConcreateClass : public AbstractClass {
+    W_OBJECT(ConcreateClass)
+    int prop2;
+    W_PROPERTY(int, prop2 MEMBER prop2)
+
+public:
+    void mySignal2() W_SIGNAL(mySignal2);
+    void pureSlot() override {};
+};
+W_OBJECT_IMPL(ConcreateClass)
+
+void tst_Basic::abstractParent()
+{
+    QVERIFY(QMetaMethod::fromSignal(&AbstractClass::mySignal).isValid());
+    QVERIFY(QMetaMethod::fromSignal(&ConcreateClass::mySignal2).isValid());
+    ConcreateClass cl;
+    AbstractClass *ab = &cl;
+    QCOMPARE(ab->metaObject()->superClass(), &AbstractClass::staticMetaObject);
+    QVERIFY(ab->setProperty("prop", 8989));
+    QCOMPARE(ab->property("prop"), QVariant(8989));
+}
 
 QTEST_MAIN(tst_Basic)
