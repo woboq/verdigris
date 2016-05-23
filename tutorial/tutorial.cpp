@@ -1,29 +1,21 @@
 /**
- This file presents a "fork" of CopperSpice.
+  This file presents Verdigris, a "fork" of CopperSpice.
 
-  CopperSpice is a fork of Qt 4 whose spcificity is to get rid of moc (Qt Meta-object compiler)
+  CopperSpice is a fork of Qt 4 whose specificity is to get rid of moc (Qt Meta-object compiler)
   In order to get rid of moc, they changed the Qt macros to be less optimal.
   They made a complete, incompatible fork of Qt.
 
- This library:
-  It is not a fork of CopperSpice, but rather a re-implementation of their macro in a way that is
-  binary compatible with Qt.
-  That is: you can write your application without needing moc, and still use it with existing Qt 5
-  releases.
+  Verdigris is not a fork of CopperSpice, but rather a re-implementation of their macro in a way
+  that is binary compatible with Qt. You can write your application without needing moc, and still
+  use it with existing Qt 5 releases.
 
- How:
-  CopperSpice generates the metaobjects at runtime. But moc generates them at compile time. I choose
-  to do the same using constexpr to generate QMetaObject at compile time.
-  I am using C++14 for simplicity because it is much more easy to handle constexpr.
+  CopperSpice generates the metaobjects at runtime. But moc generates them at compile time.
+  Verdigris uses constexpr to generate QMetaObject at compile time.
+  It is using C++14 for simplicity because it is much more easy to handle constexpr.
   The code is originally taken from my previous work
   https://woboq.com/blog/reflection-in-cpp-and-qt-moc.html
   In that experiment, I was trying to use same macros that Qt does (keeping source compatibility).
   When using more complex but uglier macros (CopperSpice style) we can do it without the moc.
-
-
- Name of this library: verdigris.
-  Currently, all the macro and identifier starts with W_ or w_.
-  the 'W' stands for Woboq.
 
  */
 
@@ -34,7 +26,6 @@
 // In a header file you would include the wobjectdefs.h header
 // This is equivalent to the qobjectdefs.h header
 #include <wobjectdefs.h>
-
 // And because you will inherit from QObject you also need to QObject header
 #include <QObject>
 
@@ -64,15 +55,9 @@ public /* signals */:
     void mySignal(const QString &name)
     W_SIGNAL(mySignal, name)
     /* Note the absence of semi colon after the signal declaration */
-
-    // FIXME! revenir à W_SIGNAL_1/_2
-    // OR: void mySignal(const QString &name) { W_SIGNAL(mySignal, name) }
-
 };
 
-
 /* Here is what would go in the C++ .cpp file: */
-
 #include <wobjectimpl.h>
 
 // And now this is the macro you need to instantiate the meta object.
@@ -111,7 +96,7 @@ class SlotTutorial : public QObject {
 
     /* Examples: */
 protected:
-    // declares a protected slot
+    // Declares a protected slot
     void protectedSlot() {}
     W_SLOT(protectedSlot, W_Access::Protected)
 private:
@@ -120,7 +105,7 @@ private:
     W_SLOT(protectedSlot, W_Access::Private)
 
 public:
-    // overloaded function needs a parameter list as second argument of the macro
+    // Overloaded function needs a parameter list as second argument of the macro
     // to disambiguate
     void overload() {}
     W_SLOT(overload, ())
@@ -153,7 +138,7 @@ class SignalTutorial : public QObject {
      */
 
 public:
-    // example:
+    // Example:
     void sig1(int a , int b)
     W_SIGNAL(sig1, a, b)
 
@@ -169,17 +154,16 @@ W_OBJECT_IMPL(SignalTutorial)
 
 
 /** ******************************************************************************************** **/
-/** Gadgets,  invokable, constructor **/
+/** Gadgets, invokable, constructor **/
 
 
 class InvokableTutorial  {
-    // Well, just like Qt has Q_GADGET, here we have W_GADGET
+    // Just like Qt has Q_GADGET, here we have W_GADGET
     W_GADGET(InvokableTutorial)
 
 public:
     /** W_INVOKABLE is the same as W_SLOT.
-     * It can take another flag (W_Scriptable) which corresponds to Q_SCRIPTABLE*/
-
+     * It can take another flag (W_Scriptable) which corresponds to Q_SCRIPTABLE */
     void myInvokable() {}
     W_INVOKABLE(myInvokable)
 
@@ -189,13 +173,12 @@ public:
         one can have W_CONSTRUCTOR() for the default constructor even if it is implicit
      */
 
-
     InvokableTutorial(int, int) {}
     W_CONSTRUCTOR(int, int)
 
     InvokableTutorial(void*, void* =nullptr) {}
     W_CONSTRUCTOR(void*, void*)
-    // because of the default argument we can also do that:  (only in this macro)
+    // Because of the default argument we can also do that:  (only in this macro)
     W_CONSTRUCTOR(void*)
 };
 
@@ -228,7 +211,7 @@ public:
     void valueChanged()
     W_SIGNAL(valueChanged)
 
-    // So just like in Qt only with one additional coma  after the type
+    // Just like in Qt only with one additional coma after the type
     W_PROPERTY(QString, prop1 READ value WRITE setValue NOTIFY valueChanged)
 
     // Is equivalent to:
@@ -251,7 +234,6 @@ W_OBJECT_IMPL(PropertyTutorial)
 
 /** ******************************************************************************************** **/
 /** Enums **/
-
 
 class EnumTutorial  {
     W_GADGET(EnumTutorial)
@@ -328,7 +310,7 @@ W_OBJECT_IMPL(FooBar)
 
 #include <QtCore/QDebug>
 
-// we can have templated class:
+// We can have templated class:
 template<typename T>
 class MyTemplate : public QObject {
     W_OBJECT(MyTemplate)
