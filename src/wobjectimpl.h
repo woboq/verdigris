@@ -51,7 +51,7 @@ enum { IsUnresolvedType = 0x80000000 };
  *
  * The IntermediateState class helps building the QMetaObject.
  * It contains the StaticStringList of strings within this meta object, and the array of int as
- * template parametter.
+ * template parameter.
  *
  * It has helper method that helps extending the state
  */
@@ -87,7 +87,7 @@ struct IntermediateState {
  * The first parameter f the function is the IntermediateState, and it returns a new
  * InterMediateState with all the information from the tree added to it.
  *
- * The 'Ofst' template parameter is the offset in the interger array to which new data can be added.
+ * The 'Ofst' template parameter is the offset in the integer array to which new data can be added.
  *
  * The Generator template type has a method generate which will be called for every element of the
  * tree with the IntermediateState. It is called with the offset as a template parameter.
@@ -131,7 +131,7 @@ struct ResolveNotifySignal {
     static_assert(signalIndex >= 0 || !hasNotify, "NOTIFY signal not registered as a signal");
 };
 
-/** Add the notfy signal index to the intermediate state, for each properties  */
+/** Add the notify signal index to the intermediate state, for each properties  */
 template <typename T, typename State, std::size_t... I>
 static constexpr auto generateNotifySignals(State s, std::true_type, std::index_sequence<I...>)
 { return s.template add<std::max(0, ResolveNotifySignal<T, I>::signalIndex)...>(); }
@@ -167,7 +167,7 @@ struct ObjectInfo {
 
 /**
  * Constructs a ObjectInfo for the object T.
- * Pass the (quallified) name as a static string.
+ * Pass the (qualified) name as a static string.
  * Called from W_OBJECT_IMPL
  */
 template<typename T, int N>
@@ -202,7 +202,7 @@ struct MethodGenerator {
     static constexpr auto generate(State s, Method method) {
         return s.addString(method.name). // name
                 template add<Method::argCount,
-                             ParamIndex, //parametters
+                             ParamIndex, //parameters
                              1, //tag, always \0
                              adjustFlags(Method::flags)>();
     }
@@ -217,8 +217,8 @@ template <typename T, typename = void> struct MetaTypeIdIsBuiltIn : std::false_t
 template <typename T> struct MetaTypeIdIsBuiltIn<T, typename std::enable_if<QMetaTypeId2<T>::IsBuiltIn>::type> : std::true_type{};
 
 /**
- * Helper to generate the type infromation of type 'T':
- * If T is a builtin QMetaType, it's metatype id need to be added in the state.
+ * Helper to generate the type information of type 'T':
+ * If T is a builtin QMetaType, its meta type id need to be added in the state.
  * If it's not builtin, then it would be an reference to T's name in the string array.
  */
 template<typename T, bool Builtin = MetaTypeIdIsBuiltIn<T>::value>
@@ -288,7 +288,7 @@ struct EnumValuesGenerator {
 
 /**
  * Helper classes for MethodParametersGenerator::generateSingleMethodParameter:
- * generate the parametter array
+ * generate the parameter array
  */
 template<typename ...Args> struct HandleArgsHelper {
     template<typename Strings, typename ParamTypes>
@@ -358,7 +358,7 @@ public:
     }
 };
 
-// Generator for contructor parameter to be used in generate<>()
+// Generator for constructor parameter to be used in generate<>()
 struct ConstructorParametersGenerator {
     template<typename> static constexpr int offset() { return 0; }
     template<int, typename State, int N, typename... Args>
@@ -525,7 +525,7 @@ template <typename... T>
 inline void propReset(T...) {}
 
 struct FriendHelper {
-/** Instancies the QMetaObject forr class T */
+/** Instancies the QMetaObject for class T */
 template<typename T>
 static constexpr QMetaObject createMetaObject()
 {
@@ -574,7 +574,7 @@ static int indexOfMethod(void **func) {
 /**
  * Helper for implementation of qt_static_metacall for QMetaObject::InvokeMetaMethod
  * T is the class, and I is the index of a method.
- * Invoke the methd with index I if id == I.
+ * Invoke the method with index I if id == I.
  */
 template <typename T, int I>
 static void invokeMethod(T *_o, int _id, void **_a) {
@@ -639,7 +639,7 @@ static void propertyOperation(T *_o, QMetaObject::Call _c, int _id, void **_a) {
 
 /**
  * Helper for implementation of qt_static_metacall for QMetaObject::CreateInstance
- * T is the class, and I is the index of a onstructor.
+ * T is the class, and I is the index of a constructor.
  */
 template<typename T, int I>
 static void createInstance(int _id, void** _a) {
@@ -696,7 +696,7 @@ static void qt_static_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void**
     }
 }
 
-/** helper for the impleentation of qt_metacast */
+/** helper for the implementation of qt_metacast */
 template <typename T1, typename T2>
 static void metaCast(void *&result, T1 *o, const char *clname, T2*) {
     const char *iid = qobject_interface_iid<T2*>();

@@ -250,7 +250,7 @@ enum class PropertyFlags  {
 };
 constexpr uint operator|(uint a, PropertyFlags b) { return a | uint(b); }
 
-/** w_number<I> is a elper to implement state */
+/** w_number<I> is a helper to implement state */
 template<int N = 255> struct w_number : public w_number<N - 1> {
     static constexpr int value = N;
     static constexpr w_number<N-1> prev() { return {}; }
@@ -305,7 +305,7 @@ constexpr std::integral_constant<int, int(w_internal::PropertyFlags::Final)> W_F
 
 namespace w_internal {
 
-// workaround to avoid leading coma in macro that can optionaly take a flag
+// workaround to avoid leading coma in macro that can optionally take a flag
 struct W_RemoveLeadingComa { constexpr W_MethodFlags<0> operator+() const { return {}; } };
 template <typename T> constexpr T operator+(T &&t, W_RemoveLeadingComa) { return t; }
 constexpr W_RemoveLeadingComa W_removeLeadingComa{};
@@ -465,10 +465,10 @@ constexpr MetaEnumInfo<NameLength, std::index_sequence<size_t(Values)...> , Name
  * Called from the signal implementation within the W_SIGNAL macro.
  *
  * 'Func' is the type of the signal. 'Idx' is the signal index (relative).
- * It is implemented as a functor so the operator() has exactly the same amout of argument of the
+ * It is implemented as a functor so the operator() has exactly the same amount of argument of the
  * signal so the __VA_ARGS__ works also if there is no arguments (no leading commas)
  *
- * There is specialisation for const and non-const,  and for void and non-void signals.
+ * There is specialization for const and non-const,  and for void and non-void signals.
  */
 template<typename Func, int Idx> struct SignalImplementation {};
 template<typename Ret, typename Obj, typename... Args, int Idx>
@@ -733,7 +733,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
  * name.
  * W_PROPERTY need to be put after all the setters, getters, signals have been declared.
  *
- * <type> can optionaly be put in parentheses, if you have a type containing a coma
+ * <type> can optionally be put in parentheses, if you have a type containing a coma
  */
 #define W_PROPERTY(...) W_PROPERTY2(__VA_ARGS__) // expands the READ, WRITE, and other sub marcos
 #define W_PROPERTY2(TYPE, NAME, ...) \
