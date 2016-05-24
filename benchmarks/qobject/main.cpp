@@ -26,7 +26,6 @@
 **
 ****************************************************************************/
 #include <QtCore>
-#include <QtWidgets/QTreeView>
 #include <qtest.h>
 #include "object.h"
 #include <qcoreapplication.h>
@@ -43,6 +42,9 @@ Q_OBJECT
 private slots:
     void signal_slot_benchmark();
     void signal_slot_benchmark_data();
+
+    void connect_disconnect_benchmark_data();
+    void connect_disconnect_benchmark();
 };
 
 struct Functor {
@@ -136,6 +138,91 @@ void QObjectBenchmark::signal_slot_benchmark()
     QFETCH(bool, w);
     if (w) ::signal_slot_benchmark<ObjectW>();
     else ::signal_slot_benchmark<Object>();
+}
+
+void QObjectBenchmark::connect_disconnect_benchmark_data()
+{
+    QTest::addColumn<int>("type");
+    QTest::addColumn<bool>("w");
+
+    QTest::newRow("normalized signature") << 0          << false;
+    QTest::newRow("unormalized signature") << 1         << false;
+    QTest::newRow("function pointer") << 2              << false;
+    QTest::newRow("normalized signature/handle") << 3   << false;
+    QTest::newRow("unormalized signature/handle") << 4  << false;
+    QTest::newRow("function pointer/handle") << 5       << false;
+    QTest::newRow("functor/handle") << 6                << false;
+
+    QTest::newRow("w normalized signature") << 0          << true;
+    QTest::newRow("w unormalized signature") << 1         << true;
+    QTest::newRow("w function pointer") << 2              << true;
+    QTest::newRow("w normalized signature/handle") << 3   << true;
+    QTest::newRow("w unormalized signature/handle") << 4  << true;
+    QTest::newRow("w function pointer/handle") << 5       << true;
+    QTest::newRow("w functor/handle") << 6                << true;
+
+}
+
+template<typename Object>
+void connect_disconnect_benchmark()
+{
+    QFETCH(int, type);
+    switch (type) {
+        case 0: {
+            Object obj;
+            QBENCHMARK {
+                QObject::connect   (&obj, SIGNAL(signal5()), &obj, SLOT(slot5()));
+                QObject::disconnect(&obj, SIGNAL(signal5()), &obj, SLOT(slot5()));
+            }
+        } break;
+        case 1: {
+            Object obj;
+            QBENCHMARK {
+                QObject::connect   (&obj, SIGNAL(signal5(  )), &obj, SLOT(slot5(  ))); // sic: non-normalised
+                QObject::disconnect(&obj, SIGNAL(signal5(  )), &obj, SLOT(slot5(  ))); // sic: non-normalised
+            }
+        } break;
+        case 2: {
+            Object obj;
+            QBENCHMARK {
+                QObject::connect   (&obj, &Object::signal5, &obj, &Object::slot5);
+                QObject::disconnect(&obj, &Object::signal5, &obj, &Object::slot5);
+            }
+        } break;
+        case 3: {
+            Object obj;
+            QBENCHMARK {
+                QObject::disconnect(QObject::connect(&obj, SIGNAL(signal5()), &obj, SLOT(slot5())));
+            }
+        } break;
+        case 4: {
+            Object obj;
+            QBENCHMARK {
+                QObject::disconnect(QObject::connect(&obj, SIGNAL(signal5(  )), &obj, SLOT(slot5(  )))); // sic: non-normalised
+            }
+        } break;
+        case 5: {
+            Object obj;
+            QBENCHMARK {
+                QObject::disconnect(QObject::connect(&obj, &Object::signal5, &obj, &Object::slot5));
+            }
+        } break;
+        case 6: {
+            Object obj;
+            Functor functor;
+            QBENCHMARK {
+                QObject::disconnect(QObject::connect(&obj, &Object::signal5, functor));
+            }
+        } break;
+    }
+}
+
+
+void QObjectBenchmark::connect_disconnect_benchmark()
+{
+    QFETCH(bool, w);
+    if (w) ::connect_disconnect_benchmark<ObjectW>();
+    else ::connect_disconnect_benchmark<Object>();
 }
 
 QTEST_MAIN(QObjectBenchmark)
