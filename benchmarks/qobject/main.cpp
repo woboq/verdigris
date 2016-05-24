@@ -217,7 +217,6 @@ void connect_disconnect_benchmark()
     }
 }
 
-
 void QObjectBenchmark::connect_disconnect_benchmark()
 {
     QFETCH(bool, w);
