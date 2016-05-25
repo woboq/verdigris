@@ -94,12 +94,16 @@ public: /*signals*/
     void signalSeveralArgs(int a, const QString &b, char * c = nullptr)
     W_SIGNAL(signalSeveralArgs, a, b, c)
 
-
+    void anotherSignal()
+    W_SIGNAL(anotherSignal)
 public:
     W_PROPERTY(QString, value1, &BTestObj::setValue, &BTestObj::getValue )
     QString member;
-    W_PROPERTY(QString, member1, &BTestObj::member )
+    W_PROPERTY(QString, member1, &BTestObj::member)
     W_PROPERTY(QString, all, &BTestObj::value, &BTestObj::setValue, &BTestObj::getValue)
+
+    W_PROPERTY(QString, notify1 MEMBER member NOTIFY simpleSignal)
+    W_PROPERTY(QString, notify2 MEMBER member NOTIFY anotherSignal)
 };
 
 
@@ -137,6 +141,7 @@ void tst_Basic::property_data()
     QTest::newRow("value1") << QByteArrayLiteral("value1");
     QTest::newRow("member1") << QByteArrayLiteral("member1");
     QTest::newRow("all") << QByteArrayLiteral("all");
+
 }
 
 

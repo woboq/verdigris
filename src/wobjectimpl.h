@@ -110,24 +110,28 @@ constexpr auto generate(State s, Tree t) {
 template <typename T1, typename T2> constexpr bool getSignalIndexHelperCompare(T1, T2) { return false; }
 template <typename T> constexpr bool getSignalIndexHelperCompare(T f1, T f2) { return f1 == f2; }
 
-/** Returns the index of a pointer to member function F within the given signal state */
-template <typename F> constexpr int getSignalIndex(F,binary::tree<>) { return -1; }
-template <typename F, typename Ms>
-constexpr int getSignalIndex(F func, Ms ms) {
-    if (getSignalIndexHelperCompare(func,binary::tree_head(ms).func))
-        return 0;
-    auto x = getSignalIndex(func,binary::tree_tail(ms));
-    return x >= 0 ? x + 1 : x;
-}
-
-/** Helper to get information bout the notify signal of the property with index I of the object T */
-template<typename T, int I>
-struct ResolveNotifySignal {
+/** Helper to get information bout the notify signal of the property with index Idx of the object T */
+template<typename T, int Idx, typename = make_index_sequence<w_SignalState(w_number<>{},static_cast<T**>(nullptr)).size>>
+struct ResolveNotifySignal;
+template<typename T, int Idx, size_t ...I>
+struct ResolveNotifySignal<T, Idx, index_sequence<I...>> {
+private:
     static constexpr auto propertyInfo = w_PropertyState(w_number<>{},static_cast<T**>(nullptr));
-    static constexpr auto property = binary::get<I>(propertyInfo);
+    static constexpr auto property = binary::get<Idx>(propertyInfo);
+    static constexpr auto signalState = w_SignalState(w_number<>{},static_cast<T**>(nullptr));
+
+    // We need to use SFINAE because of GCC bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=69681
+    // For some reason, GCC fails to consider f1==f2 as a constexpr if f1 and f2 are pointer to
+    // different function of the same type. Fortunately, when both are pointing to the same function
+    // it compiles fine, so we can use SFINAE for it.
+    template<int SigIdx>
+    static constexpr std::enable_if_t<getSignalIndexHelperCompare(binary::get<SigIdx>(signalState).func, property.notify) || true, int>
+        helper(int)
+    { return getSignalIndexHelperCompare(binary::get<SigIdx>(signalState).func, property.notify) ? SigIdx : -1; }
+    template<int SigIdx> static constexpr int helper(...) { return -1; }
+public:
     static constexpr bool hasNotify = !std::is_same<decltype(property.notify), std::nullptr_t>::value;
-    static constexpr int signalIndex = !hasNotify ? -1 :
-        getSignalIndex(property.notify, w_SignalState(w_number<>{},static_cast<T**>(nullptr)));
+    static constexpr int signalIndex = !hasNotify ? -1 : std::max({-1, helper<I>(0)...});
     static_assert(signalIndex >= 0 || !hasNotify, "NOTIFY signal not registered as a signal");
 };
 
