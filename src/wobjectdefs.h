@@ -305,10 +305,10 @@ constexpr std::integral_constant<int, int(w_internal::PropertyFlags::Final)> W_F
 
 namespace w_internal {
 
-// workaround to avoid leading coma in macro that can optionally take a flag
-struct W_RemoveLeadingComa { constexpr W_MethodFlags<0> operator+() const { return {}; } };
-template <typename T> constexpr T operator+(T &&t, W_RemoveLeadingComa) { return t; }
-constexpr W_RemoveLeadingComa W_removeLeadingComa{};
+// workaround to avoid leading comma in macro that can optionaly take a flag
+struct W_RemoveLeadingComma { constexpr W_MethodFlags<0> operator+() const { return {}; } };
+template <typename T> constexpr T operator+(T &&t, W_RemoveLeadingComma) { return t; }
+constexpr W_RemoveLeadingComma W_removeLeadingComma{};
 
 /** Holds information about a method */
 template<typename F, int NameLength, int Flags, typename ParamTypes, typename ParamNames = StaticStringList<>>
@@ -663,7 +663,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
     W_STATE_APPEND(w_SlotState, w_internal::makeMetaSlotInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
-            W_OVERLOAD_REMOVE(__VA_ARGS__) +w_internal::W_removeLeadingComa))
+            W_OVERLOAD_REMOVE(__VA_ARGS__) +w_internal::W_removeLeadingComma))
 
 /**
  * W_INVOKABLE( <slot name> [, (<parameters types>) ]  [, <flags>]* )
@@ -673,14 +673,14 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
     W_STATE_APPEND(w_MethodState, w_internal::makeMetaMethodInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
-            W_OVERLOAD_REMOVE(__VA_ARGS__) +w_internal::W_removeLeadingComa))
+            W_OVERLOAD_REMOVE(__VA_ARGS__) +w_internal::W_removeLeadingComma))
 
 /**
  * <signal signature>
  * W_SIGNAL(<signal name> [, (<parameter types>) ] , <parameter names> )
  *
  * Unlike W_SLOT, W_SIGNAL must be placed directly after the signal signature declaration.
- * There should not be a semi collon between the signal signature and the macro
+ * There should not be a semi colon between the signal signature and the macro
  *
  * Like W_SLOT, there can be the types of the parametter as a second argument, within parentheses.
  * You must then follow with the parameter names
@@ -731,9 +731,9 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
  * other flags. Use the macro READ, WRITE, MEMBER, ... for the flag so you can write W_PROPERTY
  * just like in a Q_PROPERTY. The only difference with Q_PROPERTY would be the semicolon before the
  * name.
- * W_PROPERTY need to be put after all the setters, getters, signals have been declared.
+ * W_PROPERTY need to be put after all the setters, getters, signals and members have been declared.
  *
- * <type> can optionally be put in parentheses, if you have a type containing a coma
+ * <type> can optionally be put in parentheses, if you have a type containing a comma
  */
 #define W_PROPERTY(...) W_PROPERTY2(__VA_ARGS__) // expands the READ, WRITE, and other sub marcos
 #define W_PROPERTY2(TYPE, NAME, ...) \
@@ -783,7 +783,7 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 /** \macro W_REGISTER_ARGTYPE(TYPE)
  Registers TYPE so it can be used as a parameter of a signal/slot or return value.
  The normalized signature must be used.
- Note: This does not imply Q_DECLARE_METATYPE, and Q_DECLARE_METATYPE does not implies this
+ Note: This does not imply Q_DECLARE_METATYPE, and Q_DECLARE_METATYPE does not imply this
 */
 namespace w_internal { template<typename T> struct W_TypeRegistery { enum { registered = false }; }; }
 #define W_REGISTER_ARGTYPE(...) namespace w_internal { \

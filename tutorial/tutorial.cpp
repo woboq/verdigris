@@ -198,7 +198,8 @@ public:
         There are the macro READ WRITE MEMBER and so on which have been defined so
         you can just add a comma after the type, just like in a Q_PROPERTY.
 
-        W_PROPERTY need to be put after all the setter member and co have been declared
+        W_PROPERTY need to be put after all the setters, getters, signals and members
+        have been declared.
     */
 
     QString m_value;
@@ -210,7 +211,7 @@ public:
     void valueChanged()
     W_SIGNAL(valueChanged)
 
-    // Just like in Qt only with one additional coma after the type
+    // Just like in Qt only with one additional comma after the type
     W_PROPERTY(QString, prop1 READ value WRITE setValue NOTIFY valueChanged)
 
     // Is equivalent to:
@@ -223,7 +224,7 @@ public:
     //equivalent to
     W_PROPERTY(QString, prop4, &PropertyTutorial::m_value, W_Notify, &PropertyTutorial::valueChanged)
 
-    // Optionally, you can put parentheses around the type, useful if it contains a coma
+    // Optionally, you can put parentheses around the type, useful if it contains a comma
     QMap<int, int> m_map;
     W_PROPERTY((QMap<int,int>), map  MEMBER m_map)
 };
@@ -277,7 +278,7 @@ struct CustomType3 {};
 /** W_REGISTER_ARGTYPE(TYPE)
    register  TYPE so it can be used as a parameter of a signal/slot or return value
    One must use the normalized signature.
-   Note: This does not imply Q_DECLARE_METATYPE, and Q_DECLARE_METATYPE does not implies this
+   Note: This does not imply Q_DECLARE_METATYPE, and Q_DECLARE_METATYPE does not emply this.
   */
 W_REGISTER_ARGTYPE(CustomType1)
 W_REGISTER_ARGTYPE(CustomType1*)
