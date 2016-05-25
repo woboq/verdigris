@@ -453,10 +453,11 @@ struct MetaEnumInfo {
     static constexpr uint flags = Flags;
     static constexpr uint count = Values::size();
 };
+template<typename Enum, Enum... Value> struct enum_sequence {};
 // called from W_ENUM and W_FLAG
-template<typename T, int Flag, int NameLength, T... Values, typename Names>
+template<typename Enum, int Flag, int NameLength, Enum... Values, typename Names>
 constexpr MetaEnumInfo<NameLength, std::index_sequence<size_t(Values)...> , Names, Flag> makeMetaEnumInfo(
-                StaticStringArray<NameLength> &name, std::integer_sequence<T, Values...>, Names names) {
+                StaticStringArray<NameLength> &name, enum_sequence<Enum, Values...>, Names names) {
     return { {name}, names };
 }
 
@@ -749,13 +750,12 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 #define CONSTANT , W_Constant
 #define FINAL , W_Final
 
-
 /** W_ENUM(<name>, <values>)
  * Similar to Q_ENUM, but one must also manually write all the values.
  */
 #define W_ENUM(NAME, ...) \
     W_STATE_APPEND(w_EnumState, w_internal::makeMetaEnumInfo<NAME,false>( \
-            #NAME, std::integer_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
+            #NAME, w_internal::enum_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
     Q_ENUM(NAME)
 
 /** W_FLAG<name>, <values>)
@@ -767,7 +767,7 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 }
 #define W_FLAG(NAME, ...) \
     W_STATE_APPEND(w_EnumState, w_internal::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type,true>( \
-            #NAME, std::integer_sequence<w_internal::QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
+            #NAME, w_internal::enum_sequence<w_internal::QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
     Q_FLAG(NAME)
 
 /** Same as Q_CLASSINFO */
