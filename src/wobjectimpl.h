@@ -697,11 +697,11 @@ static void qt_static_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void**
 }
 
 /** helper for the implementation of qt_metacast */
-template <typename T1, typename T2>
-static void metaCast(void *&result, T1 *o, const char *clname, T2*) {
-    const char *iid = qobject_interface_iid<T2*>();
+template <typename Interface, typename T>
+static void interfaceMetaCast(void *&result, T *o, const char *clname) {
+    const char *iid = qobject_interface_iid<Interface>();
     if (iid && !strcmp(clname, iid))
-        result = static_cast<T2*>(o);
+        result = static_cast<Interface>(o);
 }
 
 /** implementation of qt_metacast */
@@ -713,7 +713,7 @@ static void *qt_metacast_impl(T *o, const char *_clname, std::index_sequence<Int
     if (_clname == QByteArray(sd))
         return o;
     void *result = nullptr;
-    nop((metaCast(result, o, _clname, binary::get<InterfaceI>(T::W_MetaObjectCreatorHelper::objectInfo.interfaces)),0)...);
+    nop((interfaceMetaCast<decltype(binary::get<InterfaceI>(T::W_MetaObjectCreatorHelper::objectInfo.interfaces))>(result, o, _clname),0)...);
     return result ? result : o->T::W_BaseType::qt_metacast(_clname);
 }
 
