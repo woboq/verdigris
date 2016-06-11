@@ -741,6 +741,14 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
 }
 } // w_internal
 
+#ifdef Q_OS_WIN
+// On Windows, taking the address of exported symbols is not a constexpr. (At least with MinGW 5.3)
+// So the staticMetaObject can't be constexpr because of the pointer to the base class QMetaObject
+#define W_STATICMETAOBJECT_CONSTEXPR
+#else
+#define W_STATICMETAOBJECT_CONSTEXPR constexpr
+#endif
+
 #define W_OBJECT_IMPL_COMMON(TYPE, ...) \
     __VA_ARGS__ struct W_MACRO_REMOVEPAREN(TYPE)::W_MetaObjectCreatorHelper { \
         static constexpr auto objectInfo = \
@@ -749,7 +757,7 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
         static constexpr auto string_data = data.first; \
         static constexpr auto int_data = data.second; \
     }; \
-    __VA_ARGS__ constexpr const QMetaObject W_MACRO_REMOVEPAREN(TYPE)::staticMetaObject = \
+    __VA_ARGS__ W_STATICMETAOBJECT_CONSTEXPR const QMetaObject W_MACRO_REMOVEPAREN(TYPE)::staticMetaObject = \
         w_internal::createMetaObject<W_MACRO_REMOVEPAREN(TYPE)>();
 
 #define W_OBJECT_IMPL(TYPE, ...) \
