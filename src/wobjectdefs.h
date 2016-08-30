@@ -554,6 +554,11 @@ struct QOverload : QConstOverload<Args...>, QNonConstOverload<Args...>
 };
 template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 }
+
+#ifndef QT_ANNOTATE_CLASS // Was added in Qt 5.6.1
+#define QT_ANNOTATE_CLASS(...)
+#endif
+
 #endif // Qt < 5.7
 
 // Private macro helpers for classical macro programming
@@ -636,15 +641,17 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
     public: \
         using W_BaseType = std::remove_reference_t<decltype(\
             w_internal::getParentObjectHelper(&W_ThisType::qt_metacast))>; \
-    Q_OBJECT
+    Q_OBJECT \
+    QT_ANNOTATE_CLASS(qt_fake, "")
 
-/** \macro W_OBJECT(TYPE)
+/** \macro W_GADGET(TYPE)
  * Like the Q_GADGET macro, this declare that the object might have properties.
  * Must contains the class name as a parameter and need to be put before any other W_ macro in the class.
  */
 #define W_GADGET(TYPE) \
     W_OBJECT_COMMON(TYPE) \
-    Q_GADGET
+    Q_GADGET \
+    QT_ANNOTATE_CLASS(qt_fake, "")
 
 /**
  * W_SLOT( <slot name> [, (<parameters types>) ]  [, <flags>]* )
