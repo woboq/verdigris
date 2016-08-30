@@ -18,7 +18,8 @@ Also make sure to set your compiler in, at least, C++14 mode. With qmake, you ca
 For the documentation, see the tutorial.
 https://code.woboq.org/woboq/verdigris/tutorial/tutorial.cpp.html
 
-Was tested with Qt 5.6 but should work with any version of Qt 5.
+Was tested with Qt 5.6 and 5.7 but should work with any version of Qt 5.
+Need a compiler that can do C++14 relaxed constexpr such as GCC 5.1 or Clang 3.4.
 
 
 Status
