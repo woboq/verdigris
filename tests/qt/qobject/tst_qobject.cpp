@@ -952,8 +952,10 @@ void tst_QObject::connectDisconnectNotifyPMF()
 
     // Test disconnectNotify when disconnecting by QMetaObject::Connection
     QVERIFY(QObject::disconnect(conn));
+#if QT_VERSION < QT_VERSION_CHECK(5, 8, 0)
     // disconnectNotify() is not called, but it probably should be.
     QVERIFY(s->disconnectedSignals.isEmpty());
+#endif
 
     // Test connectNotify when connecting by function pointer
     s->clearNotifications();
