@@ -25,6 +25,10 @@
 #include <QtCore/qmetatype.h>
 #include <utility>
 
+#if !defined(__cpp_constexpr) || __cpp_constexpr < 201304
+#error Verdigris requires C++14 relaxed constexpr
+#endif
+
 namespace w_internal {
 using std::index_sequence;  // From C++14, make sure to enable the C++14 option in your compiler
 
