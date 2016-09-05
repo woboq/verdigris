@@ -254,7 +254,9 @@ struct PropertyGenerator {
         auto s3 = HandleType<typename Prop::PropertyType>::result(s2, prop.typeStr);
         constexpr uint moreFlags = (QtPrivate::IsQEnumHelper<typename Prop::PropertyType>::Value
             ? uint(PropertyFlags::EnumOrFlag) : 0);
-        return s3.template add<Prop::flags | moreFlags>();
+        constexpr uint defaultFlags = 0 | PropertyFlags::Stored | PropertyFlags::Scriptable
+            | PropertyFlags::Designable;
+        return s3.template add<Prop::flags | moreFlags | defaultFlags>();
     }
 };
 
