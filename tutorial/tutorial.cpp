@@ -101,7 +101,7 @@ protected:
 private:
     // and a private slot
     void privateSlot() {}
-    W_SLOT(protectedSlot, W_Access::Private)
+    W_SLOT(privateSlot, W_Access::Private)
 
 public:
     // Overloaded function needs a parameter list as second argument of the macro
