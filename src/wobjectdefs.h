@@ -478,7 +478,7 @@ constexpr MetaEnumInfo<NameLength, std::index_sequence<size_t(Values)...> , Name
  * There is specialization for const and non-const,  and for void and non-void signals.
  */
 template<typename Func, int Idx> struct SignalImplementation {};
-template<typename Ret, typename Obj, typename... Args, int Idx>
+template<typename Obj, typename Ret, typename... Args, int Idx>
 struct SignalImplementation<Ret (Obj::*)(Args...), Idx>{
     Obj *this_;
     Ret operator()(Args... args) const {
@@ -496,7 +496,7 @@ struct SignalImplementation<void (Obj::*)(Args...), Idx>{
         QMetaObject::activate(this_, &Obj::staticMetaObject, Idx, const_cast<void **>(a));
     }
 };
-template<typename Ret, typename Obj, typename... Args, int Idx>
+template<typename Obj, typename Ret, typename... Args, int Idx>
 struct SignalImplementation<Ret (Obj::*)(Args...) const, Idx>{
     const Obj *this_;
     Ret operator()(Args... args) const {
