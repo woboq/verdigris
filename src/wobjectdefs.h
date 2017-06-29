@@ -188,6 +188,8 @@ namespace binary {
 constexpr int sums() { return 0; }
 template<typename... Args>
 constexpr int sums(int i, Args... args) { return i + sums(args...);  }
+template <int ...Args>
+constexpr int summed = sums(Args...);
 
 /*
  * Helpers to play with static strings
@@ -327,19 +329,19 @@ struct MetaMethodInfo {
 
 // Called from the W_SLOT macro
 template<typename F, int N, typename ParamTypes, int... Flags>
-constexpr MetaMethodInfo<F, N, sums(Flags...) | W_MethodType::Slot.value, ParamTypes>
+constexpr MetaMethodInfo<F, N, summed<Flags...> | W_MethodType::Slot.value, ParamTypes>
 makeMetaSlotInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
 { return { f, {name}, paramTypes, {} }; }
 
 // Called from the W_METHOD macro
 template<typename F, int N, typename ParamTypes, int... Flags>
-constexpr MetaMethodInfo<F, N, sums(Flags...) | W_MethodType::Method.value, ParamTypes>
+constexpr MetaMethodInfo<F, N, summed<Flags...> | W_MethodType::Method.value, ParamTypes>
 makeMetaMethodInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
 { return { f, {name}, paramTypes, {} }; }
 
 // Called from the W_SIGNAL macro
 template<typename F, int N, typename ParamTypes, typename ParamNames, int... Flags>
-constexpr MetaMethodInfo<F, N, sums(Flags...) | W_MethodType::Signal.value,
+constexpr MetaMethodInfo<F, N, summed<Flags...> | W_MethodType::Signal.value,
                             ParamTypes, ParamNames>
 makeMetaSignalInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes,
                     const ParamNames &paramNames, W_MethodFlags<Flags>...)
