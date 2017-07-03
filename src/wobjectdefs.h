@@ -188,6 +188,7 @@ namespace binary {
 constexpr int sums() { return 0; }
 template<typename... Args>
 constexpr int sums(int i, Args... args) { return i + sums(args...);  }
+// This indirection is required to work around a MSVC bug. (See https://github.com/woboq/verdigris/issues/6 )
 template <int ...Args>
 constexpr int summed = sums(Args...);
 
