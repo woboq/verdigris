@@ -84,6 +84,10 @@ public:
     enum XXX { X1, X2, X3 = 45 };
     W_ENUM(XXX, X1, X2, X3)
 
+    void setValueNoex(const QString &s) noexcept { value = s; emit valueChanged(s); }
+    W_SLOT(setValueNoex)
+    QString getValueNoex() const noexcept { return value; }
+
 public: /*signals*/
     void valueChanged(const QString &s)
     W_SIGNAL(valueChanged, s)
@@ -104,6 +108,8 @@ public:
 
     W_PROPERTY(QString, notify1 MEMBER member NOTIFY simpleSignal)
     W_PROPERTY(QString, notify2 MEMBER member NOTIFY anotherSignal)
+
+    W_PROPERTY(QString, valueNoex, &BTestObj::setValueNoex, &BTestObj::getValueNoex)
 };
 
 
@@ -141,7 +147,7 @@ void tst_Basic::property_data()
     QTest::newRow("value1") << QByteArrayLiteral("value1");
     QTest::newRow("member1") << QByteArrayLiteral("member1");
     QTest::newRow("all") << QByteArrayLiteral("all");
-
+    QTest::newRow("valueNoex") << QByteArrayLiteral("valueNoex");
 }
 
 

@@ -420,6 +420,11 @@ template <typename PropInfo> constexpr auto parseProperty(const PropInfo &p) { r
 template <typename PropInfo, typename Obj, typename Arg, typename Ret, typename... Tail>
 constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)(Arg), Tail... t)
 { return parseProperty(p.setSetter(s) , t...); }
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510
+template <typename PropInfo, typename Obj, typename Arg, typename Ret, typename... Tail>
+constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)(Arg) noexcept, Tail... t)
+{ return parseProperty(p.setSetter(s) , t...); }
+#endif
 // getter
 template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
 constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)(), Tail... t)
@@ -427,6 +432,14 @@ constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)(), Tail... t)
 template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
 constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)() const, Tail... t)
 { return parseProperty(p.setGetter(s), t...); }
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510
+template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
+constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)() noexcept, Tail... t)
+{ return parseProperty(p.setGetter(s), t...); }
+template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
+constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)() const noexcept, Tail... t)
+{ return parseProperty(p.setGetter(s), t...); }
+#endif
 // member
 template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
 constexpr auto parseProperty(const PropInfo &p, Ret Obj::*s, Tail... t)
@@ -439,6 +452,11 @@ constexpr auto parseProperty(const PropInfo &p, decltype(W_Notify), F f, Tail...
 template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
 constexpr auto parseProperty(const PropInfo &p, decltype(W_Reset), Ret (Obj::*s)(), Tail... t)
 { return parseProperty(p.setReset(s) ,t...); }
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510
+template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
+constexpr auto parseProperty(const PropInfo &p, decltype(W_Reset), Ret (Obj::*s)() noexcept, Tail... t)
+{ return parseProperty(p.setReset(s) ,t...); }
+#endif
 // other flags flags
 template <typename PropInfo, int Flag, typename... Tail>
 constexpr auto parseProperty(const PropInfo &p, std::integral_constant<int, Flag>, Tail... t)
