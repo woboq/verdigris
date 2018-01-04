@@ -751,29 +751,43 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
 #define W_STATICMETAOBJECT_CONSTEXPR constexpr
 #endif
 
-#define W_OBJECT_IMPL_COMMON(TYPE, ...) \
-    __VA_ARGS__ struct W_MACRO_REMOVEPAREN(TYPE)::W_MetaObjectCreatorHelper { \
+// W_OBJECT_IMPL was designed to take advantage of the GNU extension that ... can have zero arguments.
+// So we need to work around that to extract the template stuff which may not exist or be composed
+// of several macro arguments: If the first argument has parentheses, there must be at least  two
+// arguments, so just do a tail. Otherwise, there should be only one or two argument, so take the second.
+#define W_MACRO_TEMPLATE_STUFF(...) W_MACRO_CONCAT(W_MACRO_TEMPLATE_STUFF_HELPER, W_MACRO_DELAY(W_MACRO_TEMPLATE_STUFF_QUERY,W_MACRO_TEMPLATE_STUFF_HELPER __VA_ARGS__)) (__VA_ARGS__)
+#define W_MACRO_TEMPLATE_STUFF_QUERY(...) W_MACRO_DELAY2(W_MACRO_FIRST, W_MACRO_TEMPLATE_STUFF_HELPER_ ## __VA_ARGS__)
+#define W_MACRO_TEMPLATE_STUFF_HELPER(...) YES
+#define W_MACRO_TEMPLATE_STUFF_HELPER_YES TAIL,
+#define W_MACRO_TEMPLATE_STUFF_HELPER_W_MACRO_TEMPLATE_STUFF_HELPER SECOND,
+#define W_MACRO_TEMPLATE_STUFF_HELPER_TAIL(X, ...) __VA_ARGS__
+#define W_MACRO_TEMPLATE_STUFF_HELPER_SECOND(...) W_MACRO_TEMPLATE_STUFF_HELPER_SECOND2(__VA_ARGS__,,)
+#define W_MACRO_TEMPLATE_STUFF_HELPER_SECOND2(A,B,...) B
+#define W_MACRO_FIRST_REMOVEPAREN(...) W_MACRO_REMOVEPAREN(W_MACRO_FIRST(__VA_ARGS__))
+
+#define W_OBJECT_IMPL_COMMON(...) \
+    W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) struct W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_MetaObjectCreatorHelper { \
         static constexpr auto objectInfo = \
-            w_internal::makeObjectInfo<W_MACRO_REMOVEPAREN(TYPE)>(W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE))); \
-        static constexpr auto data = w_internal::generateDataArray<W_MACRO_REMOVEPAREN(TYPE)>(objectInfo); \
+            w_internal::makeObjectInfo<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))); \
+        static constexpr auto data = w_internal::generateDataArray<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(objectInfo); \
         static constexpr auto string_data = data.first; \
         static constexpr auto int_data = data.second; \
     }; \
-    __VA_ARGS__ W_STATICMETAOBJECT_CONSTEXPR const QMetaObject W_MACRO_REMOVEPAREN(TYPE)::staticMetaObject = \
-        w_internal::createMetaObject<W_MACRO_REMOVEPAREN(TYPE)>();
+    W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) W_STATICMETAOBJECT_CONSTEXPR const QMetaObject W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::staticMetaObject = \
+        w_internal::createMetaObject<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>();
 
-#define W_OBJECT_IMPL(TYPE, ...) \
-    W_OBJECT_IMPL_COMMON(TYPE, __VA_ARGS__) \
-    __VA_ARGS__ void W_MACRO_REMOVEPAREN(TYPE)::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
-    { w_internal::qt_static_metacall_impl<W_MACRO_REMOVEPAREN(TYPE)>(_o, _c, _id, _a); } \
-    __VA_ARGS__ const QMetaObject *W_MACRO_REMOVEPAREN(TYPE)::metaObject() const  { return &staticMetaObject; } \
-    __VA_ARGS__ void *W_MACRO_REMOVEPAREN(TYPE)::qt_metacast(const char *_clname) \
-    { return w_internal::qt_metacast_impl<W_MACRO_REMOVEPAREN(TYPE)>(this, _clname); } \
-    __VA_ARGS__ int W_MACRO_REMOVEPAREN(TYPE)::qt_metacall(QMetaObject::Call _c, int _id, void** _a) \
-    { return w_internal::qt_metacall_impl<W_MACRO_REMOVEPAREN(TYPE)>(this, _c, _id, _a); }
+#define W_OBJECT_IMPL(...) \
+    W_OBJECT_IMPL_COMMON(__VA_ARGS__) \
+    W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) void W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
+    { w_internal::qt_static_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(_o, _c, _id, _a); } \
+    W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) const QMetaObject *W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::metaObject() const  { return &staticMetaObject; } \
+    W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) void *W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_metacast(const char *_clname) \
+    { return w_internal::qt_metacast_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(this, _clname); } \
+    W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) int W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_metacall(QMetaObject::Call _c, int _id, void** _a) \
+    { return w_internal::qt_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(this, _c, _id, _a); }
 
 
-#define W_GADGET_IMPL(TYPE, ...) \
-    W_OBJECT_IMPL_COMMON(TYPE, __VA_ARGS__) \
-    __VA_ARGS__ void W_MACRO_REMOVEPAREN(TYPE)::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
-    { w_internal::qt_static_metacall_impl<W_MACRO_REMOVEPAREN(TYPE)>(reinterpret_cast<W_MACRO_REMOVEPAREN(TYPE)*>(_o), _c, _id, _a); }
+#define W_GADGET_IMPL(...) \
+    W_OBJECT_IMPL_COMMON(__VA_ARGS__) \
+    W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) void W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
+    { w_internal::qt_static_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(reinterpret_cast<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)*>(_o), _c, _id, _a); }

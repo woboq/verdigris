@@ -316,6 +316,7 @@ namespace w_internal {
 struct W_RemoveLeadingComma { constexpr W_MethodFlags<0> operator+() const { return {}; } };
 template <typename T> constexpr T operator+(T &&t, W_RemoveLeadingComma) { return t; }
 constexpr W_RemoveLeadingComma W_removeLeadingComma{};
+constexpr W_MethodFlags<0> W_EmptyFlag{};
 
 /** Holds information about a method */
 template<typename F, int NameLength, int Flags, typename ParamTypes, typename ParamNames = StaticStringList<>>
@@ -495,12 +496,15 @@ constexpr MetaEnumInfo<NameLength, std::index_sequence<size_t(Values)...> , Name
  * signal so the __VA_ARGS__ works also if there is no arguments (no leading commas)
  *
  * There is specialization for const and non-const,  and for void and non-void signals.
+ *
+ * the last argument of the operator() is an int, to workaround the ",0" required in the W_SIGNAL
+ * macro to make sure there is at least one argument for the ...
  */
 template<typename Func, int Idx> struct SignalImplementation {};
 template<typename Obj, typename Ret, typename... Args, int Idx>
 struct SignalImplementation<Ret (Obj::*)(Args...), Idx>{
     Obj *this_;
-    Ret operator()(Args... args) const {
+    Ret operator()(Args... args, int) const {
         Ret r{};
         const void * a[]= { &r, (&args)... };
         QMetaObject::activate(this_, &Obj::staticMetaObject, Idx, const_cast<void **>(a));
@@ -510,7 +514,7 @@ struct SignalImplementation<Ret (Obj::*)(Args...), Idx>{
 template<typename Obj, typename... Args, int Idx>
 struct SignalImplementation<void (Obj::*)(Args...), Idx>{
     Obj *this_;
-    void operator()(Args... args) {
+    void operator()(Args... args, int) {
         const void *a[]= { nullptr, (&args)... };
         QMetaObject::activate(this_, &Obj::staticMetaObject, Idx, const_cast<void **>(a));
     }
@@ -518,7 +522,7 @@ struct SignalImplementation<void (Obj::*)(Args...), Idx>{
 template<typename Obj, typename Ret, typename... Args, int Idx>
 struct SignalImplementation<Ret (Obj::*)(Args...) const, Idx>{
     const Obj *this_;
-    Ret operator()(Args... args) const {
+    Ret operator()(Args... args, int) const {
         Ret r{};
         const void * a[]= { &r, (&args)... };
         QMetaObject::activate(const_cast<Obj*>(this_), &Obj::staticMetaObject, Idx, const_cast<void **>(a));
@@ -528,7 +532,7 @@ struct SignalImplementation<Ret (Obj::*)(Args...) const, Idx>{
 template<typename Obj, typename... Args, int Idx>
 struct SignalImplementation<void (Obj::*)(Args...) const, Idx>{
     const Obj *this_;
-    void operator()(Args... args) {
+    void operator()(Args... args, int) {
         const void *a[]= { nullptr, (&args)... };
         QMetaObject::activate(const_cast<Obj*>(this_), &Obj::staticMetaObject, Idx, const_cast<void **>(a));
     }
@@ -592,10 +596,12 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 #define W_MACRO_DELAY(X,...) X(__VA_ARGS__)
 #define W_MACRO_DELAY2(X,...) X(__VA_ARGS__)
 #define W_MACRO_TAIL(A, ...) __VA_ARGS__
+#define W_MACRO_FIRST(...) W_MACRO_FIRST2(__VA_ARGS__,)
+#define W_MACRO_FIRST2(A, ...) A
 #define W_MACRO_STRIGNIFY(...) W_MACRO_STRIGNIFY2(__VA_ARGS__)
 #define W_MACRO_STRIGNIFY2(...) #__VA_ARGS__
 #define W_MACRO_CONCAT(A, B) W_MACRO_CONCAT2(A,B)
-#define W_MACRO_CONCAT2(A, B) A##_##_##B
+#define W_MACRO_CONCAT2(A, B) A##_##B
 
 // strignify and make a StaticStringList out of an array of arguments
 #define W_PARAM_TOSTRING(...) W_PARAM_TOSTRING2(__VA_ARGS__ ,,,,,,,,,,,,,,,,)
@@ -609,11 +615,19 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 #define W_MACRO_REMOVEPAREN_HELPER_W_MACRO_REMOVEPAREN_HELPER ,
 
 // if __VA_ARGS__ is "(types), foobar"   then return just the types, otherwise return nothing
-#define W_OVERLOAD_TYPES(A, ...) W_MACRO_DELAY(W_MACRO_TAIL,W_OVERLOAD_TYPES_HELPER A)
-#define W_OVERLOAD_TYPES_HELPER(...) , __VA_ARGS__
+#define W_OVERLOAD_TYPES(...) W_MACRO_DELAY(W_OVERLOAD_TYPES2,W_OVERLOAD_TYPES_HELPER __VA_ARGS__,)
+#define W_OVERLOAD_TYPES2(A,...) W_MACRO_DELAY2(W_OVERLOAD_TYPES3, W_OVERLOAD_TYPES_HELPER_##A ...)
+#define W_OVERLOAD_TYPES3(A,...) W_MACRO_EVAL A
+#define W_OVERLOAD_TYPES_HELPER(...) YES(__VA_ARGS__)
+#define W_OVERLOAD_TYPES_HELPER_W_OVERLOAD_TYPES_HELPER (),
+#define W_OVERLOAD_TYPES_HELPER_YES(...) (__VA_ARGS__),
 
-#define W_OVERLOAD_RESOLVE(A, ...) W_MACRO_DELAY(W_MACRO_TAIL,W_OVERLOAD_RESOLVE_HELPER A)
-#define W_OVERLOAD_RESOLVE_HELPER(...) , qOverload<__VA_ARGS__>
+#define W_OVERLOAD_RESOLVE(...) W_MACRO_DELAY(W_OVERLOAD_RESOLVE2,W_OVERLOAD_RESOLVE_HELPER __VA_ARGS__,)
+#define W_OVERLOAD_RESOLVE2(A, ...) W_MACRO_DELAY2(W_MACRO_FIRST,W_OVERLOAD_RESOLVE_HELPER_##A)
+#define W_OVERLOAD_RESOLVE_HELPER(...) YES(qOverload<__VA_ARGS__>)
+#define W_OVERLOAD_RESOLVE_HELPER_YES(...) (__VA_ARGS__)
+#define W_OVERLOAD_RESOLVE_HELPER_W_OVERLOAD_RESOLVE_HELPER ,
+
 
 // remove the first argument if it is in parentheses"
 #define W_OVERLOAD_REMOVE(...) W_MACRO_DELAY(W_OVERLOAD_REMOVE2, W_OVERLOAD_REMOVE_HELPER __VA_ARGS__)
@@ -692,7 +706,8 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
  *   or W_Access::Public (the default)
  * - W_Compat: for deprecated methods (equivalent of Q_MOC_COMPAT)
  */
-#define W_SLOT(NAME, ...) \
+#define W_SLOT(...) W_SLOT2(__VA_ARGS__, w_internal::W_EmptyFlag)
+#define W_SLOT2(NAME, ...) \
     W_STATE_APPEND(w_SlotState, w_internal::makeMetaSlotInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
@@ -702,7 +717,8 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
  * W_INVOKABLE( <slot name> [, (<parameters types>) ]  [, <flags>]* )
  * Exactly like W_SLOT but for Q_INVOKABLE methods.
  */
-#define W_INVOKABLE(NAME, ...) \
+#define W_INVOKABLE(...)  W_INVOKABLE2(__VA_ARGS__, w_internal::W_EmptyFlag)
+#define W_INVOKABLE2(NAME, ...) \
     W_STATE_APPEND(w_MethodState, w_internal::makeMetaMethodInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
@@ -718,7 +734,8 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
  * Like W_SLOT, there can be the types of the parametter as a second argument, within parentheses.
  * You must then follow with the parameter names
  */
-#define W_SIGNAL(NAME, ...) \
+#define W_SIGNAL(...) W_SIGNAL2(__VA_ARGS__ , 0)
+#define W_SIGNAL2(NAME, ...) \
     { /* W_SIGNAL need to be placed directly after the signal declaration, without semicolon. */\
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
         return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
@@ -734,7 +751,8 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 /** \macro W_SIGNAL_COMPAT
  * Same as W_SIGNAL, but set the W_Compat flag
  */
-#define W_SIGNAL_COMPAT(NAME, ...) \
+#define W_SIGNAL_COMPAT(...) W_SIGNAL_COMPAT2(__VA_ARGS__, 0)
+#define W_SIGNAL_COMPAT2(NAME, ...) \
     { \
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
         return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
