@@ -782,6 +782,9 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 #define CONSTANT , W_Constant
 #define FINAL , W_Final
 
+#undef Q_PRIVATE_PROPERTY // the official macro is not a variadic macro, and the coma in READ would break it
+#define Q_PRIVATE_PROPERTY(...)
+
 /** W_ENUM(<name>, <values>)
  * Similar to Q_ENUM, but one must also manually write all the values.
  */

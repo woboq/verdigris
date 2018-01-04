@@ -19,6 +19,9 @@
  */
 #include <wobjectdefs.h>
 #include <QtCore/QObject>
+
+#include <QtWidgets/qgraphicsitem.h>  // only for compilation check
+
 class tst_Basic : public QObject
 {
     W_OBJECT(tst_Basic)
