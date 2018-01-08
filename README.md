@@ -7,8 +7,7 @@ Browse code online: https://code.woboq.org/woboq/verdigris
 
 [![Build Status](https://travis-ci.org/woboq/verdigris.svg?branch=master)](https://travis-ci.org/woboq/verdigris)
 
-How to Use
-==========
+## How to Use
 
 The library consist of only two headers files. You can either copy these header files in your
 project, or adjust the include paths so that the compiler finds them.
@@ -19,12 +18,11 @@ Also make sure to set your compiler in, at least, C++14 mode. With qmake, you ca
 For the documentation, see the tutorial.
 https://code.woboq.org/woboq/verdigris/tutorial/tutorial.cpp.html
 
-Was tested with Qt 5.6 and 5.7 but should work with any version of Qt 5.
+Tested with Qt >= 5.5.
 Need a compiler that can do C++14 relaxed constexpr such as GCC 5.1 or Clang 3.5.
 
 
-Status
-======
+## Status
 
 Almost all features of Qt are working. The Qt test have been ported.
 
@@ -39,10 +37,9 @@ New features compared to Qt with moc:
  - Support for QObject nested in another class.
 
 
-Context
-=======
+## Context
 
-The macros were inspired by CopperSpice [http://www.copperspice.com/].
+The macros were inspired by [CopperSpice](http://www.copperspice.com/).
 The template code was based on previous work:
 https://woboq.com/blog/reflection-in-cpp-and-qt-moc.html
 
@@ -62,8 +59,7 @@ Differences with CopperSpice:
 6. The additional Q_OBJECT_IMPL
 
 
-Licence
-=======
+## Licence
 
 Like Qt, this library is under the dual licence LGPLv3 and GPLv2.
 Being header-only, this removes many of the obligations of the LGPLv3.
