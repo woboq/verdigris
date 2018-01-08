@@ -5,6 +5,7 @@ generate the QMetaObject at compile-time. It is entirely binary compatible with 
 Blog post presenting the project: https://woboq.com/blog/verdigris-qt-without-moc.html
 Browse code online: https://code.woboq.org/woboq/verdigris
 
+[![Build Status](https://travis-ci.org/woboq/verdigris.svg?branch=master)](https://travis-ci.org/woboq/verdigris)
 
 How to Use
 ==========
