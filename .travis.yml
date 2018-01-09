@@ -3,21 +3,6 @@ dist: trusty
 
 language: cpp
 
-env:
-    matrix:
-        - QT_VERSION=55 QT_PATCH=1 GCC_VERSION=5
-        - QT_VERSION=56 QT_PATCH=3 GCC_VERSION=6
-        - QT_VERSION=57 QT_PATCH=1 GCC_VERSION=6
-        - QT_VERSION=58 QT_PATCH= GCC_VERSION=6
-        - QT_VERSION=59 QT_PATCH=1 GCC_VERSION=7
-        - QT_VERSION=59 QT_PATCH=3 GCC_VERSION=7
-
-        - QT_VERSION=56 QT_PATCH=3 CLANG_VERSION=3.9
-        - QT_VERSION=57 QT_PATCH=1 CLANG_VERSION=4.0
-        - QT_VERSION=58 QT_PATCH= CLANG_VERSION=4.0
-        - QT_VERSION=59 QT_PATCH=1 CLANG_VERSION=5.0
-        - QT_VERSION=59 QT_PATCH=3 CLANG_VERSION=5.0
-
 addons:
     apt:
         sources:
@@ -26,7 +11,11 @@ addons:
             - llvm-toolchain-trusty-4.0
             - llvm-toolchain-trusty-5.0
 
+os: linux
+
 matrix:
+    exclude:
+        - os: linux  # Workaround to put OS X first.
     include:
         - os: osx
           compiler: clang
@@ -34,6 +23,21 @@ matrix:
           before_install: true
           install: brew install qt5
           before_script: brew link qt5 --force
+
+        # We enumerate the matrix explicitly anyway, so order it after osx.
+        - env: QT_VERSION=55 QT_PATCH=1 GCC_VERSION=5
+        - env: QT_VERSION=56 QT_PATCH=3 GCC_VERSION=6
+        - env: QT_VERSION=57 QT_PATCH=1 GCC_VERSION=6
+        - env: QT_VERSION=58 QT_PATCH= GCC_VERSION=6
+        - env: QT_VERSION=59 QT_PATCH=1 GCC_VERSION=7
+        - env: QT_VERSION=59 QT_PATCH=3 GCC_VERSION=7
+
+        # Clang builds.
+        - env: QT_VERSION=56 QT_PATCH=3 CLANG_VERSION=3.9
+        - env: QT_VERSION=57 QT_PATCH=1 CLANG_VERSION=4.0
+        - env: QT_VERSION=58 QT_PATCH= CLANG_VERSION=4.0
+        - env: QT_VERSION=59 QT_PATCH=1 CLANG_VERSION=5.0
+        - env: QT_VERSION=59 QT_PATCH=3 CLANG_VERSION=5.0
 
 before_install:
     - sudo add-apt-repository -y ppa:beineri/opt-qt${QT_VERSION}${QT_PATCH}-trusty
