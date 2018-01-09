@@ -41,9 +41,7 @@
 #include <QThread>
 #include <QMutex>
 #include <QWaitCondition>
-#if QT_CONFIG(process)
 # include <QProcess>
-#endif
 #include "qobject.h"
 #ifdef QT_BUILD_INTERNAL
 #include <private/qobject_p.h>
@@ -297,10 +295,8 @@ static void playWithObjects()
 
 void tst_QObject::initTestCase()
 {
-#if QT_CONFIG(process)
     const QString testDataDir = QFileInfo(QFINDTESTDATA("signalbug")).absolutePath();
     QVERIFY2(QDir::setCurrent(testDataDir), qPrintable("Could not chdir to " + testDataDir));
-#endif
 }
 
 void tst_QObject::disconnect()
@@ -3126,9 +3122,6 @@ void tst_QObject::dynamicProperties()
 
 void tst_QObject::recursiveSignalEmission()
 {
-#if !QT_CONFIG(process)
-    QSKIP("No qprocess support", SkipAll);
-#else
     QProcess proc;
     // signalbug helper app should always be next to this test binary
     const QString path = QStringLiteral("signalbug/signalbug");
@@ -3137,7 +3130,6 @@ void tst_QObject::recursiveSignalEmission()
     QVERIFY(proc.waitForFinished());
     QCOMPARE(proc.exitStatus(), QProcess::NormalExit);
     QCOMPARE(proc.exitCode(), 0);
-#endif
 }
 
 void tst_QObject::signalBlocking()
