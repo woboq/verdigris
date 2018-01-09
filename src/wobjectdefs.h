@@ -667,6 +667,11 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
             W_ThisType **w_this) \
         W_RETURN(w_internal::binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
 #endif
+#define W_STATE_APPEND_NS(STATE, ...) \
+    static constexpr auto STATE(w_internal::w_number<decltype(STATE( \
+            w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))::size+1> w_counter, \
+            W_ThisType **w_this) \
+        W_RETURN(w_internal::binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
 
 //
 // public macros
@@ -690,6 +695,28 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 #define W_GADGET(TYPE) \
     W_OBJECT_COMMON(TYPE) \
     Q_GADGET \
+    QT_ANNOTATE_CLASS(qt_fake, "")
+
+/** \macro W_NAMESPACE(NAMESPACE)
+ * Like the Q_GADGET macro, this declare that the object might have properties.
+ * Must contains the class name as a parameter and need to be put before any other W_ macro in the class.
+ */
+#define W_NAMESPACE(NAMESPACE) \
+    Q_NAMESPACE \
+    struct W_MetaObjectCreatorHelper; \
+    struct W_ThisType { \
+        using W_MetaObjectCreatorHelper = NAMESPACE::W_MetaObjectCreatorHelper; \
+        static constexpr auto qt_static_metacall = nullptr; \
+    }; \
+    constexpr auto &W_UnscopedName = #NAMESPACE; \
+    static constexpr w_internal::binary::tree<> w_SlotState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+    static constexpr w_internal::binary::tree<> w_SignalState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+    static constexpr w_internal::binary::tree<> w_MethodState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+    static constexpr w_internal::binary::tree<> w_ConstructorState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+    static constexpr w_internal::binary::tree<> w_PropertyState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+    static constexpr w_internal::binary::tree<> w_EnumState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+    static constexpr w_internal::binary::tree<> w_ClassInfoState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+    static constexpr w_internal::binary::tree<> w_InterfaceState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
     QT_ANNOTATE_CLASS(qt_fake, "")
 
 /**
@@ -811,7 +838,16 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
             #NAME, w_internal::enum_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
     Q_ENUM(NAME)
 
-/** W_FLAG<name>, <values>)
+
+/** W_ENUM_NS(<name>, <values>)
+ * Similar to Q_ENUM_NS, like W_ENUM
+ */
+#define W_ENUM_NS(NAME, ...) \
+    W_STATE_APPEND_NS(w_EnumState, w_internal::makeMetaEnumInfo<NAME,false>( \
+            #NAME, w_internal::enum_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
+    Q_ENUM_NS(NAME)
+
+/** W_FLAG(<name>, <values>)
  * Similar to Q_FLAG, but one must also manually write all the values.
  */
 namespace w_internal {
@@ -823,10 +859,24 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
             #NAME, w_internal::enum_sequence<w_internal::QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
     Q_FLAG(NAME)
 
-/** Same as Q_CLASSINFO */
+/** W_FLAG_NS(<name>, <values>)
+ * Similar to Q_FLAG_NS, like W_FLAG.
+ */
+#define W_FLAG_NS(NAME, ...) \
+    W_STATE_APPEND_NS(w_EnumState, w_internal::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type,true>( \
+            #NAME, w_internal::enum_sequence<w_internal::QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
+    Q_FLAG_NS(NAME)
+
+/** Same as Q_CLASSINFO.  Note, Q_CLASSINFO_NS is required for namespace */
 #define W_CLASSINFO(A, B) \
     W_STATE_APPEND(w_ClassInfoState, \
         std::pair<w_internal::StaticString<sizeof(A)>, w_internal::StaticString<sizeof(B)>>{ {A}, {B} })
+
+/** Same as Q_CLASSINFO, but within a namespace */
+#define W_CLASSINFO_NS(A, B) \
+    W_STATE_APPEND_NS(w_ClassInfoState, \
+        std::pair<w_internal::StaticString<sizeof(A)>, w_internal::StaticString<sizeof(B)>>{ {A}, {B} })
+
 
 /** Same as Q_INTERFACE */
 #define W_INTERFACE(A) \

@@ -19,6 +19,7 @@
  */
 #include <wobjectdefs.h>
 #include <QtCore/QObject>
+#include <QtCore/QMetaObject>
 
 #include <QtWidgets/qgraphicsitem.h>  // only for compilation check
 
@@ -56,6 +57,9 @@ private /*slots*/:
 
     void abstractParent();
     W_SLOT(abstractParent, W_Access::Private)
+
+    void testQNamespace();
+    W_SLOT(testQNamespace, W_Access::Private)
 };
 
 #include <wobjectimpl.h>
@@ -249,5 +253,65 @@ void tst_Basic::abstractParent()
     QVERIFY(ab->setProperty("prop", 8989));
     QCOMPARE(ab->property("prop"), QVariant(8989));
 }
+
+
+#ifdef Q_NAMESPACE // since Qt 5.8
+namespace TestQNamespace {
+    W_NAMESPACE(TestQNamespace)
+    enum TestEnum1 {
+        Key1 = 11,
+        Key2
+    };
+    W_ENUM_NS(TestEnum1, Key1, Key2)
+
+    enum TestFlag1 {
+        None = 0,
+        Flag1 = 1,
+        Flag2 = 2,
+        Any = Flag1 | Flag2
+    };
+    W_FLAG_NS(TestFlag1, None, Flag1, Flag2, Any)
+
+    W_CLASSINFO_NS("Foo", "Bar")
+
+}
+W_NAMESPACE_IMPL(TestQNamespace)
+
+static void checkEnum(const QMetaEnum &enumerator, const QByteArray &name, const QVector<QPair<QByteArray, int >> &keys)
+{
+    QCOMPARE(name, QByteArray{enumerator.name()});
+    QCOMPARE(keys.size(), enumerator.keyCount());
+    for (int i = 0; i < enumerator.keyCount(); ++i) {
+        QCOMPARE(keys[i].first, QByteArray{enumerator.key(i)});
+        QCOMPARE(keys[i].second, enumerator.value(i));
+    }
+}
+#endif
+
+void tst_Basic::testQNamespace()
+{
+#ifdef Q_NAMESPACE
+    QCOMPARE(TestQNamespace::staticMetaObject.enumeratorCount(), 2);
+    checkEnum(TestQNamespace::staticMetaObject.enumerator(0), "TestEnum1",
+                {{"Key1", 11}, {"Key2", 12}});
+    checkEnum(TestQNamespace::staticMetaObject.enumerator(1), "TestFlag1",
+                {{"None", 0}, {"Flag1", 1}, {"Flag2", 2}, {"Any", 1 | 2}});
+
+    QMetaEnum meta = QMetaEnum::fromType<TestQNamespace::TestEnum1>();
+    QVERIFY(meta.isValid());
+    QCOMPARE(meta.name(), "TestEnum1");
+    QCOMPARE(meta.enclosingMetaObject(), &TestQNamespace::staticMetaObject);
+    QCOMPARE(meta.keyCount(), 2);
+
+    QCOMPARE(TestQNamespace::staticMetaObject.classInfoCount(), 1);
+    QMetaClassInfo info =  TestQNamespace::staticMetaObject.classInfo(0);
+    QCOMPARE(info.name(), "Foo");
+    QCOMPARE(info.value(), "Bar");
+    QCOMPARE(info.enclosingMetaObject(), &TestQNamespace::staticMetaObject);
+
+    QCOMPARE(TestQNamespace::staticMetaObject.className(), "TestQNamespace");
+#endif
+}
+
 
 QTEST_MAIN(tst_Basic)

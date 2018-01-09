@@ -811,13 +811,13 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
 #define W_OBJECT_IMPL_COMMON(...) \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) struct W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_MetaObjectCreatorHelper { \
         static constexpr auto objectInfo = \
-            w_internal::makeObjectInfo<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))); \
-        static constexpr auto data = w_internal::generateDataArray<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(objectInfo); \
+            w_internal::makeObjectInfo<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>(W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))); \
+        static constexpr auto data = w_internal::generateDataArray<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>(objectInfo); \
         static constexpr auto string_data = data.first; \
         static constexpr auto int_data = data.second; \
     }; \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) W_STATICMETAOBJECT_CONSTEXPR const QMetaObject W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::staticMetaObject = \
-        w_internal::createMetaObject<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>();
+        w_internal::createMetaObject<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>();
 
 #define W_OBJECT_IMPL(...) \
     W_OBJECT_IMPL_COMMON(__VA_ARGS__) \
@@ -834,3 +834,8 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
     W_OBJECT_IMPL_COMMON(__VA_ARGS__) \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) void W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
     { w_internal::qt_static_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(reinterpret_cast<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)*>(_o), _c, _id, _a); }
+
+
+#define W_NAMESPACE_IMPL(...) \
+    W_OBJECT_IMPL_COMMON(__VA_ARGS__)
+
