@@ -7,6 +7,7 @@ addons:
     apt:
         sources:
             - ubuntu-toolchain-r-test
+            - llvm-toolchain-trusty-3.8
             - llvm-toolchain-trusty-3.9
             - llvm-toolchain-trusty-4.0
             - llvm-toolchain-trusty-5.0
@@ -25,22 +26,19 @@ matrix:
           before_script: brew link qt5 --force
 
         # We enumerate the matrix explicitly anyway, so order it after osx.
-        - env: QT_VERSION=55 QT_PATCH=1 GCC_VERSION=5
-        - env: QT_VERSION=56 QT_PATCH=3 GCC_VERSION=6
-        - env: QT_VERSION=57 QT_PATCH=1 GCC_VERSION=6
-        - env: QT_VERSION=58 QT_PATCH= GCC_VERSION=6
-        - env: QT_VERSION=59 QT_PATCH=1 GCC_VERSION=7
-        - env: QT_VERSION=59 QT_PATCH=3 GCC_VERSION=7
+        - env: QT_VERSION=55 QT_SOURCE=551 GCC_VERSION=5
+        - env: QT_VERSION=56 QT_SOURCE=563 GCC_VERSION=6
+        - env: QT_VERSION=58 QT_SOURCE=58 GCC_VERSION=6
+        - env: QT_VERSION=59 QT_SOURCE=593 GCC_VERSION=7 CXXFLAGS=-Wno-noexcept-type
 
         # Clang builds.
-        - env: QT_VERSION=56 QT_PATCH=3 CLANG_VERSION=3.9
-        - env: QT_VERSION=57 QT_PATCH=1 CLANG_VERSION=4.0
-        - env: QT_VERSION=58 QT_PATCH= CLANG_VERSION=4.0
-        - env: QT_VERSION=59 QT_PATCH=1 CLANG_VERSION=5.0
-        - env: QT_VERSION=59 QT_PATCH=3 CLANG_VERSION=5.0
+        - env: QT_VERSION=56 QT_SOURCE=563 CLANG_VERSION=3.8
+        - env: QT_VERSION=57 QT_SOURCE=571 CLANG_VERSION=3.9
+        - env: QT_VERSION=58 QT_SOURCE=58 CLANG_VERSION=4.0
+        - env: QT_VERSION=59 QT_SOURCE=591 CLANG_VERSION=5.0
 
 before_install:
-    - sudo add-apt-repository -y ppa:beineri/opt-qt${QT_VERSION}${QT_PATCH}-trusty
+    - sudo add-apt-repository -y ppa:beineri/opt-qt${QT_SOURCE}-trusty
     - sudo apt-get update
 
 install:
@@ -62,6 +60,6 @@ before_script:
 script:
     - which qmake
     - qmake --version
-    - qmake -r
+    - qmake -r QMAKE_CXXFLAGS+=$CXXFLAGS
     - make -j 2
     - make check

@@ -6,6 +6,7 @@ CONFIG+=c++14
 TEMPLATE = app
 TARGET = tutorial
 INCLUDEPATH += ../src
+QT -= gui
 
 # Input
 SOURCES += tutorial.cpp
