@@ -43,7 +43,7 @@ template<typename A, typename B> constexpr auto concatenate(StaticStringList<bin
     return concatenate_helper<make_index_sequence<a.size>, make_index_sequence<b.size>>::concatenate(a, b);
 }
 
-enum { IsUnresolvedType = 0x80000000 };
+enum { IsUnresolvedType = 0x80000000, IsUnresolvedNotifySignal = 0x70000000 };
 
 /*
  * The QMetaObject is basically an array of int and an array of string.
@@ -65,12 +65,12 @@ struct IntermediateState {
         return IntermediateState<decltype(s2), Ints..., Strings::size>{s2};
     }
 
-    /// same as before but ass the IsUnresolvedType flag
-    template<int L>
+    /// same as before but add the IsUnresolvedType flag
+    template<uint Flag = IsUnresolvedType, int L>
     constexpr auto addTypeString(const StaticString<L> & s) const {
         auto s2 = binary::tree_append(strings, s);
         return IntermediateState<decltype(s2), Ints...,
-            IsUnresolvedType | Strings::size>{s2};
+            Flag | Strings::size>{s2};
     }
 
 
@@ -84,7 +84,7 @@ struct IntermediateState {
 /**
  * Iterate over all the items of a tree and call the Generator::generate function
  *
- * The first parameter f the function is the IntermediateState, and it returns a new
+ * The first parameter of the function is the IntermediateState, and it returns a new
  * InterMediateState with all the information from the tree added to it.
  *
  * The 'Ofst' template parameter is the offset in the integer array to which new data can be added.
@@ -111,15 +111,13 @@ template <typename T1, typename T2> constexpr bool getSignalIndexHelperCompare(T
 template <typename T> constexpr bool getSignalIndexHelperCompare(T f1, T f2) { return f1 == f2; }
 
 /** Helper to get information bout the notify signal of the property with index Idx of the object T */
-template<typename T, int Idx, typename = make_index_sequence<w_SignalState(w_number<>{},static_cast<T**>(nullptr)).size>>
-struct ResolveNotifySignal;
-template<typename T, int Idx, size_t ...I>
-struct ResolveNotifySignal<T, Idx, index_sequence<I...>> {
-private:
+template<typename T, int Idx, typename BaseT = T>
+struct ResolveNotifySignal {
     static constexpr auto propertyInfo = w_PropertyState(w_number<>{},static_cast<T**>(nullptr));
     static constexpr auto property = binary::get<Idx>(propertyInfo);
-    static constexpr auto signalState = w_SignalState(w_number<>{},static_cast<T**>(nullptr));
+    static constexpr auto signalState = w_SignalState(w_number<>{},static_cast<BaseT**>(nullptr));
 
+private:
     // We need to use SFINAE because of GCC bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=69681
     // For some reason, GCC fails to consider f1==f2 as a constexpr if f1 and f2 are pointer to
     // different function of the same type. Fortunately, when both are pointing to the same function
@@ -129,24 +127,23 @@ private:
         helper(int)
     { return getSignalIndexHelperCompare(binary::get<SigIdx>(signalState).func, property.notify) ? SigIdx : -1; }
     template<int SigIdx> static constexpr int helper(...) { return -1; }
+
+    template<size_t... I>
+    static constexpr int computeSignalIndex(index_sequence<I...>) {
+        return std::max({-1, helper<I>(0)...});
+    }
 public:
-    static constexpr bool hasNotify = !std::is_same<decltype(property.notify), std::nullptr_t>::value;
-    static constexpr int signalIndex = !hasNotify ? -1 : std::max({-1, helper<I>(0)...});
-    static_assert(signalIndex >= 0 || !hasNotify, "NOTIFY signal not registered as a signal");
+    static constexpr int signalIndex = computeSignalIndex(make_index_sequence<signalState.size>());
 };
 
-/** Add the notify signal index to the intermediate state, for each properties  */
-template <typename T, typename State, std::size_t... I>
-static constexpr auto generateNotifySignals(State s, std::true_type, std::index_sequence<I...>)
-{ return s.template add<std::max(0, ResolveNotifySignal<T, I>::signalIndex)...>(); }
-template <typename T, typename State, std::size_t... I>
-static constexpr auto generateNotifySignals(State s, std::false_type, std::index_sequence<I...>)
-{ return s; }
 /** returns true if the object T has at least one property with a notify signal */
 template <typename T, std::size_t... I>
 static constexpr bool hasNotifySignal(std::index_sequence<I...>)
-{ return sums(ResolveNotifySignal<T, I>::hasNotify...); }
-
+{
+    constexpr auto propertyInfo = w_PropertyState(w_number<>{},static_cast<T**>(nullptr));
+    Q_UNUSED(propertyInfo) // in case I is empty
+    return sums(!std::is_same<decltype(binary::get<I>(propertyInfo).notify), std::nullptr_t>::value ...);
+}
 
 /** Holds information about a class, including all the properties and methods */
 template<int NameLength, typename Methods, typename Constructors, typename Properties,
@@ -258,6 +255,53 @@ struct PropertyGenerator {
             | PropertyFlags::Designable;
         return s3.template add<Prop::flags | moreFlags | defaultFlags>();
     }
+};
+
+// Generator for notify signals to be used in generate
+template<typename T, bool hasNotify>
+struct NotifySignalGenerator {
+    template<typename> static constexpr int offset() { return 1; }
+        template<int Idx, typename State, typename Prop>
+    static constexpr auto generate(State s, Prop prop) {
+        return process<Idx>(s, prop.notify);
+    }
+private:
+
+    static constexpr auto propertyInfo = w_PropertyState(w_number<>{},static_cast<T**>(nullptr));
+
+    // No notify signal
+    template<int, typename State>
+    static constexpr auto process(State s, std::nullptr_t) {
+        return s.template add<0>();
+    }
+
+    // Signal in the same class
+    template<int Idx, typename State, typename Func>
+    static constexpr auto process(State s, Func, std::enable_if_t<
+        std::is_same<T, typename QtPrivate::FunctionPointer<Func>::Object>::value, int> = 0)
+    {
+        constexpr int signalIndex = ResolveNotifySignal<T, Idx>::signalIndex;
+        static_assert(signalIndex >= 0, "NOTIFY signal not registered as a signal");
+        return s.template add<signalIndex>();
+    }
+
+    // Signal in a parent class
+    template<int Idx, typename State, typename Func>
+    static constexpr auto process(State s, Func, std::enable_if_t<
+        !std::is_same<T, typename QtPrivate::FunctionPointer<Func>::Object>::value, int> = 0)
+    {
+        using Finder = ResolveNotifySignal<T, Idx, typename QtPrivate::FunctionPointer<Func>::Object>;
+        static_assert(Finder::signalIndex >= 0, "NOTIFY signal in parent class not registered as a W_SIGNAL");
+        static_assert(Finder::signalIndex < 0 || QT_VERSION >= QT_VERSION_CHECK(5, 10, 0),
+                      "NOTIFY signal in parent class requires Qt 5.10");
+        constexpr auto sig = binary::get<Finder::signalIndex>(Finder::signalState);
+        return s.template addTypeString<IsUnresolvedNotifySignal>(sig.name);
+    }
+};
+template<typename T> struct NotifySignalGenerator<T,false> {
+    template<typename> static constexpr int offset() { return 0; }
+    template<int, typename State, typename Prop>
+    static constexpr auto generate(State s, Prop) { return s; }
 };
 
 // Generator for enums to be used in generate<>()
@@ -415,8 +459,7 @@ constexpr auto generateDataArray(const ObjI &objectInfo) {
     auto classInfos = generate<ClassInfoGenerator, paramIndex>(header , objectInfo.classInfos);
     auto methods = generate<MethodGenerator, paramIndex>(classInfos , objectInfo.methods);
     auto properties = generate<PropertyGenerator, 0>(methods, objectInfo.properties);
-    auto notify = generateNotifySignals<T>(properties, std::integral_constant<bool, hasNotify>{},
-                                            make_index_sequence<ObjI::propertyCount>{});
+    auto notify = generate<NotifySignalGenerator<T, hasNotify>, 0>(properties, objectInfo.properties);
     auto enums = generate<EnumGenerator, enumValueOffset>(notify, objectInfo.enums);
     auto constructors = generate<MethodGenerator, constructorParamIndex>(enums, objectInfo.constructors);
     auto parametters = generate<MethodParametersGenerator, 0>(constructors, objectInfo.methods);
