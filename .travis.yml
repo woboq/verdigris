@@ -3,31 +3,61 @@ dist: trusty
 
 language: cpp
 
-env:
-    matrix:
-        - QT_VERSION=55 QT_PATCH=1 GCC_VERSION=5
-        - QT_VERSION=56 QT_PATCH=3 GCC_VERSION=6
-        - QT_VERSION=57 QT_PATCH=1 GCC_VERSION=6
-        - QT_VERSION=58 QT_PATCH= GCC_VERSION=6
-        - QT_VERSION=59 QT_PATCH=1 GCC_VERSION=7
-        - QT_VERSION=59 QT_PATCH=3 GCC_VERSION=7
-
 addons:
     apt:
         sources:
             - ubuntu-toolchain-r-test
+            - llvm-toolchain-trusty-3.9
+            - llvm-toolchain-trusty-4.0
+            - llvm-toolchain-trusty-5.0
+
+os: linux
+
+matrix:
+    exclude:
+        - os: linux  # Workaround to put OS X first.
+    include:
+        - os: osx
+          compiler: clang
+          env: QMAKESPEC=macx-clang
+          before_install: true
+          install: brew install qt5
+          before_script: brew link qt5 --force
+
+        # We enumerate the matrix explicitly anyway, so order it after osx.
+        - env: QT_VERSION=55 QT_PATCH=1 GCC_VERSION=5
+        - env: QT_VERSION=56 QT_PATCH=3 GCC_VERSION=6
+        - env: QT_VERSION=57 QT_PATCH=1 GCC_VERSION=6
+        - env: QT_VERSION=58 QT_PATCH= GCC_VERSION=6
+        - env: QT_VERSION=59 QT_PATCH=1 GCC_VERSION=7
+        - env: QT_VERSION=59 QT_PATCH=3 GCC_VERSION=7
+
+        # Clang builds.
+        - env: QT_VERSION=56 QT_PATCH=3 CLANG_VERSION=3.9
+        - env: QT_VERSION=57 QT_PATCH=1 CLANG_VERSION=4.0
+        - env: QT_VERSION=58 QT_PATCH= CLANG_VERSION=4.0
+        - env: QT_VERSION=59 QT_PATCH=1 CLANG_VERSION=5.0
+        - env: QT_VERSION=59 QT_PATCH=3 CLANG_VERSION=5.0
 
 before_install:
     - sudo add-apt-repository -y ppa:beineri/opt-qt${QT_VERSION}${QT_PATCH}-trusty
     - sudo apt-get update
 
 install:
-    - sudo apt-get install -y -qq g++-${GCC_VERSION} qt${QT_VERSION}base
+    - sudo apt-get install -y -qq qt${QT_VERSION}base
+    - if [[ $GCC_VERSION ]]; then
+        sudo apt-get install -y -qq g++-${GCC_VERSION};
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} 90;
+        g++ --version;
+      elif [[ $CLANG_VERSION ]]; then
+        sudo apt-get install -y -qq libstdc++-5-dev clang-${CLANG_VERSION};
+        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${CLANG_VERSION} 90;
+        clang++ --version;
+        export QMAKESPEC=linux-clang;
+      fi
 
 before_script:
-    - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} 90;
-    - source /opt/qt$QT_VERSION/bin/qt${QT_VERSION}-env.sh;
-    - g++ --version
+    - source /opt/qt$QT_VERSION/bin/qt${QT_VERSION}-env.sh
 
 script:
     - which qmake
