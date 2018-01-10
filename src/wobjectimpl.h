@@ -488,12 +488,17 @@ template<std::size_t... S, std::size_t... I, std::size_t... O, std::size_t...N, 
 struct BuildStringDataHelper<std::index_sequence<S...>, std::index_sequence<I...>, std::index_sequence<O...>, std::index_sequence<N...>, T> {
     using meta_stringdata_t = const qt_meta_stringdata_t<sizeof...(I), sizeof...(S)>;
     static meta_stringdata_t qt_meta_stringdata;
+#ifndef Q_CC_MSVC
+    static constexpr qptrdiff stringdata_offset = offsetof(meta_stringdata_t, stringdata);
+#else // offsetof does not work with MSVC
+    static constexpr qptrdiff stringdata_offset = sizeof(meta_stringdata_t::data);
+#endif
 };
 template<std::size_t... S, std::size_t... I, std::size_t... O, std::size_t...N, typename T>
 const qt_meta_stringdata_t<sizeof...(I), sizeof...(S)>
 BuildStringDataHelper<std::index_sequence<S...>, std::index_sequence<I...>, std::index_sequence<O...>, std::index_sequence<N...>, T>::qt_meta_stringdata = {
     {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(N-1,
-            qptrdiff(offsetof(meta_stringdata_t, stringdata) + O - I * sizeof(QByteArrayData)) )...},
+            stringdata_offset + O - I * sizeof(QByteArrayData))...},
     { concatenate(T::string_data)[S]... }
 };
 
@@ -798,13 +803,13 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
 // So we need to work around that to extract the template stuff which may not exist or be composed
 // of several macro arguments: If the first argument has parentheses, there must be at least  two
 // arguments, so just do a tail. Otherwise, there should be only one or two argument, so take the second.
-#define W_MACRO_TEMPLATE_STUFF(...) W_MACRO_CONCAT(W_MACRO_TEMPLATE_STUFF_HELPER, W_MACRO_DELAY(W_MACRO_TEMPLATE_STUFF_QUERY,W_MACRO_TEMPLATE_STUFF_HELPER __VA_ARGS__)) (__VA_ARGS__)
+#define W_MACRO_TEMPLATE_STUFF(...)  W_MACRO_CONCAT(W_MACRO_TEMPLATE_STUFF_HELPER, W_MACRO_DELAY(W_MACRO_TEMPLATE_STUFF_QUERY,W_MACRO_TEMPLATE_STUFF_HELPER __VA_ARGS__))(__VA_ARGS__)
 #define W_MACRO_TEMPLATE_STUFF_QUERY(...) W_MACRO_DELAY2(W_MACRO_FIRST, W_MACRO_TEMPLATE_STUFF_HELPER_ ## __VA_ARGS__)
 #define W_MACRO_TEMPLATE_STUFF_HELPER(...) YES
 #define W_MACRO_TEMPLATE_STUFF_HELPER_YES TAIL,
 #define W_MACRO_TEMPLATE_STUFF_HELPER_W_MACRO_TEMPLATE_STUFF_HELPER SECOND,
-#define W_MACRO_TEMPLATE_STUFF_HELPER_TAIL(X, ...) __VA_ARGS__
-#define W_MACRO_TEMPLATE_STUFF_HELPER_SECOND(...) W_MACRO_TEMPLATE_STUFF_HELPER_SECOND2(__VA_ARGS__,,)
+#define W_MACRO_TEMPLATE_STUFF_HELPER_TAIL(...) W_MACRO_MSVC_EXPAND(W_MACRO_TAIL(__VA_ARGS__))
+#define W_MACRO_TEMPLATE_STUFF_HELPER_SECOND(...) W_MACRO_MSVC_EXPAND(W_MACRO_TEMPLATE_STUFF_HELPER_SECOND2(__VA_ARGS__,,))
 #define W_MACRO_TEMPLATE_STUFF_HELPER_SECOND2(A,B,...) B
 #define W_MACRO_FIRST_REMOVEPAREN(...) W_MACRO_REMOVEPAREN(W_MACRO_FIRST(__VA_ARGS__))
 

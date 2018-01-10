@@ -47,6 +47,8 @@ template<> struct make_index_sequence_helper<1> { using result = index_sequence<
 template<> struct make_index_sequence_helper<0> { using result = index_sequence<>; };
 template<int N> using make_index_sequence = typename make_index_sequence_helper<N>::result;
 
+/* workaround for MSVC bug that can't do decltype(xxx)::foo when xxx is dependent of a template */
+template<typename T> using identity_t = T;
 
 /**
  * In this namespace we find the implementation of a template binary tree container
@@ -477,7 +479,7 @@ struct MetaEnumInfo {
     Names names;
     using Values = Values_;
     static constexpr uint flags = Flags;
-    static constexpr uint count = Values::size();
+    static constexpr auto count = Values::size();
 };
 template<typename Enum, Enum... Value> struct enum_sequence {};
 // called from W_ENUM and W_FLAG
@@ -590,13 +592,25 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 
 #endif // Qt < 5.7
 
-// Private macro helpers for classical macro programming
+
+#ifdef Q_CC_MSVC
+// Workaround for MSVC: expension rules are different so we need some extra macro.
+#define W_MACRO_MSVC_EXPAND(...) __VA_ARGS__
+#define W_MACRO_MSVC_DELAY(X,...) W_MACRO_MSVC_EXPAND(X(__VA_ARGS__))
+#define W_MACRO_MSVC_EMPTY /##* *##/
+#else
+#define W_MACRO_MSVC_EXPAND(...) __VA_ARGS__
+#define W_MACRO_MSVC_DELAY(X,...) X(__VA_ARGS__)
+#define W_MACRO_MSVC_EMPTY
+#endif
+
+// Private macro helpers for  macro programming
 #define W_MACRO_EMPTY
 #define W_MACRO_EVAL(...) __VA_ARGS__
-#define W_MACRO_DELAY(X,...) X(__VA_ARGS__)
-#define W_MACRO_DELAY2(X,...) X(__VA_ARGS__)
+#define W_MACRO_DELAY(X,...) W_MACRO_MSVC_EXPAND(X(__VA_ARGS__))
+#define W_MACRO_DELAY2(X,...) W_MACRO_MSVC_EXPAND(X(__VA_ARGS__))
 #define W_MACRO_TAIL(A, ...) __VA_ARGS__
-#define W_MACRO_FIRST(...) W_MACRO_FIRST2(__VA_ARGS__,)
+#define W_MACRO_FIRST(...) W_MACRO_MSVC_EXPAND(W_MACRO_FIRST2(__VA_ARGS__,))
 #define W_MACRO_FIRST2(A, ...) A
 #define W_MACRO_STRIGNIFY(...) W_MACRO_STRIGNIFY2(__VA_ARGS__)
 #define W_MACRO_STRIGNIFY2(...) #__VA_ARGS__
@@ -604,7 +618,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 #define W_MACRO_CONCAT2(A, B) A##_##B
 
 // strignify and make a StaticStringList out of an array of arguments
-#define W_PARAM_TOSTRING(...) W_PARAM_TOSTRING2(__VA_ARGS__ ,,,,,,,,,,,,,,,,)
+#define W_PARAM_TOSTRING(...) W_MACRO_MSVC_EMPTY W_MACRO_MSVC_DELAY(W_PARAM_TOSTRING2,__VA_ARGS__ ,,,,,,,,,,,,,,,,)
 #define W_PARAM_TOSTRING2(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
     w_internal::makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
 
@@ -662,8 +676,8 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
         W_RETURN(w_internal::binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
 #else
 #define W_STATE_APPEND(STATE, ...) \
-    friend constexpr auto STATE(w_internal::w_number<decltype(STATE( \
-            w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))::size+1> w_counter, \
+    friend constexpr auto STATE(w_internal::w_number<w_internal::identity_t<decltype(STATE( \
+            w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::size+1> w_counter, \
             W_ThisType **w_this) \
         W_RETURN(w_internal::binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
 #endif
@@ -733,7 +747,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
  *   or W_Access::Public (the default)
  * - W_Compat: for deprecated methods (equivalent of Q_MOC_COMPAT)
  */
-#define W_SLOT(...) W_SLOT2(__VA_ARGS__, w_internal::W_EmptyFlag)
+#define W_SLOT(...) W_MACRO_MSVC_EXPAND(W_SLOT2(__VA_ARGS__, w_internal::W_EmptyFlag))
 #define W_SLOT2(NAME, ...) \
     W_STATE_APPEND(w_SlotState, w_internal::makeMetaSlotInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
@@ -744,7 +758,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
  * W_INVOKABLE( <slot name> [, (<parameters types>) ]  [, <flags>]* )
  * Exactly like W_SLOT but for Q_INVOKABLE methods.
  */
-#define W_INVOKABLE(...)  W_INVOKABLE2(__VA_ARGS__, w_internal::W_EmptyFlag)
+#define W_INVOKABLE(...) W_MACRO_MSVC_EXPAND(W_INVOKABLE2(__VA_ARGS__, w_internal::W_EmptyFlag))
 #define W_INVOKABLE2(NAME, ...) \
     W_STATE_APPEND(w_MethodState, w_internal::makeMetaMethodInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
@@ -761,7 +775,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
  * Like W_SLOT, there can be the types of the parametter as a second argument, within parentheses.
  * You must then follow with the parameter names
  */
-#define W_SIGNAL(...) W_SIGNAL2(__VA_ARGS__ , 0)
+#define W_SIGNAL(...) W_MACRO_MSVC_EXPAND(W_SIGNAL2(__VA_ARGS__ , 0))
 #define W_SIGNAL2(NAME, ...) \
     { /* W_SIGNAL need to be placed directly after the signal declaration, without semicolon. */\
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
@@ -778,7 +792,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 /** \macro W_SIGNAL_COMPAT
  * Same as W_SIGNAL, but set the W_Compat flag
  */
-#define W_SIGNAL_COMPAT(...) W_SIGNAL_COMPAT2(__VA_ARGS__, 0)
+#define W_SIGNAL_COMPAT(...) W_MACRO_MSVC_EXPAND(W_SIGNAL_COMPAT2(__VA_ARGS__, 0))
 #define W_SIGNAL_COMPAT2(NAME, ...) \
     { \
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)); \
@@ -813,7 +827,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
  *
  * <type> can optionally be put in parentheses, if you have a type containing a comma
  */
-#define W_PROPERTY(...) W_PROPERTY2(__VA_ARGS__) // expands the READ, WRITE, and other sub marcos
+#define W_PROPERTY(...) W_MACRO_MSVC_EXPAND(W_PROPERTY2(__VA_ARGS__)) // expands the READ, WRITE, and other sub marcos
 #define W_PROPERTY2(TYPE, NAME, ...) \
     W_STATE_APPEND(w_PropertyState, \
         w_internal::makeMetaPropertyInfo<W_MACRO_REMOVEPAREN(TYPE)>(\
