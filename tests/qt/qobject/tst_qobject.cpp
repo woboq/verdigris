@@ -5901,6 +5901,10 @@ void tst_QObject::connectVirtualSlots()
     */
 }
 
+#ifdef Q_CC_MSVC
+void tst_QObject::connectSlotsVMIClass()
+{QSKIP("MSVC Internal compiler error when taking constexpr pointer to virtual member function of a class with multiple inheritance for W_SLOT");}
+#else
 struct VirtualBase
 {
     int virtual_base_count;
@@ -5925,6 +5929,7 @@ public slots:
     virtual void slot2() { ++virtual_base_count; }
     W_SLOT(slot2)
 };
+W_OBJECT_IMPL(ObjectWithVirtualBase)
 
 struct NormalBase
 {
@@ -5938,6 +5943,7 @@ class ObjectWithMultiInheritance : public VirtualSlotsObject, public NormalBase
 {
     W_OBJECT(ObjectWithMultiInheritance)
 };
+W_OBJECT_IMPL(ObjectWithMultiInheritance)
 
 // Normally, the class that inherit QObject always must go first, because of the way qobject_cast
 // work, and moc checks for that. But if we don't use Q_OBJECT, this should work
@@ -6117,6 +6123,7 @@ void tst_QObject::connectSlotsVMIClass()
         QCOMPARE(obj.lastCalled, QByteArray());
     }
 }
+#endif // Q_CC_MSVC
 
 #ifndef QT_BUILD_INTERNAL
 void tst_QObject::connectPrivateSlots()
@@ -7705,8 +7712,6 @@ W_OBJECT_IMPL(NoDefaultContructorArguments)
 W_OBJECT_IMPL(ReturnValue)
 W_OBJECT_IMPL(VirtualSlotsObjectBase)
 W_OBJECT_IMPL(VirtualSlotsObject)
-W_OBJECT_IMPL(ObjectWithVirtualBase)
-W_OBJECT_IMPL(ObjectWithMultiInheritance)
 #ifdef QT_BUILD_INTERNAL
 W_OBJECT_IMPL(ConnectToPrivateSlot)
 #endif
