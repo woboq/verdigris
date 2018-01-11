@@ -202,11 +202,11 @@ constexpr int summed = sums(Args...);
 template<int N> using StaticStringArray = const char [N];
 
 /** Represents a string of size N  (N includes the '\0' at the end) */
-template<int N> struct StaticString  {
+template<int N, typename = make_index_sequence<N>> struct StaticString;
+template<int N, std::size_t... I> struct StaticString<N, std::index_sequence<I...>>
+{
     StaticStringArray<N> data;
-    template <std::size_t... I>
-    constexpr StaticString(StaticStringArray<N> &d, std::index_sequence<I...>) : data{ (d[I])... } { }
-    constexpr StaticString(StaticStringArray<N> &d) : StaticString(d, w_internal::make_index_sequence<N>()) {}
+    constexpr StaticString(StaticStringArray<N> &d) : data{ (d[I])... } { }
     static constexpr int size = N;
     constexpr char operator[](int p) const { return data[p]; }
 };
