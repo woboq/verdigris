@@ -496,7 +496,7 @@ struct BuildStringDataHelper<std::index_sequence<S...>, std::index_sequence<I...
     static constexpr auto concatenated = concatenate(T::string_data);
 };
 template<std::size_t... S, std::size_t... I, std::size_t... O, std::size_t...N, typename T>
-constexpr const qt_meta_stringdata_t<sizeof...(I), sizeof...(S)>
+const qt_meta_stringdata_t<sizeof...(I), sizeof...(S)>
 BuildStringDataHelper<std::index_sequence<S...>, std::index_sequence<I...>, std::index_sequence<O...>, std::index_sequence<N...>, T>::qt_meta_stringdata = {
     {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(N-1,
             stringdata_offset + O - I * sizeof(QByteArrayData))...},
