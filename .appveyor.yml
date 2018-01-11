@@ -1,0 +1,19 @@
+image: Visual Studio 2017
+
+platform: x64
+
+environment:
+    matrix:
+        - QTDIR: C:\Qt\5.9\msvc2017_64
+
+configuration:
+    - Release
+
+before_build:
+    - set PATH=%QTDIR%\bin;%PATH%
+    - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" %PLATFORM%
+    - qmake -r DEFINES+="__cpp_constexpr=201304 __cpp_variable_templates=201304"
+
+build_script:
+    - nmake
+    - nmake check
