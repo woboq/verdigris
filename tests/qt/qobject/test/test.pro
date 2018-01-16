@@ -10,4 +10,4 @@ contains(QT_CONFIG, c++1z): CONFIG += c++1z
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0
 
 CONFIG+=c++14
-INCLUDEPATH += ../../../../src
+include(../../../../src/verdigris.pri)

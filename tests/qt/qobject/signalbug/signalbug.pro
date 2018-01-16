@@ -10,5 +10,4 @@ SOURCES += signalbug.cpp
 target.path = $$[QT_INSTALL_TESTS]/tst_qobject/$$TARGET
 INSTALLS += target
 
-CONFIG+=c++14
-INCLUDEPATH += ../../../../src
+include(../../../../src/verdigris.pri)

@@ -12,7 +12,7 @@ configuration:
 before_build:
     - set PATH=%QTDIR%\bin;%PATH%
     - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" %PLATFORM%
-    - qmake -r DEFINES+="__cpp_constexpr=201304 __cpp_variable_templates=201304"
+    - qmake -r
 
 build_script:
     - nmake
