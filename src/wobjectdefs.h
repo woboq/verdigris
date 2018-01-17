@@ -270,6 +270,7 @@ template<int N = 255> struct w_number : public w_number<N - 1> {
 template<> struct w_number<0> { static constexpr int value = 0; };
 
 template <int N> struct W_MethodFlags { static constexpr int value = N; };
+constexpr W_MethodFlags<0> W_EmptyFlag{};
 } // w_internal
 
 /** Objects that can be used as flags in the W_SLOT macro */
@@ -316,12 +317,6 @@ constexpr std::integral_constant<int, int(w_internal::PropertyFlags::Constant)> 
 constexpr std::integral_constant<int, int(w_internal::PropertyFlags::Final)> W_Final{};
 
 namespace w_internal {
-
-// workaround to avoid leading comma in macro that can optionaly take a flag
-struct W_RemoveLeadingComma { constexpr W_MethodFlags<0> operator+() const { return {}; } };
-template <typename T> constexpr T operator+(T &&t, W_RemoveLeadingComma) { return t; }
-constexpr W_RemoveLeadingComma W_removeLeadingComma{};
-constexpr W_MethodFlags<0> W_EmptyFlag{};
 
 /** Holds information about a method */
 template<typename F, int NameLength, int Flags, typename ParamTypes, typename ParamNames = StaticStringList<>>
@@ -755,7 +750,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
     W_STATE_APPEND(w_SlotState, w_internal::makeMetaSlotInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
-            W_OVERLOAD_REMOVE(__VA_ARGS__) +w_internal::W_removeLeadingComma))
+            W_OVERLOAD_REMOVE(__VA_ARGS__)))
 
 /**
  * W_INVOKABLE( <slot name> [, (<parameters types>) ]  [, <flags>]* )
@@ -766,7 +761,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
     W_STATE_APPEND(w_MethodState, w_internal::makeMetaMethodInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
-            W_OVERLOAD_REMOVE(__VA_ARGS__) +w_internal::W_removeLeadingComma))
+            W_OVERLOAD_REMOVE(__VA_ARGS__)))
 
 /**
  * <signal signature>
