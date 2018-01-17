@@ -9,5 +9,4 @@ contains(QT_CONFIG, c++1z): CONFIG += c++1z
 !winrt: TEST_HELPER_INSTALLS = ../signalbug/signalbug
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0
 
-CONFIG+=c++14
 include(../../../../src/verdigris.pri)
