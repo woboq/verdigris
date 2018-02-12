@@ -854,13 +854,13 @@ constexpr auto simple_hash(char const *p) {
         w_internal::makeMetaPropertyInfo<W_MACRO_REMOVEPAREN(TYPE)>(\
                             #NAME, W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE)), __VA_ARGS__))
 
-#define WRITE , &W_ThisType::
-#define READ , &W_ThisType::
-#define NOTIFY , W_Notify, &W_ThisType::
-#define RESET , W_Reset, &W_ThisType::
-#define MEMBER , &W_ThisType::
-#define CONSTANT , W_Constant
-#define FINAL , W_Final
+#define W_WRITE , &W_ThisType::
+#define W_READ , &W_ThisType::
+#define W_NOTIFY , W_Notify, &W_ThisType::
+#define W_RESET , W_Reset, &W_ThisType::
+#define W_MEMBER , &W_ThisType::
+#define W_CONSTANT , W_Constant
+#define W_FINAL , W_Final
 
 #undef Q_PRIVATE_PROPERTY // the official macro is not a variadic macro, and the coma in READ would break it
 #define Q_PRIVATE_PROPERTY(...)
