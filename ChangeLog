@@ -1,0 +1,12 @@
+
+Version 1.0 (February 2018)
+ * Error out early without C++14 (#2)
+ * Set Designable and Scriptable flags by default so it works with QML (#3)
+ * Fix usage of Q_PRIVATE_PROPERTY (#5)
+ * Added MSVC 2017 support (#6)
+ * Support C++17 noexcept function part of the function signature (#9)
+ * Added W_NAMESPACE/W_NAMESPACE_IMPL and W_ENUM_NS/W_FLAG_NS/W_CASSINFO_NS
+ * Support for NOTIFY signal in parent class (Qt 5.10 feature)
+ * Imported new tests from Qt 5.10
+
+Initial Release (May 2016)
