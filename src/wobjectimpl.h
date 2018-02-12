@@ -62,14 +62,14 @@ template<typename Strings, uint... Ints>
 struct IntermediateState {
     Strings strings;
     /// add a string to the strings state and add its index to the end of the int array
-    template<int L>
+    template<std::size_t L>
     constexpr auto addString(const StaticString<L> & s) const {
         auto s2 = binary::tree_append(strings, s);
         return IntermediateState<decltype(s2), Ints..., Strings::size>{s2};
     }
 
     /// same as before but add the IsUnresolvedType flag
-    template<uint Flag = IsUnresolvedType, int L>
+    template<uint Flag = IsUnresolvedType, std::size_t L>
     constexpr auto addTypeString(const StaticString<L> & s) const {
         auto s2 = binary::tree_append(strings, s);
         return IntermediateState<decltype(s2), Ints...,
@@ -169,7 +169,7 @@ static constexpr bool hasNotifySignal(std::index_sequence<I...>)
 }
 
 /** Holds information about a class, including all the properties and methods */
-template<int NameLength, typename Methods, typename Constructors, typename Properties,
+template<std::size_t NameLength, typename Methods, typename Constructors, typename Properties,
             typename Enums, typename ClassInfos, typename Interfaces, int SignalCount>
 struct ObjectInfo {
     StaticString<NameLength> name;
@@ -404,7 +404,7 @@ struct HandleArgsHelper<A, Args...> {
         return HandleArgsHelper<Args...>::result(r1, binary::tree_tail(paramTypes));
     }
 };
-template<int N> struct HandleArgNames {
+template<std::size_t N> struct HandleArgNames {
     template<typename Strings, typename Str>
     static constexpr auto result(const Strings &ss, StaticStringList<Str> pn)
     {
@@ -517,7 +517,7 @@ constexpr auto generateDataArray(const ObjI &objectInfo) {
 /**
  * Holder for the string data.  Just like in the moc generated code.
  */
-template<int N, int L> struct qt_meta_stringdata_t {
+template<std::size_t N, std::size_t L> struct qt_meta_stringdata_t {
      QByteArrayData data[N];
      char stringdata[L];
 };
@@ -696,7 +696,7 @@ static void registerMethodArgumentType(int _id, void **_a) {
         constexpr auto f = binary::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.methods).func;
         using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
         auto _t = QtPrivate::ConnectionTypes<typename P::Arguments>::types();
-        uint arg = *reinterpret_cast<int*>(_a[1]);
+        uint arg = *reinterpret_cast<uint*>(_a[1]);
         *reinterpret_cast<int*>(_a[0]) = _t && arg < P::ArgumentCount ?
                 _t[arg] : -1;
     }
