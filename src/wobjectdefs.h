@@ -191,6 +191,74 @@ namespace binary {
 } // namespace binary
 
 
+inline namespace fast_tuple {
+    template<size_t N, typename T> struct leaf {
+        T data;
+        constexpr const T& get(std::integral_constant<size_t, N>) const { return data; }
+        constexpr const T& operator()(std::integral_constant<size_t, N>) const { return data; }
+    };
+    template<size_t N, typename T>
+    constexpr const auto &get(const leaf<N, T> &t) { return t.data; }
+    template<size_t N, typename T> using tuple_element_t = std::decay_t<decltype(get<N>(std::declval<T>()))>;
+
+    template<typename, typename> struct tuple_impl;
+    template<typename... T> struct tuple;
+    template<typename... T, size_t... I> struct tuple_impl<tuple<T...>, index_sequence<I...>> : leaf<I, T>... {
+        constexpr tuple_impl() = default;
+        template<typename ...X, typename = std::enable_if_t<sizeof...(X) == sizeof...(T)>>
+        constexpr tuple_impl(X &&... t) : leaf<I, T>{std::forward<X>(t)}... {}
+        static constexpr int size = sizeof...(T);
+
+        template<typename X>
+        constexpr auto append(const X &x) const {
+            return tuple<T..., X>{ get<I>(*this)..., x };
+        }
+        template<typename X>
+        constexpr auto prepend(const X &x) const {
+            return tuple<X, T...>{ x, get<I>(*this)... };
+        }
+    };
+    template<typename... T> struct tuple : tuple_impl<tuple<T...>, make_index_sequence<sizeof...(T)>> {
+        using tuple_impl<tuple<T...>, make_index_sequence<sizeof...(T)>>::tuple_impl;
+    };
+
+    template<typename T>
+    constexpr auto tuple_head(const T &t) { return get<0>(t); }
+    constexpr auto tuple_head(const tuple<> &) { struct _{}; return _{}; }
+
+    template<typename T, typename... A, size_t... I>
+    constexpr tuple<A...> tuple_tail_helper(const tuple<T, A...> &a, index_sequence<I...>)
+    { return { get<I+1>(a)... }; }
+    template<typename... A>
+    constexpr auto tuple_tail(const tuple<A...> &a)
+    { return tuple_tail_helper(a, make_index_sequence<sizeof...(A)-1>()); }
+    constexpr tuple<> tuple_tail(const tuple<> &) { return {}; }
+
+
+    template<size_t N, typename T> using tuple_element_t = std::decay_t<decltype(get<N>(std::declval<T>()))>;
+
+
+    template<typename... A, typename... B, size_t... I, size_t... J>
+    constexpr tuple<A..., B...> tuple_cat_helper(const tuple<A...> &a, const tuple<B...> &b, index_sequence<I...>, index_sequence<J...>)
+    { return { get<I>(a)..., get<J>(b)... }; }
+    //template<typename... A> constexpr auto tuple_cat(const tuple<A...> &a) { return a; }
+    template<typename... A, typename... B>
+    constexpr auto tuple_cat(const tuple<A...> &a, const tuple<B...> &b) {
+        return tuple_cat_helper(a, b, make_index_sequence<sizeof...(A)>(), make_index_sequence<sizeof...(B)>());
+    }
+    template<typename... A, typename... B, typename ... More>
+    constexpr auto tuple_cat(const tuple<A...> &a, const tuple<B...> &b, const More &... more) {
+        return tuple_cat(tuple_cat(a, b), more...);
+    }
+
+
+
+
+
+
+}
+
+
 /** Compute the sum of many integers */
 constexpr int sums() { return 0; }
 template<typename... Args>
@@ -656,14 +724,14 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
         using W_ThisType = TYPE; \
         static constexpr auto &W_UnscopedName = #TYPE; /* so we don't repeat it in W_CONSTRUCTOR */ \
         friend struct w_internal::FriendHelper; \
-        friend constexpr w_internal::binary::tree<> w_SlotState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr w_internal::binary::tree<> w_SignalState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr w_internal::binary::tree<> w_MethodState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr w_internal::binary::tree<> w_ConstructorState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr w_internal::binary::tree<> w_PropertyState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr w_internal::binary::tree<> w_EnumState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr w_internal::binary::tree<> w_ClassInfoState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr w_internal::binary::tree<> w_InterfaceState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr w_internal::fast_tuple::tuple<> w_SlotState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr w_internal::fast_tuple::tuple<> w_SignalState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr w_internal::fast_tuple::tuple<> w_MethodState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr w_internal::fast_tuple::tuple<> w_ConstructorState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr w_internal::fast_tuple::tuple<> w_PropertyState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr w_internal::fast_tuple::tuple<> w_EnumState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr w_internal::fast_tuple::tuple<> w_ClassInfoState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+        friend constexpr w_internal::fast_tuple::tuple<> w_InterfaceState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
     public: \
         struct W_MetaObjectCreatorHelper;
 
@@ -673,19 +741,19 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
     static constexpr int W_MACRO_CONCAT(W_WORKAROUND_, __LINE__) = \
         decltype(STATE(w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))::size+1; \
     friend constexpr auto STATE(w_internal::w_number<W_MACRO_CONCAT(W_WORKAROUND_, __LINE__)> w_counter, W_ThisType **w_this) \
-        W_RETURN(w_internal::binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
+        W_RETURN(STATE(w_counter.prev(), w_this).append(__VA_ARGS__))
 #else
 #define W_STATE_APPEND(STATE, ...) \
     friend constexpr auto STATE(w_internal::w_number<w_internal::identity_t<decltype(STATE( \
             w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::size+1> w_counter, \
             W_ThisType **w_this) \
-        W_RETURN(w_internal::binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
+        W_RETURN(STATE(w_counter.prev(), w_this).append(__VA_ARGS__))
 #endif
 #define W_STATE_APPEND_NS(STATE, ...) \
     static constexpr auto STATE(w_internal::w_number<decltype(STATE( \
             w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))::size+1> w_counter, \
             W_ThisType **w_this) \
-        W_RETURN(w_internal::binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
+        W_RETURN(STATE(w_counter.prev(), w_this).append(__VA_ARGS__))
 
 //
 // public macros
@@ -723,14 +791,14 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
         static constexpr auto qt_static_metacall = nullptr; \
     }; \
     constexpr auto &W_UnscopedName = #NAMESPACE; \
-    static constexpr w_internal::binary::tree<> w_SlotState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-    static constexpr w_internal::binary::tree<> w_SignalState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-    static constexpr w_internal::binary::tree<> w_MethodState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-    static constexpr w_internal::binary::tree<> w_ConstructorState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-    static constexpr w_internal::binary::tree<> w_PropertyState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-    static constexpr w_internal::binary::tree<> w_EnumState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-    static constexpr w_internal::binary::tree<> w_ClassInfoState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-    static constexpr w_internal::binary::tree<> w_InterfaceState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+    static constexpr w_internal::fast_tuple::tuple<> w_SlotState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+    static constexpr w_internal::fast_tuple::tuple<> w_SignalState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+    static constexpr w_internal::fast_tuple::tuple<> w_MethodState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+    static constexpr w_internal::fast_tuple::tuple<> w_ConstructorState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+    static constexpr w_internal::fast_tuple::tuple<> w_PropertyState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+    static constexpr w_internal::fast_tuple::tuple<> w_EnumState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+    static constexpr w_internal::fast_tuple::tuple<> w_ClassInfoState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+    static constexpr w_internal::fast_tuple::tuple<> w_InterfaceState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
     QT_ANNOTATE_CLASS(qt_fake, "")
 
 /**
@@ -784,7 +852,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
     static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = \
         decltype(w_SignalState(w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))::size; \
     friend constexpr auto w_SignalState(w_internal::w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> w_counter, W_ThisType **w_this) \
-        W_RETURN(w_internal::binary::tree_append(w_SignalState(w_counter.prev(), w_this), \
+        W_RETURN(w_SignalState(w_counter.prev(), w_this).append( \
             w_internal::makeMetaSignalInfo( \
                 W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
                 W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))))
@@ -801,7 +869,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
     static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = \
         decltype(w_SignalState(w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))::size; \
     friend constexpr auto w_SignalState(w_internal::w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> w_counter, W_ThisType **w_this) \
-        W_RETURN(w_internal::binary::tree_append(w_SignalState(w_counter.prev(), w_this), \
+        W_RETURN(w_SignalState(w_counter.prev(), w_this).append( \
             w_internal::makeMetaSignalInfo( \
                 W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
                 W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat)))

@@ -99,12 +99,12 @@ struct IntermediateState {
  * the array for this element.
  */
 template<typename Generator, int Ofst, typename State>
-constexpr auto generate(State s, binary::tree<>)
+constexpr auto generate(State s, fast_tuple::tuple<>)
 { return s; }
 template<typename Generator, int Ofst, typename State, typename Tree>
 constexpr auto generate(State s, Tree t) {
-    return generate<Generator, Ofst + Generator::template offset<binary::tree_element_t<0,Tree>>()>(
-        Generator::template generate<Ofst>(s, binary::tree_head(t)), binary::tree_tail(t));
+    return generate<Generator, Ofst + Generator::template offset<fast_tuple::tuple_element_t<0,Tree>>()>(
+        Generator::template generate<Ofst>(s, tuple_head(t)), tuple_tail(t));
 }
 
 /**
@@ -117,7 +117,7 @@ template <typename T> constexpr bool getSignalIndexHelperCompare(T f1, T f2) { r
 template<typename T, int Idx, typename BaseT = T>
 struct ResolveNotifySignal {
     static constexpr auto propertyInfo = w_PropertyState(w_number<>{},static_cast<T**>(nullptr));
-    static constexpr auto property = binary::get<Idx>(propertyInfo);
+    static constexpr auto property = fast_tuple::get<Idx>(propertyInfo);
     static constexpr auto signalState = w_SignalState(w_number<>{},static_cast<BaseT**>(nullptr));
 
 private:
@@ -126,9 +126,9 @@ private:
     // different function of the same type. Fortunately, when both are pointing to the same function
     // it compiles fine, so we can use SFINAE for it.
     template<int SigIdx>
-    static constexpr std::enable_if_t<getSignalIndexHelperCompare(binary::get<SigIdx>(signalState).func, property.notify) || true, int>
+    static constexpr std::enable_if_t<getSignalIndexHelperCompare(fast_tuple::get<SigIdx>(signalState).func, property.notify) || true, int>
         helper(int)
-    { return getSignalIndexHelperCompare(binary::get<SigIdx>(signalState).func, property.notify) ? SigIdx : -1; }
+    { return getSignalIndexHelperCompare(fast_tuple::get<SigIdx>(signalState).func, property.notify) ? SigIdx : -1; }
     template<int SigIdx> static constexpr int helper(...) { return -1; }
 
     template<size_t... I>
@@ -145,7 +145,7 @@ static constexpr bool hasNotifySignal(std::index_sequence<I...>)
 {
     constexpr auto propertyInfo = w_PropertyState(w_number<>{},static_cast<T**>(nullptr));
     Q_UNUSED(propertyInfo) // in case I is empty
-    return sums(!std::is_same<decltype(binary::get<I>(propertyInfo).notify), std::nullptr_t>::value ...);
+    return sums(!std::is_same<decltype(fast_tuple::get<I>(propertyInfo).notify), std::nullptr_t>::value ...);
 }
 
 /** Holds information about a class, including all the properties and methods */
@@ -177,7 +177,7 @@ struct ObjectInfo {
 template<typename T, int N>
 static constexpr auto makeObjectInfo(StaticStringArray<N> &name) {
     constexpr auto sigState = w_SignalState(w_number<>{}, static_cast<T**>(nullptr));
-    constexpr auto methodInfo = binary::tree_cat(sigState, w_SlotState(w_number<>{}, static_cast<T**>(nullptr)),
+    constexpr auto methodInfo = tuple_cat(sigState, w_SlotState(w_number<>{}, static_cast<T**>(nullptr)),
                                                     w_MethodState(w_number<>{}, static_cast<T**>(nullptr)));
     constexpr auto constructorInfo = w_ConstructorState(w_number<>{}, static_cast<T**>(nullptr));
     constexpr auto propertyInfo = w_PropertyState(w_number<>{}, static_cast<T**>(nullptr));
@@ -297,7 +297,7 @@ private:
         static_assert(Finder::signalIndex >= 0, "NOTIFY signal in parent class not registered as a W_SIGNAL");
         static_assert(Finder::signalIndex < 0 || QT_VERSION >= QT_VERSION_CHECK(5, 10, 0),
                       "NOTIFY signal in parent class requires Qt 5.10");
-        constexpr auto sig = binary::get<Finder::signalIndex>(Finder::signalState);
+        constexpr auto sig = fast_tuple::get<Finder::signalIndex>(Finder::signalState);
         return s.template addTypeString<IsUnresolvedNotifySignal>(sig.name);
     }
 };
@@ -426,7 +426,7 @@ struct ConstructorParametersGenerator {
  *  return the amount of item it will add in the int array. */
 template<typename Methods, std::size_t... I>
 constexpr int paramOffset(std::index_sequence<I...>)
-{ return sums(int(1 + binary::tree_element_t<I, Methods>::argCount * 2)...); }
+{ return sums(int(1 + fast_tuple::tuple_element_t<I, Methods>::argCount * 2)...); }
 
 /**
  * Generate the integer array and the lists of string
@@ -621,9 +621,9 @@ template<typename T> static int qt_metacall_impl(T *_o, QMetaObject::Call _c, in
  */
 template<typename T, int I>
 static int indexOfMethod(void **func) {
-    constexpr auto f = binary::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.methods).func;
+    constexpr auto f = fast_tuple::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.methods).func;
     using Ms = decltype(T::W_MetaObjectCreatorHelper::objectInfo.methods);
-    if ((binary::tree_element_t<I,Ms>::flags & 0xc) == W_MethodType::Signal.value
+    if ((fast_tuple::tuple_element_t<I,Ms>::flags & 0xc) == W_MethodType::Signal.value
         && f == *reinterpret_cast<decltype(f)*>(func))
         return I;
     return -1;
@@ -637,7 +637,7 @@ static int indexOfMethod(void **func) {
 template <typename T, int I>
 static void invokeMethod(T *_o, int _id, void **_a) {
     if (_id == I) {
-        constexpr auto f = binary::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.methods).func;
+        constexpr auto f = fast_tuple::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.methods).func;
         using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
         P::template call<typename P::Arguments, typename P::ReturnType>(f, _o, _a);
     }
@@ -650,7 +650,7 @@ static void invokeMethod(T *_o, int _id, void **_a) {
 template <typename T, int I>
 static void registerMethodArgumentType(int _id, void **_a) {
     if (_id == I) {
-        constexpr auto f = binary::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.methods).func;
+        constexpr auto f = fast_tuple::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.methods).func;
         using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
         auto _t = QtPrivate::ConnectionTypes<typename P::Arguments>::types();
         uint arg = *reinterpret_cast<int*>(_a[1]);
@@ -667,7 +667,7 @@ template<typename T, int I>
 static void propertyOperation(T *_o, QMetaObject::Call _c, int _id, void **_a) {
     if (_id != I)
         return;
-    constexpr auto p = binary::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.properties);
+    constexpr auto p = fast_tuple::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.properties);
     using Type = typename decltype(p)::PropertyType;
     switch(+_c) {
     case QMetaObject::ReadProperty:
@@ -702,7 +702,7 @@ static void propertyOperation(T *_o, QMetaObject::Call _c, int _id, void **_a) {
 template<typename T, int I>
 static void createInstance(int _id, void** _a) {
     if (_id == I) {
-        constexpr auto m = binary::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.constructors);
+        constexpr auto m = fast_tuple::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.constructors);
         m.template createInstance<T>(_a, make_index_sequence<decltype(m)::argCount>{});
     }
 }
@@ -771,7 +771,7 @@ static void *qt_metacast_impl(T *o, const char *_clname, std::index_sequence<Int
     if (_clname == QByteArray(sd))
         return o;
     void *result = nullptr;
-    nop((interfaceMetaCast<decltype(binary::get<InterfaceI>(T::W_MetaObjectCreatorHelper::objectInfo.interfaces))>(result, o, _clname),0)...);
+    nop((interfaceMetaCast<decltype(fast_tuple::get<InterfaceI>(T::W_MetaObjectCreatorHelper::objectInfo.interfaces))>(result, o, _clname),0)...);
     return result ? result : o->T::W_BaseType::qt_metacast(_clname);
 }
 
