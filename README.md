@@ -2,7 +2,10 @@ This (header-only) library can be used to create an application using Qt, withou
 moc (MetaObject Compiler). It uses a different set of macro than Qt and templated constexpr code to
 generate the QMetaObject at compile-time. It is entirely binary compatible with Qt.
 
-Blog post presenting the project: https://woboq.com/blog/verdigris-qt-without-moc.html
+Blog post presenting the project: https://woboq.com/blog/verdigris-qt-without-moc.html (2016)
+
+Blog post with some implementation details: https://woboq.com/blog/verdigris-implementation-tricks.html (2018)
+
 Browse code online: https://code.woboq.org/woboq/verdigris
 
 Travis: [![Travis Build Status](https://travis-ci.org/woboq/verdigris.svg?branch=master)](https://travis-ci.org/woboq/verdigris)
