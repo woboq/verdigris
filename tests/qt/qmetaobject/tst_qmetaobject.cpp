@@ -31,7 +31,9 @@
 #include <qobject.h>
 #include <qmetaobject.h>
 #include <qabstractproxymodel.h>
+#ifdef QT_BUILD_INTERNAL
 #include <private/qmetaobject_p.h>
+#endif
 
 #include <wobjectimpl.h>
 
@@ -363,6 +365,7 @@ private slots:
 
     W_SLOT(indexOfMethodPMF, W_Access::Private)
 
+#ifdef QT_BUILD_INTERNAL
     W_SLOT(signalOffset_data, W_Access::Private)
     W_SLOT(signalOffset, W_Access::Private)
     W_SLOT(signalCount_data, W_Access::Private)
@@ -371,6 +374,7 @@ private slots:
     W_SLOT(signal, W_Access::Private)
     W_SLOT(signalIndex_data, W_Access::Private)
     W_SLOT(signalIndex, W_Access::Private)
+#endif
     W_SLOT(enumDebugStream, W_Access::Private)
 
     W_SLOT(inherits_data, W_Access::Private)
@@ -1711,6 +1715,7 @@ void tst_QMetaObject::indexOfMethodPMF()
     INDEXOFMETHODPMF_HELPER(QtTestCustomObject, sig_custom, (const CustomString &))
 }
 
+#ifdef QT_BUILD_INTERNAL
 namespace SignalTestHelper
 {
 // These functions use the public QMetaObject/QMetaMethod API to implement
@@ -1835,6 +1840,7 @@ void tst_QMetaObject::signalIndex()
     QCOMPARE(QMetaObjectPrivate::signalIndex(mm),
              SignalTestHelper::signalIndex(mm));
 }
+#endif
 
 void tst_QMetaObject::enumDebugStream()
 {

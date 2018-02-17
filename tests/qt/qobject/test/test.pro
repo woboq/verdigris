@@ -1,6 +1,6 @@
 CONFIG += testcase console
 TARGET = ../tst_qobject
-QT = core-private network testlib
+QT = core network testlib
 SOURCES = ../tst_qobject.cpp
 
 # Force C++17 if available (needed due to P0012R1)
