@@ -32,7 +32,7 @@
 #error Verdigris requires C++14 relaxed constexpr
 #endif
 
-#define W_VERSION 0x010000
+#define W_VERSION 0x0100ff
 
 namespace w_internal {
 using std::index_sequence;  // From C++14, make sure to enable the C++14 option in your compiler
