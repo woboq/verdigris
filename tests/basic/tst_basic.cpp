@@ -60,6 +60,10 @@ private /*slots*/:
 
     void testQNamespace();
     W_SLOT(testQNamespace, W_Access::Private)
+
+    void testAccess();
+    W_SLOT(testAccess, W_Access::Private)
+
 };
 
 #include <wobjectimpl.h>
@@ -311,6 +315,56 @@ void tst_Basic::testQNamespace()
 
     QCOMPARE(TestQNamespace::staticMetaObject.className(), "TestQNamespace");
 #endif
+}
+
+
+struct TestAccess : QObject  {
+    W_OBJECT(TestAccess)
+
+public:
+    void publicSlot(){} W_SLOT(publicSlot)
+    void publicMethod(){} W_INVOKABLE(publicMethod)
+    void forcePrivateSlot(){} W_SLOT(forcePrivateSlot, W_Access::Private)
+    void forcePrivateMethod(){} W_INVOKABLE(forcePrivateMethod, W_Access::Private)
+protected:
+    void protectedSlot(){} W_SLOT(protectedSlot)
+    void protectedMethod(){} W_INVOKABLE(protectedMethod)
+private:
+    void privateSlot(){} W_SLOT(privateSlot)
+    void privateMethod(){} W_INVOKABLE(privateMethod)
+    void forcePublicSlot(){} W_SLOT(forcePublicSlot, W_Access::Public)
+    void forcePublicMethod(){} W_INVOKABLE(forcePublicMethod, W_Access::Public)
+};
+W_OBJECT_IMPL(TestAccess)
+
+struct TestAccess2 final {
+    W_GADGET(TestAccess2)
+private:
+    void slot(int){} W_SLOT(slot, (int))
+public:
+    void slot(double){} W_SLOT(slot, (double))
+
+};
+W_GADGET_IMPL(TestAccess2)
+
+void tst_Basic::testAccess()
+{
+    auto mo = &TestAccess::staticMetaObject;
+    QCOMPARE(mo->method(mo->indexOfMethod("publicSlot()")).access(), QMetaMethod::Public);
+    QCOMPARE(mo->method(mo->indexOfMethod("publicMethod()")).access(), QMetaMethod::Public);
+    QCOMPARE(mo->method(mo->indexOfMethod("protectedSlot()")).access(), QMetaMethod::Protected);
+    QCOMPARE(mo->method(mo->indexOfMethod("protectedMethod()")).access(), QMetaMethod::Protected);
+    QCOMPARE(mo->method(mo->indexOfMethod("privateSlot()")).access(), QMetaMethod::Private);
+    QCOMPARE(mo->method(mo->indexOfMethod("privateMethod()")).access(), QMetaMethod::Private);
+    QCOMPARE(mo->method(mo->indexOfMethod("forcePublicSlot()")).access(), QMetaMethod::Public);
+    QCOMPARE(mo->method(mo->indexOfMethod("forcePublicMethod()")).access(), QMetaMethod::Public);
+    QCOMPARE(mo->method(mo->indexOfMethod("forcePrivateSlot()")).access(), QMetaMethod::Private);
+    QCOMPARE(mo->method(mo->indexOfMethod("forcePrivateMethod()")).access(), QMetaMethod::Private);
+
+    auto mo2 = &TestAccess2::staticMetaObject;
+    QCOMPARE(mo2->method(mo2->indexOfMethod("slot(int)")).access(), QMetaMethod::Private);
+    QCOMPARE(mo2->method(mo2->indexOfMethod("slot(double)")).access(), QMetaMethod::Public);
+
 }
 
 

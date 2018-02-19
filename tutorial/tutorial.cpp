@@ -84,10 +84,8 @@ class SlotTutorial : public QObject {
        W_SLOT( <slot name> [, (<parameters types>) ]  [, <flags>]* )
 
        The W_SLOT macro needs to be put after the slot declaration.
-       The W_SLOT macro can have flags:
-       - Specifying the the access:  W_Access::Protected, W_Access::Private
-         or W_Access::Public (the default)
-       - W_Compat: for deprecated methods (equivalent of Q_MOC_COMPAT
+       The W_SLOT macro can have the W_Compat for deprecated methods
+       (equivalent of Q_MOC_COMPAT
 
        The W_SLOT macro can optionally have a list of parameter types as second
        argument to disambiguate or declare types.
@@ -97,11 +95,11 @@ class SlotTutorial : public QObject {
 protected:
     // Declares a protected slot
     void protectedSlot() {}
-    W_SLOT(protectedSlot, W_Access::Protected)
+    W_SLOT(protectedSlot)
 private:
     // and a private slot
     void privateSlot() {}
-    W_SLOT(privateSlot, W_Access::Private)
+    W_SLOT(privateSlot)
 
 public:
     // Overloaded function needs a parameter list as second argument of the macro
@@ -113,9 +111,9 @@ public:
     W_SLOT(overload, (int))
 private:
     void overload(double) {}
-    W_SLOT(overload, (double), W_Access::Private)
+    W_SLOT(overload, (double))
     void overload(int, int) {}
-    W_SLOT(overload, (int, int), W_Access::Private)
+    W_SLOT(overload, (int, int))
     // Note: for custom type that are not const reference, one must use the normalized signature
 };
 

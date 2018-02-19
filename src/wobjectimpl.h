@@ -199,7 +199,16 @@ struct ClassInfoGenerator {
     }
 };
 
+/* Helpers to auto-detect the access specifier */
+template <typename T, typename M, typename = void> struct isPublic : std::false_type {};
+template <typename T, typename M> struct isPublic<T, M, decltype(T::w_GetAccessSpecifierHelper(std::declval<M>()))> : std::true_type {};
+template <typename T, typename M, typename = void> struct isProtected : std::false_type {};
+template <typename T, typename = std::enable_if_t<!std::is_final<T>::value>>
+struct Derived : T { template<typename M, typename X = T> static decltype(X::w_GetAccessSpecifierHelper(std::declval<M>())) test(M); };
+template <typename T, typename M> struct isProtected<T, M, decltype(Derived<T>::test(std::declval<M>()))> : std::true_type {};
+
 // Generator for methods to be used in generate<>()
+template <typename T>
 struct MethodGenerator {
     template<typename Method> static constexpr int offset() { return 1 + Method::argCount * 2; }
     template<int ParamIndex, typename State, typename Method>
@@ -208,11 +217,15 @@ struct MethodGenerator {
                 template add<Method::argCount,
                              ParamIndex, //parameters
                              1, //tag, always \0
-                             adjustFlags(Method::flags)>();
+                             adjustFlags(Method::flags, typename Method::IntegralConstant())>();
     }
-    // because public and private are inverted
-    static constexpr uint adjustFlags(uint f) {
-        return (f & W_Access::Protected.value) ? f : (f ^ W_Access::Private.value);
+    template<typename M>
+    static constexpr uint adjustFlags(uint f, M) {
+        if (!(f & (W_Access::Protected.value | W_Access::Private.value | W_Access::Public.value))) {
+            // Auto-detect the access specifier
+            f |= isPublic<T, M>::value ? W_Access::Public.value : isProtected<T,M>::value ? W_Access::Protected.value : W_Access::Private.value;
+        }
+        return f & ~W_Access::Private.value; // Because QMetaMethod::Private is 0, but not W_Access::Private;
     }
 };
 
@@ -460,11 +473,11 @@ constexpr auto generateDataArray(const ObjI &objectInfo) {
         > header = { stringData };
 
     auto classInfos = generate<ClassInfoGenerator, paramIndex>(header , objectInfo.classInfos);
-    auto methods = generate<MethodGenerator, paramIndex>(classInfos , objectInfo.methods);
+    auto methods = generate<MethodGenerator<T>, paramIndex>(classInfos , objectInfo.methods);
     auto properties = generate<PropertyGenerator, 0>(methods, objectInfo.properties);
     auto notify = generate<NotifySignalGenerator<T, hasNotify>, 0>(properties, objectInfo.properties);
     auto enums = generate<EnumGenerator, enumValueOffset>(notify, objectInfo.enums);
-    auto constructors = generate<MethodGenerator, constructorParamIndex>(enums, objectInfo.constructors);
+    auto constructors = generate<MethodGenerator<T>, constructorParamIndex>(enums, objectInfo.constructors);
     auto parametters = generate<MethodParametersGenerator, 0>(constructors, objectInfo.methods);
     auto parametters2 = generate<ConstructorParametersGenerator, 0>(parametters, objectInfo.constructors);
     auto enumValues = generate<EnumValuesGenerator, 0>(parametters2, objectInfo.enums);

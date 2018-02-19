@@ -285,9 +285,9 @@ namespace W_Access {
     AccessPublic = 0x02,
     AccessMask = 0x03, //mask
  */
-    constexpr w_internal::W_MethodFlags<0x00> Public{};
+    constexpr w_internal::W_MethodFlags<0x1000> Private{}; // Note: Private has a higher number to differentiate it from the default
     constexpr w_internal::W_MethodFlags<0x01> Protected{};
-    constexpr w_internal::W_MethodFlags<0x02> Private{}; // Note: Public and Private are reversed so Public can be the default
+    constexpr w_internal::W_MethodFlags<0x02> Public{};
 }
 
 // Mirror of QMetaMethod::MethodType
@@ -321,7 +321,7 @@ constexpr std::integral_constant<int, int(w_internal::PropertyFlags::Final)> W_F
 namespace w_internal {
 
 /** Holds information about a method */
-template<typename F, int NameLength, int Flags, typename ParamTypes, typename ParamNames = StaticStringList<>>
+template<typename F, int NameLength, int Flags, typename IC, typename ParamTypes, typename ParamNames = StaticStringList<>>
 struct MetaMethodInfo {
     F func;
     StaticString<NameLength> name;
@@ -329,25 +329,26 @@ struct MetaMethodInfo {
     ParamNames paramNames;
     static constexpr int argCount = QtPrivate::FunctionPointer<F>::ArgumentCount;
     static constexpr int flags = Flags;
+    using IntegralConstant = IC;
 };
 
 // Called from the W_SLOT macro
-template<typename F, int N, typename ParamTypes, int... Flags>
-constexpr MetaMethodInfo<F, N, summed<Flags...> | W_MethodType::Slot.value, ParamTypes>
-makeMetaSlotInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
+template<typename F, int N, typename ParamTypes, int... Flags, typename IntegralConstant>
+constexpr MetaMethodInfo<F, N, summed<Flags...> | W_MethodType::Slot.value, IntegralConstant, ParamTypes>
+makeMetaSlotInfo(F f, StaticStringArray<N> &name, IntegralConstant, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
 { return { f, {name}, paramTypes, {} }; }
 
 // Called from the W_METHOD macro
-template<typename F, int N, typename ParamTypes, int... Flags>
-constexpr MetaMethodInfo<F, N, summed<Flags...> | W_MethodType::Method.value, ParamTypes>
-makeMetaMethodInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
+template<typename F, int N, typename ParamTypes, int... Flags, typename IntegralConstant>
+constexpr MetaMethodInfo<F, N, summed<Flags...> | W_MethodType::Method.value, IntegralConstant, ParamTypes>
+makeMetaMethodInfo(F f, StaticStringArray<N> &name, IntegralConstant, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
 { return { f, {name}, paramTypes, {} }; }
 
 // Called from the W_SIGNAL macro
-template<typename F, int N, typename ParamTypes, typename ParamNames, int... Flags>
-constexpr MetaMethodInfo<F, N, summed<Flags...> | W_MethodType::Signal.value,
+template<typename F, int N, typename ParamTypes, typename ParamNames, int... Flags, typename IntegralConstant>
+constexpr MetaMethodInfo<F, N, summed<Flags...> | W_MethodType::Signal.value, IntegralConstant,
                             ParamTypes, ParamNames>
-makeMetaSignalInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes,
+makeMetaSignalInfo(F f, StaticStringArray<N> &name, IntegralConstant, const ParamTypes &paramTypes,
                     const ParamNames &paramNames, W_MethodFlags<Flags>...)
 { return { f, {name}, paramTypes, paramNames }; }
 
@@ -355,6 +356,7 @@ makeMetaSignalInfo(F f, StaticStringArray<N> &name, const ParamTypes &paramTypes
 template<int NameLength, typename... Args> struct MetaConstructorInfo {
     static constexpr int argCount = sizeof...(Args);
     static constexpr int flags = W_MethodType::Constructor.value | W_Access::Public.value;
+    using IntegralConstant = void*; // Used to detect the access specifier, but it is always public, so no need for this
     StaticString<NameLength> name;
     template<int N>
     constexpr MetaConstructorInfo<N, Args...> setName(StaticStringArray<N> &name)
@@ -744,15 +746,17 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
  *
  * The W_SLOT macro can have flags:
  * - Specifying the the access:  W_Access::Protected, W_Access::Private
- *   or W_Access::Public (the default)
+ *   or W_Access::Public. (By default, it is auto-detected from the location of this macro.)
  * - W_Compat: for deprecated methods (equivalent of Q_MOC_COMPAT)
  */
 #define W_SLOT(...) W_MACRO_MSVC_EXPAND(W_SLOT2(__VA_ARGS__, w_internal::W_EmptyFlag))
 #define W_SLOT2(NAME, ...) \
     W_STATE_APPEND(w_SlotState, w_internal::makeMetaSlotInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
+            std::integral_constant<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)), &W_ThisType::NAME>(), \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
-            W_OVERLOAD_REMOVE(__VA_ARGS__)))
+            W_OVERLOAD_REMOVE(__VA_ARGS__))) \
+    static inline void w_GetAccessSpecifierHelper(std::integral_constant<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)), &W_ThisType::NAME>) {}
 
 /**
  * W_INVOKABLE( <slot name> [, (<parameters types>) ]  [, <flags>]* )
@@ -762,8 +766,10 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 #define W_INVOKABLE2(NAME, ...) \
     W_STATE_APPEND(w_MethodState, w_internal::makeMetaMethodInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
+            std::integral_constant<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)), &W_ThisType::NAME>(), \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
-            W_OVERLOAD_REMOVE(__VA_ARGS__)))
+            W_OVERLOAD_REMOVE(__VA_ARGS__))) \
+    static inline void w_GetAccessSpecifierHelper(std::integral_constant<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)), &W_ThisType::NAME>) {}
 
 /**
  * <signal signature>
@@ -787,7 +793,9 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
         W_RETURN(w_internal::binary::tree_append(w_SignalState(w_counter.prev(), w_this), \
             w_internal::makeMetaSignalInfo( \
                 W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
-                W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))))
+                std::integral_constant<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)), &W_ThisType::NAME>(), \
+                W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__))))) \
+    static inline void w_GetAccessSpecifierHelper(std::integral_constant<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)), &W_ThisType::NAME>) {}
 
 /** \macro W_SIGNAL_COMPAT
  * Same as W_SIGNAL, but set the W_Compat flag
@@ -804,7 +812,9 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
         W_RETURN(w_internal::binary::tree_append(w_SignalState(w_counter.prev(), w_this), \
             w_internal::makeMetaSignalInfo( \
                 W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
-                W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat)))
+                std::integral_constant<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)), &W_ThisType::NAME>(), \
+                W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat))) \
+    static inline void w_GetAccessSpecifierHelper(std::integral_constant<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)), &W_ThisType::NAME>) {}
 
 /** W_CONSTRUCTOR(<parameter types>)
  * Declares that this class can be constructed with this list of argument.
