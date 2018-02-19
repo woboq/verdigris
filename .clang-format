@@ -1,0 +1,17 @@
+# Configuration for Qt style code
+BasedOnStyle: llvm
+AccessModifierOffset: -4
+BreakBeforeBinaryOperators: NonAssignment
+ColumnLimit: 120
+Standard: Cpp11
+IndentWidth: 4
+AlwaysBreakTemplateDeclarations: true
+BreakBeforeBraces: Custom
+BraceWrapping:
+    AfterClass: true
+    AfterStruct: true
+    AfterFunction: true
+AllowShortFunctionsOnASingleLine: InlineOnly
+CommentPragmas: "^!|^:"
+# ExperimentalAutoDetectBinPacking: true
+# FixNamespaceComments: true
