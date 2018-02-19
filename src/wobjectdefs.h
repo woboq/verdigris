@@ -654,6 +654,21 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 
 #define W_RETURN(R) -> decltype(R) { return R; }
 
+#ifndef Q_CC_MSVC
+//Define a unique integral_constant type for a given function pointer
+#define W_INTEGRAL_CONSTANT_HELPER(NAME, ...) std::integral_constant<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)), &W_ThisType::NAME>
+#else
+// On MSVC 2017 we trying to get a function pointer in the type cause compiler internal error, so use a simple hash function
+namespace w_internal {
+constexpr auto simple_hash(char const *p) {
+    unsigned long long h = *p;
+    while (*p++) h = ((h >> 8)*37ull)  ^ *p ^ ((h & 0xff) << 56) ;
+    return h;
+}
+}
+#define W_INTEGRAL_CONSTANT_HELPER(NAME, ...) std::integral_constant<unsigned long long, w_internal::simple_hash(#NAME #__VA_ARGS__)>
+#endif
+
 #define W_OBJECT_COMMON(TYPE) \
         using W_ThisType = TYPE; \
         static constexpr auto &W_UnscopedName = #TYPE; /* so we don't repeat it in W_CONSTRUCTOR */ \
@@ -753,10 +768,10 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 #define W_SLOT2(NAME, ...) \
     W_STATE_APPEND(w_SlotState, w_internal::makeMetaSlotInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
-            std::integral_constant<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)), &W_ThisType::NAME>(), \
+            W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__))) \
-    static inline void w_GetAccessSpecifierHelper(std::integral_constant<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)), &W_ThisType::NAME>) {}
+    static inline void w_GetAccessSpecifierHelper(W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)) {}
 
 /**
  * W_INVOKABLE( <slot name> [, (<parameters types>) ]  [, <flags>]* )
@@ -766,10 +781,10 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 #define W_INVOKABLE2(NAME, ...) \
     W_STATE_APPEND(w_MethodState, w_internal::makeMetaMethodInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
-            std::integral_constant<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)), &W_ThisType::NAME>(), \
+            W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__))) \
-    static inline void w_GetAccessSpecifierHelper(std::integral_constant<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)), &W_ThisType::NAME>) {}
+    static inline void w_GetAccessSpecifierHelper(W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)) {}
 
 /**
  * <signal signature>
@@ -793,9 +808,9 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
         W_RETURN(w_internal::binary::tree_append(w_SignalState(w_counter.prev(), w_this), \
             w_internal::makeMetaSignalInfo( \
                 W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
-                std::integral_constant<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)), &W_ThisType::NAME>(), \
+                W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
                 W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__))))) \
-    static inline void w_GetAccessSpecifierHelper(std::integral_constant<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)), &W_ThisType::NAME>) {}
+    static inline void w_GetAccessSpecifierHelper(W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)) {}
 
 /** \macro W_SIGNAL_COMPAT
  * Same as W_SIGNAL, but set the W_Compat flag
@@ -812,9 +827,9 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
         W_RETURN(w_internal::binary::tree_append(w_SignalState(w_counter.prev(), w_this), \
             w_internal::makeMetaSignalInfo( \
                 W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
-                std::integral_constant<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)), &W_ThisType::NAME>(), \
+                W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
                 W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat))) \
-    static inline void w_GetAccessSpecifierHelper(std::integral_constant<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)), &W_ThisType::NAME>) {}
+    static inline void w_GetAccessSpecifierHelper(W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)) {}
 
 /** W_CONSTRUCTOR(<parameter types>)
  * Declares that this class can be constructed with this list of argument.
