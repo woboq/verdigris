@@ -1198,8 +1198,10 @@ struct W_TypeRegistery
         static constexpr auto name = makeStaticString(#__VA_ARGS__);                                                   \
     };                                                                                                                 \
     }
-W_REGISTER_ARGTYPE(char *)
-W_REGISTER_ARGTYPE(const char *)
+// clang-format off
+W_REGISTER_ARGTYPE(char*)
+W_REGISTER_ARGTYPE(const char*)
+// clang-format on
 
 #else // Q_MOC_RUN
 // just to avoid parse errors when moc is run over things that it should ignore
