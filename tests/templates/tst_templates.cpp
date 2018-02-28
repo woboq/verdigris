@@ -32,6 +32,7 @@ private /*slots*/:
     // from https://codereview.qt-project.org/49866/
     void connectTemplate();  W_SLOT(connectTemplate, W_Access::Private)
 
+    void gadget(); W_SLOT(gadget, W_Access::Private)
 };
 
 
@@ -206,6 +207,59 @@ void tst_Templates::connectTemplate()
 }
 
 
+template<typename T> class TemplateGadget {
+    W_GADGET(TemplateGadget)
+public:
+    T data;
+
+    T readData() { return data; }
+    W_INVOKABLE(readData)
+    void writeData(const T &d) { data = d; }
+    W_INVOKABLE(writeData)
+    W_PROPERTY(T, data READ readData WRITE writeData)
+
+    QVariant readVariant() { return QVariant::fromValue(data); }
+    W_INVOKABLE(readVariant)
+    void writeVariant(const QVariant &d) { data = qvariant_cast<T>(d); }
+    W_INVOKABLE(writeVariant)
+    W_PROPERTY(QVariant, variant READ readVariant WRITE writeVariant)
+};
+
+template<typename T> void testGadget(const T &val1)
+{
+    TemplateGadget<T> xx;
+    const QMetaObject *mo = &xx.staticMetaObject;
+    {
+        auto id = mo->indexOfProperty("data");
+        QVERIFY(id >= 0);
+        auto prop = mo->property(id);
+        prop.writeOnGadget(&xx, QVariant::fromValue(val1));
+        QCOMPARE(xx.data, val1);
+        QVariant v = prop.readOnGadget(&xx);
+        QCOMPARE(v.value<T>(), val1);
+    }
+    {
+        auto id = mo->indexOfProperty("variant");
+        QVERIFY(id >= 0);
+        auto prop = mo->property(id);
+        prop.writeOnGadget(&xx, QVariant::fromValue(val1));
+        QCOMPARE(xx.data, val1);
+        id = mo->indexOfMethod("readVariant()");
+        QVERIFY(id >= 0);
+        auto meth = mo->method(id);
+        QVariant v;
+        meth.invokeOnGadget(&xx, Q_RETURN_ARG(QVariant, v));
+        QCOMPARE(v.value<T>(), val1);
+    }
+
+}
+
+void tst_Templates::gadget()
+{
+    testGadget(34);
+    testGadget(QString("hello"));
+    testGadget(QByteArray("toto"));
+}
 
 QTEST_MAIN(tst_Templates)
 
@@ -219,3 +273,4 @@ W_OBJECT_IMPL((FunctionTemplateParameter<O,T1,F1,F2>), template<typename O, type
 W_OBJECT_IMPL((TemplateTemplateParameter<C1, C2, C3>), template<template<typename> class C1, template <typename> class C2, template <typename, int > class C3>)
 W_OBJECT_IMPL((MappedReducedKernel<ReducedResultType, Iterator, MapFunctor, ReduceFunctor, Reducer>), template <typename ReducedResultType, typename Iterator, typename MapFunctor, typename ReduceFunctor, typename Reducer>)
 W_OBJECT_IMPL(TemplateObject<T>, template<typename T>)
+W_GADGET_IMPL(TemplateGadget<T>, template<typename T>)
