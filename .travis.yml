@@ -30,21 +30,17 @@ matrix:
         - env: QT_VERSION=56 QT_SOURCE=563 GCC_VERSION=6
         - env: QT_VERSION=58 QT_SOURCE=58 GCC_VERSION=6
         - env: QT_VERSION=59 QT_SOURCE=593 GCC_VERSION=7
-        - env: QT_VERSION=510 QT_SOURCE=5.10.0 GCC_VERSION=7
+        - env: QT_VERSION=510 QT_SOURCE=-5.10.1 GCC_VERSION=7
 
         # Clang builds.
         - env: QT_VERSION=56 QT_SOURCE=563 CLANG_VERSION=3.8
         - env: QT_VERSION=57 QT_SOURCE=571 CLANG_VERSION=3.9
         - env: QT_VERSION=58 QT_SOURCE=58 CLANG_VERSION=4.0
         - env: QT_VERSION=59 QT_SOURCE=591 CLANG_VERSION=5.0
-        - env: QT_VERSION=510 QT_SOURCE=5.10.0 CLANG_VERSION=5.0
+        - env: QT_VERSION=510 QT_SOURCE=-5.10.1 CLANG_VERSION=5.0
 
 before_install:
-    - if [[ ${QT_VERSION} == "510" ]]; then
-        sudo add-apt-repository -y ppa:forkotov02/opt-qt-${QT_SOURCE}-trusty;
-      else
-        sudo add-apt-repository -y ppa:beineri/opt-qt${QT_SOURCE}-trusty;
-      fi
+    - sudo add-apt-repository -y ppa:beineri/opt-qt${QT_SOURCE}-trusty;
     - sudo apt-get update
 
 install:
