@@ -113,26 +113,6 @@ public:
     DeclareProperty(QString, prop70)
 
     DeclareProperty(int, intProp0)
-    DeclareProperty(int, intProp1)
-    DeclareProperty(int, intProp2)
-    DeclareProperty(int, intProp3)
-    DeclareProperty(int, intProp4)
-    DeclareProperty(int, intProp5)
-    DeclareProperty(int, intProp6)
-    DeclareProperty(int, intProp7)
-    DeclareProperty(int, intProp8)
-    DeclareProperty(int, intProp9)
-    DeclareProperty(int, intProp10)
-    DeclareProperty(int, intProp11)
-    DeclareProperty(int, intProp12)
-    DeclareProperty(int, intProp13)
-    DeclareProperty(int, intProp14)
-    DeclareProperty(int, intProp15)
-    DeclareProperty(int, intProp16)
-    DeclareProperty(int, intProp17)
-    DeclareProperty(int, intProp18)
-    DeclareProperty(int, intProp19)
-    DeclareProperty(int, intProp20)
 };
 
 
@@ -154,23 +134,23 @@ void tst_ManyProperties::manyProperties() {
 
         QVERIFY(obj.setProperty("prop11", QStringLiteral("salut")));
         QCOMPARE(ok, true);
-        QCOMPARE(obj.property("prop11"), QStringLiteral("salut"));
+        QCOMPARE(obj.property("prop11"), QVariant(QStringLiteral("salut")));
 
         disconnect(c);
     }
     {
-        QMetaProperty prop64 = obj.metaObject()->property(obj.metaObject()->indexOfProperty("prop64"));
-        QCOMPARE(prop64.name(), "prop64");
-        QCOMPARE(prop64.typeName(), "QString");
-        QCOMPARE(prop64.hasNotifySignal(), true);
-        QCOMPARE(prop64.notifySignal().name(), "prop64Changed");
+        QMetaProperty prop = obj.metaObject()->property(obj.metaObject()->indexOfProperty("prop64"));
+        QCOMPARE(prop.name(), "prop64");
+        QCOMPARE(prop.typeName(), "QString");
+        QCOMPARE(prop.hasNotifySignal(), true);
+        QCOMPARE(prop.notifySignal().name(), "prop64Changed");
     }
     {
-        QMetaProperty prop20 = obj.metaObject()->property(obj.metaObject()->indexOfProperty("intProp20"));
-        QCOMPARE(prop20.name(), "intProp20");
-        QCOMPARE(prop20.typeName(), "int");
-        QCOMPARE(prop20.hasNotifySignal(), true);
-        QCOMPARE(prop20.notifySignal().name(), "intProp20Changed");
+        QMetaProperty prop = obj.metaObject()->property(obj.metaObject()->indexOfProperty("intProp0"));
+        QCOMPARE(prop.name(), "intProp0");
+        QCOMPARE(prop.typeName(), "int");
+        QCOMPARE(prop.hasNotifySignal(), true);
+        QCOMPARE(prop.notifySignal().name(), "intProp0Changed");
     }
 }
 

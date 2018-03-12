@@ -109,6 +109,7 @@ constexpr auto generate(State s, Tree t) {
 
 
 #if defined Q_CC_GNU && !defined Q_CC_CLANG /* Work around GCC bug 69681 */
+template <typename T> constexpr bool getSignalIndexHelperCompare(T f1, T f2) { return f1 == f2; }
 /** Helper to get information about the notify signal of the property within object T */
 template<typename T, int PropIdx, typename BaseT = T>
 struct ResolveNotifySignal {
