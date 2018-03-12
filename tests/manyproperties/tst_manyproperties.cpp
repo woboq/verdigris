@@ -101,16 +101,6 @@ public:
     DeclareProperty(QString, prop58)
     DeclareProperty(QString, prop59)
     DeclareProperty(QString, prop60)
-    DeclareProperty(QString, prop61)
-    DeclareProperty(QString, prop62)
-    DeclareProperty(QString, prop63)
-    DeclareProperty(QString, prop64)
-    DeclareProperty(QString, prop65)
-    DeclareProperty(QString, prop66)
-    DeclareProperty(QString, prop67)
-    DeclareProperty(QString, prop68)
-    DeclareProperty(QString, prop69)
-    DeclareProperty(QString, prop70)
 
     DeclareProperty(int, intProp0)
 };
@@ -139,18 +129,18 @@ void tst_ManyProperties::manyProperties() {
         disconnect(c);
     }
     {
-        QMetaProperty prop = obj.metaObject()->property(obj.metaObject()->indexOfProperty("prop64"));
-        QCOMPARE(prop.name(), "prop64");
+        QMetaProperty prop = obj.metaObject()->property(obj.metaObject()->indexOfProperty("prop34"));
+        QCOMPARE(prop.name(), "prop34");
         QCOMPARE(prop.typeName(), "QString");
         QCOMPARE(prop.hasNotifySignal(), true);
-        QCOMPARE(prop.notifySignal().name(), "prop64Changed");
+        QCOMPARE(prop.notifySignal().name(), QByteArray("prop34Changed"));
     }
     {
         QMetaProperty prop = obj.metaObject()->property(obj.metaObject()->indexOfProperty("intProp0"));
         QCOMPARE(prop.name(), "intProp0");
         QCOMPARE(prop.typeName(), "int");
         QCOMPARE(prop.hasNotifySignal(), true);
-        QCOMPARE(prop.notifySignal().name(), "intProp0Changed");
+        QCOMPARE(prop.notifySignal().name(), QByteArray("intProp0Changed"));
     }
 }
 
