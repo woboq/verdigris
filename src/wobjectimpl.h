@@ -107,37 +107,56 @@ constexpr auto generate(State s, Tree t) {
         Generator::template generate<Ofst>(s, binary::tree_head(t)), binary::tree_tail(t));
 }
 
-/**
- * Helper comparator that compare function pointers and return true if they are the same or
- * false if they are different. If they are of different type, they are different */
-template <typename T1, typename T2> constexpr bool getSignalIndexHelperCompare(T1, T2) { return false; }
-template <typename T> constexpr bool getSignalIndexHelperCompare(T f1, T f2) { return f1 == f2; }
 
-/** Helper to get information bout the notify signal of the property with index Idx of the object T */
-template<typename T, int Idx, typename BaseT = T>
+#if defined Q_CC_GNU && !defined Q_CC_CLANG /* Work around GCC bug 69681 */
+/** Helper to get information about the notify signal of the property within object T */
+template<typename T, int PropIdx, typename BaseT = T>
 struct ResolveNotifySignal {
-    static constexpr auto propertyInfo = w_PropertyState(w_number<>{},static_cast<T**>(nullptr));
-    static constexpr auto property = binary::get<Idx>(propertyInfo);
     static constexpr auto signalState = w_SignalState(w_number<>{},static_cast<BaseT**>(nullptr));
-
+    static constexpr auto propertyInfo = w_PropertyState(w_number<>{},static_cast<T**>(nullptr));
 private:
+    static constexpr auto prop = binary::get<PropIdx>(propertyInfo);
     // We need to use SFINAE because of GCC bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=69681
     // For some reason, GCC fails to consider f1==f2 as a constexpr if f1 and f2 are pointer to
     // different function of the same type. Fortunately, when both are pointing to the same function
     // it compiles fine, so we can use SFINAE for it.
-    template<int SigIdx>
-    static constexpr std::enable_if_t<getSignalIndexHelperCompare(binary::get<SigIdx>(signalState).func, property.notify) || true, int>
-        helper(int)
-    { return getSignalIndexHelperCompare(binary::get<SigIdx>(signalState).func, property.notify) ? SigIdx : -1; }
+    template<int SigIdx,
+             bool Eq = getSignalIndexHelperCompare(binary::get<SigIdx>(signalState).func,
+                                                   prop.notify)>
+    static constexpr int helper(int)
+    { return Eq ? SigIdx : -1; }
     template<int SigIdx> static constexpr int helper(...) { return -1; }
 
     template<size_t... I>
-    static constexpr int computeSignalIndex(index_sequence<I...>) {
-        return std::max({-1, helper<I>(0)...});
+    static constexpr int computeSignalIndex(index_sequence<I...>)
+    { return std::max({-1, helper<I>(0)...}); }
+public:
+    static constexpr int signalIndex()
+    { return computeSignalIndex(make_index_sequence<signalState.size>()); }
+};
+#else
+/** Helper comparator that compares function pointers and return true if they are the same.
+ * If thier type are different, pointer to member functions are different
+ */
+template <typename T> constexpr bool getSignalIndexHelperCompare(T f1, T f2) { return f1 == f2; }
+template <typename T1, typename T2> constexpr bool getSignalIndexHelperCompare(T1, T2) { return false; }
+
+/** Helper to get information about the notify signal of the property within object T */
+template<typename T>
+struct ResolveNotifySignal {
+    static constexpr auto signalState = w_SignalState(w_number<>{},static_cast<T**>(nullptr));
+private:
+    template<typename F, size_t... I>
+    static constexpr int computeSignalIndex(F f, index_sequence<I...>) {
+        return std::max({-1,
+            (getSignalIndexHelperCompare(binary::get<I>(signalState).func,f) ? int(I) : -1)...});
     }
 public:
-    static constexpr int signalIndex = computeSignalIndex(make_index_sequence<signalState.size>());
+    template<typename F>
+    static constexpr int signalIndex(F f)
+    { return computeSignalIndex(f, make_index_sequence<signalState.size>()); }
 };
+#endif
 
 /** returns true if the object T has at least one property with a notify signal */
 template <typename T, std::size_t... I>
@@ -296,7 +315,11 @@ private:
     static constexpr auto process(State s, Func, std::enable_if_t<
         std::is_same<T, typename QtPrivate::FunctionPointer<Func>::Object>::value, int> = 0)
     {
-        constexpr int signalIndex = ResolveNotifySignal<T, Idx>::signalIndex;
+#if defined Q_CC_GNU && !defined Q_CC_CLANG
+        constexpr int signalIndex = ResolveNotifySignal<T, Idx>::signalIndex();
+#else
+        constexpr int signalIndex = ResolveNotifySignal<T>::signalIndex(binary::get<Idx>(propertyInfo).notify);
+#endif
         static_assert(signalIndex >= 0, "NOTIFY signal not registered as a signal");
         return s.template add<signalIndex>();
     }
@@ -306,11 +329,17 @@ private:
     static constexpr auto process(State s, Func, std::enable_if_t<
         !std::is_same<T, typename QtPrivate::FunctionPointer<Func>::Object>::value, int> = 0)
     {
+#if defined Q_CC_GNU && !defined Q_CC_CLANG
         using Finder = ResolveNotifySignal<T, Idx, typename QtPrivate::FunctionPointer<Func>::Object>;
-        static_assert(Finder::signalIndex >= 0, "NOTIFY signal in parent class not registered as a W_SIGNAL");
-        static_assert(Finder::signalIndex < 0 || QT_VERSION >= QT_VERSION_CHECK(5, 10, 0),
+        constexpr int signalIndex = Finder::signalIndex();
+#else
+        using Finder = ResolveNotifySignal<typename QtPrivate::FunctionPointer<Func>::Object>;
+        constexpr int signalIndex = Finder::signalIndex(binary::get<Idx>(propertyInfo).notify);
+#endif
+        static_assert(signalIndex >= 0, "NOTIFY signal in parent class not registered as a W_SIGNAL");
+        static_assert(signalIndex < 0 || QT_VERSION >= QT_VERSION_CHECK(5, 10, 0),
                       "NOTIFY signal in parent class requires Qt 5.10");
-        constexpr auto sig = binary::get<Finder::signalIndex>(Finder::signalState);
+        constexpr auto sig = binary::get<signalIndex>(Finder::signalState);
         return s.template addTypeString<IsUnresolvedNotifySignal>(sig.name);
     }
 };

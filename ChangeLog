@@ -1,6 +1,7 @@
 Version ?.? (????)
  * Auto-detect the access specifier. (No need to add W_Access::Private or
    W_Access::Protected anymore)
+ * Optimized compilation time for classes with many properties
 
 Version 1.0 (February 2018)
  * Error out early without C++14 (#2)

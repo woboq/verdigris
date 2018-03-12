@@ -1,3 +1,3 @@
 TEMPLATE = subdirs
 
-SUBDIRS += basic qt templates
+SUBDIRS += basic qt templates manyproperties
