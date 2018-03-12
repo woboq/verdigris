@@ -73,6 +73,7 @@ namespace binary {
         static constexpr int Depth = 0;
         static constexpr int Count = 1;
         static constexpr bool Balanced = true;
+        template <int> constexpr T get() { return data; }
     };
 
     template <class A, class B> struct Node {
@@ -81,6 +82,10 @@ namespace binary {
         static constexpr int Count = A::Count + B::Count;
         static constexpr int Depth = A::Depth + 1;
         static constexpr bool Balanced = A::Depth == B::Depth && B::Balanced;
+        template <int N, typename = std::enable_if_t<(N < A::Count)>>
+        constexpr auto get(int = 0) { return a.template get<N>(); }
+        template <int N, typename = std::enable_if_t<(N >= A::Count)>>
+        constexpr auto get(uint = 0) { return b.template get<N - A::Count>(); }
     };
 
     /** Add the node 'N' to the tree 'T'  (helper for tree_append) */
@@ -102,15 +107,6 @@ namespace binary {
         typedef Node<typename AddPre<A, N>::Result, B > Result;
         static constexpr Result add(Node<A, B> t, N n) { return {AddPre<A, N>::add(t.a, n) , t.b }; }
     };
-
-    /** helper for binary::get<> */
-    template <class T, int I, typename = void> struct Get;
-    template <class N> struct Get<Leaf<N>, 0>
-    { static constexpr N get(Leaf<N> t) { return t.data; } };
-    template <class A, class B, int I> struct Get<Node<A,B>, I, std::enable_if_t<(A::Count <= I)>>
-    { static constexpr auto get(Node<A,B> t) { return Get<B,I - A::Count>::get(t.b); } };
-    template <class A, class B, int I> struct Get<Node<A,B>, I, std::enable_if_t<(A::Count > I)>>
-    { static constexpr auto get(Node<A,B> t) { return Get<A,I>::get(t.a); } };
 
     /** helper for tree_tail */
     template<typename A, typename B> struct Tail;
@@ -154,7 +150,7 @@ namespace binary {
      * get<N>(tree): Returns the element from the tree at index N.
      */
     template<int N, typename Root> constexpr auto get(tree<Root> t)
-    { return Get<Root, N>::get(t.root); }
+    { return t.root.template get<N>(); }
 
     /**
      * tree_tail(tree):  Returns a tree with the first element removed.
