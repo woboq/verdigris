@@ -245,7 +245,7 @@ struct MethodGenerator {
             // Auto-detect the access specifier
             f |= isPublic<T, M>::value ? W_Access::Public.value : isProtected<T,M>::value ? W_Access::Protected.value : W_Access::Private.value;
         }
-        return f & ~W_Access::Private.value; // Because QMetaMethod::Private is 0, but not W_Access::Private;
+        return f & static_cast<uint>(~W_Access::Private.value); // Because QMetaMethod::Private is 0, but not W_Access::Private;
     }
 };
 
