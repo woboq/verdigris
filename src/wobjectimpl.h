@@ -523,11 +523,11 @@ template<std::size_t N, std::size_t L> struct qt_meta_stringdata_t {
 };
 
 /** Builds the string data
- * \param S: a index_sequence that goes from 0 to the full size of the strings
- * \param I: a index_sequence that goes from 0 to the number of string
- * \param O: a index_sequence of the offsets
- * \param N: a index_sequence of the size of each strings
- * \param T: the W_MetaObjectCreatorHelper
+ * \tparam S an index_sequence that goes from 0 to the full size of the strings
+ * \tparam I an index_sequence that goes from 0 to the number of string
+ * \tparam O an index_sequence of the offsets
+ * \tparam N an index_sequence of the size of each strings
+ * \tparam T the W_MetaObjectCreatorHelper
  */
 template<typename S, typename I, typename O, typename N, typename T> struct BuildStringDataHelper;
 template<std::size_t... S, std::size_t... I, std::size_t... O, std::size_t...N, typename T>
