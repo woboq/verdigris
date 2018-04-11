@@ -271,7 +271,7 @@ struct HandleType<T, false> {
         return ss.addTypeString(W_TypeRegistery<T>::name);
         static_assert(W_TypeRegistery<T>::registered, "Please Register T with W_REGISTER_ARGTYPE");
     }
-    template<typename Strings, int N>
+    template<typename Strings, std::size_t N>
     static constexpr auto result(const Strings &ss, StaticString<N> typeStr,
                                     typename std::enable_if<(N>1),int>::type=0) {
         return ss.addTypeString(typeStr);
@@ -457,7 +457,7 @@ public:
 // Generator for constructor parameter to be used in generate<>()
 struct ConstructorParametersGenerator {
     template<typename> static constexpr int offset() { return 0; }
-    template<int, typename State, int N, typename... Args>
+    template<int, typename State, std::size_t N, typename... Args>
     static constexpr auto generate(State s, MetaConstructorInfo<N,Args...>) {
         auto s2 = s.template add<IsUnresolvedType | 1>();
         auto s3 = HandleArgsHelper<Args...>::result(s2, binary::tree<>{});
