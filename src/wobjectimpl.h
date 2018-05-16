@@ -838,14 +838,6 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
 }
 } // w_internal
 
-#ifdef Q_OS_WIN
-// On Windows, taking the address of exported symbols is not a constexpr. (At least with MinGW 5.3)
-// So the staticMetaObject can't be constexpr because of the pointer to the base class QMetaObject
-#define W_STATICMETAOBJECT_CONSTEXPR
-#else
-#define W_STATICMETAOBJECT_CONSTEXPR constexpr
-#endif
-
 // W_OBJECT_IMPL was designed to take advantage of the GNU extension that ... can have zero arguments.
 // So we need to work around that to extract the template stuff which may not exist or be composed
 // of several macro arguments: If the first argument has parentheses, there must be at least  two
@@ -868,7 +860,7 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
         static constexpr auto string_data = data.first; \
         static constexpr auto int_data = data.second; \
     }; \
-    W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) W_STATICMETAOBJECT_CONSTEXPR const QMetaObject W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::staticMetaObject = \
+    W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) const QMetaObject W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::staticMetaObject = \
         w_internal::createMetaObject<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>();
 
 #define W_OBJECT_IMPL(...) \

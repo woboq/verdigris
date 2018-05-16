@@ -23,6 +23,8 @@
 
 #include <QtWidgets/qgraphicsitem.h>  // only for compilation check
 
+#include "anothertu.h"
+
 class tst_Basic : public QObject
 {
     W_OBJECT(tst_Basic)
@@ -63,6 +65,9 @@ private /*slots*/:
 
     void testAccess();
     W_SLOT(testAccess, W_Access::Private)
+
+    void testAnotherTU();
+    W_SLOT(testAnotherTU, W_Access::Private)
 
 };
 
@@ -365,6 +370,12 @@ void tst_Basic::testAccess()
     QCOMPARE(mo2->method(mo2->indexOfMethod("slot(int)")).access(), QMetaMethod::Private);
     QCOMPARE(mo2->method(mo2->indexOfMethod("slot(double)")).access(), QMetaMethod::Public);
 
+}
+
+void tst_Basic::testAnotherTU()
+{
+    auto mo = &AnotherTU::Gaga::staticMetaObject;
+    QCOMPARE(mo->className(), "AnotherTU::Gaga");
 }
 
 
