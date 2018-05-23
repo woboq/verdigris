@@ -279,6 +279,7 @@ struct HandleType<T, false> {
 };
 
 // Generator for properties to be used in generate<>()
+template<typename T>
 struct PropertyGenerator {
     template<typename> static constexpr int offset() { return 0; }
     template<int, typename State, typename Prop>
@@ -287,9 +288,10 @@ struct PropertyGenerator {
         auto s3 = HandleType<typename Prop::PropertyType>::result(s2, prop.typeStr);
         constexpr uint moreFlags = (QtPrivate::IsQEnumHelper<typename Prop::PropertyType>::Value
             ? uint(PropertyFlags::EnumOrFlag) : 0);
+        constexpr uint finalFlag = std::is_final<T>::value ? 0 | PropertyFlags::Final : 0;
         constexpr uint defaultFlags = 0 | PropertyFlags::Stored | PropertyFlags::Scriptable
             | PropertyFlags::Designable;
-        return s3.template add<Prop::flags | moreFlags | defaultFlags>();
+        return s3.template add<Prop::flags | moreFlags | finalFlag | defaultFlags>();
     }
 };
 
@@ -504,7 +506,7 @@ constexpr auto generateDataArray(const ObjI &objectInfo) {
 
     auto classInfos = generate<ClassInfoGenerator, paramIndex>(header , objectInfo.classInfos);
     auto methods = generate<MethodGenerator<T>, paramIndex>(classInfos , objectInfo.methods);
-    auto properties = generate<PropertyGenerator, 0>(methods, objectInfo.properties);
+    auto properties = generate<PropertyGenerator<T>, 0>(methods, objectInfo.properties);
     auto notify = generate<NotifySignalGenerator<T, hasNotify>, 0>(properties, objectInfo.properties);
     auto enums = generate<EnumGenerator, enumValueOffset>(notify, objectInfo.enums);
     auto constructors = generate<MethodGenerator<T>, constructorParamIndex>(enums, objectInfo.constructors);
