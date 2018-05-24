@@ -363,10 +363,14 @@ template<std::size_t NameLength, typename... Args> struct MetaConstructorInfo {
 template<typename...  Args> constexpr MetaConstructorInfo<1,Args...> makeMetaConstructorInfo()
 { return { {""} }; }
 
+struct Empty{
+    constexpr operator bool() const { return false; }
+};
+
 /** Holds information about a property */
-template<typename Type, std::size_t NameLength, std::size_t TypeLength, typename Getter = std::nullptr_t,
-            typename Setter = std::nullptr_t, typename Member = std::nullptr_t,
-            typename Notify = std::nullptr_t, typename Reset = std::nullptr_t, int Flags = 0>
+template<typename Type, std::size_t NameLength, std::size_t TypeLength, typename Getter = Empty,
+            typename Setter = Empty, typename Member = Empty,
+            typename Notify = Empty, typename Reset = Empty, int Flags = 0>
 struct MetaPropertyInfo {
     using PropertyType = Type;
     StaticString<NameLength> name;
