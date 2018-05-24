@@ -28,10 +28,6 @@
 #include <QtCore/qmetatype.h>
 #include <utility>
 
-#if !defined(__cpp_constexpr) || __cpp_constexpr < 201304
-#error Verdigris requires C++14 relaxed constexpr
-#endif
-
 #define W_VERSION 0x0100ff
 
 namespace w_internal {
@@ -552,11 +548,9 @@ template<typename T> T &getParentObjectHelper(void* (T::*)(const char*));
 // helper class that can access the private member of any class with W_OBJECT
 struct FriendHelper;
 
-} // w_internal
-
-#if QT_VERSION < QT_VERSION_CHECK(5, 7, 0)
 inline namespace w_ShouldBeInQt {
-// This is already in Qt 5.7, but added in an inline namespace so it works with previous version of Qt
+// qOverload is already in Qt 5.7, but we need it with older version.
+// Note that as of Qt 5.11, it is still not enabled with MSVC as Qt relies on feature macro.
 template <typename... Args>
 struct QNonConstOverload
 {
@@ -582,14 +576,13 @@ struct QOverload : QConstOverload<Args...>, QNonConstOverload<Args...>
     { return ptr; }
 };
 template <typename... Args> constexpr QOverload<Args...> qOverload = {};
-}
 
 #ifndef QT_ANNOTATE_CLASS // Was added in Qt 5.6.1
 #define QT_ANNOTATE_CLASS(...)
 #endif
+}
 
-#endif // Qt < 5.7
-
+} // w_internal
 
 #ifdef Q_CC_MSVC
 // Workaround for MSVC: expension rules are different so we need some extra macro.
@@ -636,7 +629,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 
 #define W_OVERLOAD_RESOLVE(...) W_MACRO_DELAY(W_OVERLOAD_RESOLVE2,W_OVERLOAD_RESOLVE_HELPER __VA_ARGS__,)
 #define W_OVERLOAD_RESOLVE2(A, ...) W_MACRO_DELAY2(W_MACRO_FIRST,W_OVERLOAD_RESOLVE_HELPER_##A)
-#define W_OVERLOAD_RESOLVE_HELPER(...) YES(qOverload<__VA_ARGS__>)
+#define W_OVERLOAD_RESOLVE_HELPER(...) YES(w_internal::qOverload<__VA_ARGS__>)
 #define W_OVERLOAD_RESOLVE_HELPER_YES(...) (__VA_ARGS__)
 #define W_OVERLOAD_RESOLVE_HELPER_W_OVERLOAD_RESOLVE_HELPER ,
 

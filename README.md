@@ -24,9 +24,6 @@ Also make sure to set your compiler in, at least, C++14 mode. With qmake, you ca
 For the documentation, see the tutorial.
 https://code.woboq.org/woboq/verdigris/tutorial/tutorial.cpp.html
 
-For MSVC, you also need to define some C++14 defines that are not builtins so Qt enable C++14 features.
-That can be done in qmake like so: `msvc:DEFINES+=__cpp_constexpr=201304 __cpp_variable_templates=201304`
-
 Tested with Qt >= 5.5.
 Need a compiler that can do C++14 relaxed constexpr such as GCC 5.1 or Clang 3.5, or MSVC 2017
 
