@@ -69,6 +69,9 @@ private /*slots*/:
     void testAnotherTU();
     W_SLOT(testAnotherTU, W_Access::Private)
 
+    void testFinal();
+    W_SLOT(testFinal, W_Access::Private)
+
 };
 
 #include <wobjectimpl.h>
@@ -376,6 +379,42 @@ void tst_Basic::testAnotherTU()
 {
     auto mo = &AnotherTU::Gaga::staticMetaObject;
     QCOMPARE(mo->className(), "AnotherTU::Gaga");
+}
+
+struct TestFinalObject final : public QObject {
+    W_OBJECT(TestFinalObject)
+public:
+    int foo() { return 0;}
+    void setFoo(int) { }
+    void fooChanged(int v) W_SIGNAL(fooChanged, v);
+    W_PROPERTY(int, foo READ foo WRITE setFoo NOTIFY fooChanged)
+};
+W_OBJECT_IMPL(TestFinalObject)
+
+struct TestFinalGadget final {
+    W_GADGET(TestFinalGadget)
+public:
+    int foo() { return 0;}
+    void setFoo(int) { }
+    W_PROPERTY(int, foo READ foo WRITE setFoo)
+};
+W_GADGET_IMPL(TestFinalGadget)
+
+void tst_Basic::testFinal()
+{
+    {
+        auto mo = &TestFinalObject::staticMetaObject;
+        QVERIFY(mo->property(mo->propertyOffset()).isFinal());
+    }
+    {
+        auto mo = &TestFinalGadget::staticMetaObject;
+        QVERIFY(mo->property(mo->propertyOffset()).isFinal());
+    }
+    {
+        // Don't put final by default
+        auto mo = &ConcreateClass::staticMetaObject;
+        QVERIFY(!mo->property(mo->propertyOffset()).isFinal());
+    }
 }
 
 
