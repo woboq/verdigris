@@ -788,6 +788,11 @@ constexpr auto simple_hash(char const *p) {
  *
  * Like W_SLOT, there can be the types of the parametter as a second argument, within parentheses.
  * You must then follow with the parameter names
+ *
+ * Note about exported classes: since the signal is inline, GCC won't export it when compiling
+ * with -fvisibility-inlines-hidden (which is the default), so connecting using pointer to member
+ * functions won't work accross library boundaries. You need to explicitly export the signal with
+ * your MYLIB_EXPORT macro in front of the signal declaration.
  */
 #define W_SIGNAL(...) W_MACRO_MSVC_EXPAND(W_SIGNAL2(__VA_ARGS__ , 0))
 #define W_SIGNAL2(NAME, ...) \
