@@ -6,6 +6,7 @@ Version ?.? (????)
  * Don't make the staticMetaObject a constexpr as it breaks C++17 Q_GADGET
    declared in another translation unit (#38)
  * Workaround MSVC 2017 Update 7 compiler crash (#30)
+ * Automatically mark the properties as FINAL for final classes (#40)
 
 Version 1.0 (February 2018)
  * Error out early without C++14 (#2)
