@@ -1,0 +1,25 @@
+The tests here are modified version of the test within Qt.
+
+Here is the methodilogy used to update the tests:
+
+```
+ export QTBASE=~/path/to/qt/sources/qtbase
+ 
+ # remove the previous tests, and replace it by the newer test from Qt
+ rm -r qmetamethod qmetaproperty qmetaobject qobject qmetaenum
+ cp -r $QTBASE/tests/auto/corelib/kernel/qmetamethod .
+ cp -r $QTBASE/tests/auto/corelib/kernel/qmetaproperty .
+ cp -r $QTBASE/tests/auto/corelib/kernel/qmetaobject .
+ cp -r $QTBASE/tests/auto/corelib/kernel/qobject .
+ cp -r $QTBASE/tests/auto/corelib/kernel/qmetaenum .
+
+ # check if you need to add files maybe?
+ git status
+
+ git commit -a
+ 
+ git checkout master 
+ git merge tests_from_qt
+```
+
+
