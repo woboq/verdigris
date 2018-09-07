@@ -55,7 +55,6 @@ class tst_QObject : public QObject
 {
     Q_OBJECT
 private slots:
-    void initTestCase();
     void disconnect();
     void connectSlotsByName();
     void connectSignalsToSignalsWithDefaultArguments();
@@ -145,12 +144,14 @@ private slots:
     void disconnectDoesNotLeakFunctor();
     void contextDoesNotLeakFunctor();
     void connectBase();
+    void connectWarnings();
     void qmlConnect();
     void exceptions();
     void noDeclarativeParentChangedOnDestruction();
     void deleteLaterInAboutToBlockHandler();
     void mutableFunctor();
     void checkArgumentsForNarrowing();
+    void nullReceiver();
 };
 
 struct QObjectCreatedOnShutdown
@@ -279,14 +280,6 @@ static void playWithObjects()
         QObject::connect(&lotsOfObjects[i], &SenderObject::signal1,
                          &lotsOfObjects[i], &SenderObject::aPublicSlot);
     }
-}
-
-void tst_QObject::initTestCase()
-{
-#if QT_CONFIG(process)
-    const QString testDataDir = QFileInfo(QFINDTESTDATA("signalbug")).absolutePath();
-    QVERIFY2(QDir::setCurrent(testDataDir), qPrintable("Could not chdir to " + testDataDir));
-#endif
 }
 
 void tst_QObject::disconnect()
@@ -2975,6 +2968,7 @@ void tst_QObject::dynamicProperties()
 
     QVERIFY(obj.dynamicPropertyNames().isEmpty());
 
+    // set a non-dynamic property
     QVERIFY(obj.setProperty("number", 42));
     QVERIFY(obj.changedDynamicProperties.isEmpty());
     QCOMPARE(obj.property("number").toInt(), 42);
@@ -2982,19 +2976,30 @@ void tst_QObject::dynamicProperties()
     QVERIFY(!obj.setProperty("number", "invalid string"));
     QVERIFY(obj.changedDynamicProperties.isEmpty());
 
+    // set a dynamic property
     QVERIFY(!obj.setProperty("myuserproperty", "Hello"));
     QCOMPARE(obj.changedDynamicProperties.count(), 1);
     QCOMPARE(obj.changedDynamicProperties.first(), QByteArray("myuserproperty"));
     //check if there is no redundant DynamicPropertyChange events
     QVERIFY(!obj.setProperty("myuserproperty", "Hello"));
     QCOMPARE(obj.changedDynamicProperties.count(), 1);
-    obj.changedDynamicProperties.clear();
 
+    QCOMPARE(obj.property("myuserproperty").type(), QVariant::String);
     QCOMPARE(obj.property("myuserproperty").toString(), QString("Hello"));
 
     QCOMPARE(obj.dynamicPropertyNames().count(), 1);
     QCOMPARE(obj.dynamicPropertyNames().first(), QByteArray("myuserproperty"));
 
+    // change type of the dynamic property
+    obj.changedDynamicProperties.clear();
+    QVERIFY(!obj.setProperty("myuserproperty", QByteArray("Hello")));
+    QCOMPARE(obj.changedDynamicProperties.count(), 1);
+    QCOMPARE(obj.changedDynamicProperties.first(), QByteArray("myuserproperty"));
+    QCOMPARE(obj.property("myuserproperty").type(), QVariant::ByteArray);
+    QCOMPARE(obj.property("myuserproperty").toString(), QByteArray("Hello"));
+
+    // unset the property
+    obj.changedDynamicProperties.clear();
     QVERIFY(!obj.setProperty("myuserproperty", QVariant()));
 
     QCOMPARE(obj.changedDynamicProperties.count(), 1);
@@ -3013,7 +3018,7 @@ void tst_QObject::recursiveSignalEmission()
 #else
     QProcess proc;
     // signalbug helper app should always be next to this test binary
-    const QString path = QStringLiteral("signalbug/signalbug");
+    const QString path = QStringLiteral("signalbug_helper");
     proc.start(path);
     QVERIFY2(proc.waitForStarted(), qPrintable(QString::fromLatin1("Cannot start '%1': %2").arg(path, proc.errorString())));
     QVERIFY(proc.waitForFinished());
@@ -6015,7 +6020,7 @@ public:
 
 struct SlotArgFunctor
 {
-    SlotArgFunctor(int *s) : status(s), context(Q_NULLPTR), sender(Q_NULLPTR) {}
+    SlotArgFunctor(int *s) : status(s), context(nullptr), sender(nullptr) {}
     SlotArgFunctor(ContextObject *context, QObject *sender, int *s) : status(s), context(context), sender(sender) {}
     void operator()() { *status = 2; if (context) context->compareSender(sender); }
 
@@ -6453,7 +6458,7 @@ Q_SIGNALS:
 static int countedStructObjectsCount = 0;
 struct CountedStruct
 {
-    CountedStruct() : sender(Q_NULLPTR) { ++countedStructObjectsCount; }
+    CountedStruct() : sender(nullptr) { ++countedStructObjectsCount; }
     CountedStruct(GetSenderObject *sender) : sender(sender) { ++countedStructObjectsCount; }
     CountedStruct(const CountedStruct &o) : sender(o.sender) { ++countedStructObjectsCount; }
     CountedStruct &operator=(const CountedStruct &) { return *this; }
@@ -6684,6 +6689,26 @@ void tst_QObject::connectBase()
     QCOMPARE( r1.count_slot3, 1 );
 }
 
+void tst_QObject::connectWarnings()
+{
+    SubSender sub;
+    SenderObject obj;
+    ReceiverObject r1;
+    r1.reset();
+
+    QTest::ignoreMessage(QtWarningMsg, "QObject::connect(SenderObject, ReceiverObject): invalid null parameter");
+    connect(nullptr, &SubSender::signal1, &r1, &ReceiverObject::slot1);
+
+    QTest::ignoreMessage(QtWarningMsg, "QObject::connect(SubSender, Unknown): invalid null parameter");
+    connect(&sub, &SubSender::signal1, nullptr, &ReceiverObject::slot1);
+
+    QTest::ignoreMessage(QtWarningMsg, "QObject::connect(SenderObject, ReceiverObject): invalid null parameter");
+    connect(nullptr, &SenderObject::signal1, &r1, &ReceiverObject::slot1);
+
+    QTest::ignoreMessage(QtWarningMsg, "QObject::connect(SenderObject, Unknown): invalid null parameter");
+    connect(&obj, &SenderObject::signal1, nullptr, &ReceiverObject::slot1);
+}
+
 struct QmlReceiver : public QtPrivate::QSlotObjectBase
 {
     int callCount;
@@ -6769,7 +6794,7 @@ class CountedExceptionThrower : public QObject
     Q_OBJECT
 
 public:
-    explicit CountedExceptionThrower(bool throwException, QObject *parent = Q_NULLPTR)
+    explicit CountedExceptionThrower(bool throwException, QObject *parent = nullptr)
         : QObject(parent)
     {
         if (throwException)
@@ -6855,7 +6880,7 @@ void tst_QObject::exceptions()
         try {
             class ParentObject : public QObject {
             public:
-                explicit ParentObject(QObject *parent = Q_NULLPTR)
+                explicit ParentObject(QObject *parent = nullptr)
                     : QObject(parent)
                 {
                     new CountedExceptionThrower(false, this);
@@ -7420,6 +7445,16 @@ void tst_QObject::checkArgumentsForNarrowing()
 #undef FITS_IF
 #undef NARROWS
 #undef FITS
+}
+
+void tst_QObject::nullReceiver()
+{
+    QObject o;
+    QObject *nullObj = nullptr; // Passing nullptr directly doesn't compile with gcc 4.8
+    QVERIFY(!connect(&o, &QObject::destroyed, nullObj, &QObject::deleteLater));
+    QVERIFY(!connect(&o, &QObject::destroyed, nullObj, [] {}));
+    QVERIFY(!connect(&o, &QObject::destroyed, nullObj, Functor_noexcept()));
+    QVERIFY(!connect(&o, SIGNAL(destroyed()), nullObj, SLOT(deleteLater())));
 }
 
 // Test for QtPrivate::HasQ_OBJECT_Macro
