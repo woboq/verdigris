@@ -220,6 +220,13 @@ constexpr StaticStringList<> makeStaticStringList(StaticStringArray<1> &, T...)
 template<std::size_t N, typename... T>
 constexpr auto makeStaticStringList(StaticStringArray<N> &h, T&...t)
 { return binary::tree_prepend(makeStaticStringList(t...), StaticString<N>(h)); }
+template<typename... T>
+constexpr StaticStringList<> makeStaticStringList(StaticString<1>, T...)
+{ return {}; }
+template<std::size_t N, typename... T>
+constexpr auto makeStaticStringList(StaticString<N> h, T...t)
+{ return binary::tree_prepend(makeStaticStringList(t...), h); }
+
 
 /** Add a string in a StaticStringList */
 template<std::size_t L, typename T>
@@ -470,22 +477,54 @@ constexpr auto makeMetaPropertyInfo(StaticStringArray<N1> &name, StaticStringArr
     return parseProperty(meta, args...);
 }
 
+template <typename T, typename = void> struct EnumIsScoped {
+    enum { Value =  std::is_convertible<T, int>::value ? 0 : 2 };
+};
+template <typename T> struct EnumIsScoped<QFlags<T>, void> : EnumIsScoped<typename QFlags<T>::enum_type> {};
+
 /** Holds information about an enum */
-template<std::size_t NameLength, typename Values_, typename Names, int Flags>
+template<std::size_t NameLength, std::size_t AliasLenght, typename Values_, typename Names, int Flags>
 struct MetaEnumInfo {
     StaticString<NameLength> name;
+    StaticString<AliasLenght> alias;
     Names names;
     using Values = Values_;
     static constexpr uint flags = Flags;
     static constexpr auto count = Values::size();
+    static constexpr auto hasAlias = AliasLenght > 1;
 };
 template<typename Enum, Enum... Value> struct enum_sequence {};
 // called from W_ENUM and W_FLAG
-template<typename Enum, int Flag, std::size_t NameLength, Enum... Values, typename Names>
-constexpr MetaEnumInfo<NameLength, std::index_sequence<size_t(Values)...> , Names, Flag> makeMetaEnumInfo(
-                StaticStringArray<NameLength> &name, enum_sequence<Enum, Values...>, Names names) {
-    return { {name}, names };
+template<typename Enum, int Flag, std::size_t NameLength, std::size_t AliasLenght, Enum... Values, typename Names>
+constexpr MetaEnumInfo<NameLength, AliasLenght, std::index_sequence<size_t(Values)...> , Names,
+                       Flag | EnumIsScoped<Enum>::Value> makeMetaEnumInfo(
+                StaticStringArray<NameLength> &name, StaticString<AliasLenght> alias,
+                enum_sequence<Enum, Values...>, Names names) {
+    return { {name}, alias, names };
 }
+
+// Helper function to remove the scope in a scoped enum name. (so "Foo::Bar" -> Bar)
+template<int N> constexpr int removedScopeSize(StaticStringArray<N> &name) {
+    // Find the position of the last colon (or 0 if it is not there)
+    int p = N - 1;
+    while (p > 0 && name[p] != ':')
+        p--;
+    if (name[p] == ':')
+        p++;
+    return N - p;
+}
+
+template<int R, int N> constexpr StaticString<R> removeScope(StaticStringArray<N> &name) {
+    char result[R] = {};
+    for (int i = 0; i < R; ++i) {
+        result[i] = name[N - R + i];
+    }
+    return { result };
+}
+
+// STRing REMove SCOPE:  strignify while removing the scope
+#define W_MACRO_STRREMSCOPE(E) w_internal::removeScope<w_internal::removedScopeSize(#E)>(#E)
+
 
 /**
  * Helper for the implementation of a signal.
@@ -617,6 +656,16 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 #define W_PARAM_TOSTRING2(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
     w_internal::makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
 
+#define W_PARAM_TOSTRING_REMOVE_SCOPE(...) W_MACRO_MSVC_EMPTY W_MACRO_MSVC_DELAY(W_PARAM_TOSTRING2_REMOVE_SCOPE,__VA_ARGS__ ,,,,,,,,,,,,,,,,)
+#define W_PARAM_TOSTRING2_REMOVE_SCOPE(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
+    w_internal::makeStaticStringList(W_MACRO_STRREMSCOPE(A1), W_MACRO_STRREMSCOPE(A2), W_MACRO_STRREMSCOPE(A3), \
+                                     W_MACRO_STRREMSCOPE(A4), W_MACRO_STRREMSCOPE(A5), W_MACRO_STRREMSCOPE(A6), \
+                                     W_MACRO_STRREMSCOPE(A7), W_MACRO_STRREMSCOPE(A8), W_MACRO_STRREMSCOPE(A9), \
+                                     W_MACRO_STRREMSCOPE(A10), W_MACRO_STRREMSCOPE(A11), W_MACRO_STRREMSCOPE(A12), \
+                                     W_MACRO_STRREMSCOPE(A13), W_MACRO_STRREMSCOPE(A14), W_MACRO_STRREMSCOPE(A15), \
+                                     W_MACRO_STRREMSCOPE(A16))
+
+
 // remove the surrounding parentheses
 #define W_MACRO_REMOVEPAREN(A) W_MACRO_DELAY(W_MACRO_REMOVEPAREN2, W_MACRO_REMOVEPAREN_HELPER A)
 #define W_MACRO_REMOVEPAREN2(...) W_MACRO_DELAY2(W_MACRO_TAIL, W_MACRO_REMOVEPAREN_HELPER_##__VA_ARGS__)
@@ -674,6 +723,7 @@ constexpr auto simple_hash(char const *p) {
         friend constexpr w_internal::binary::tree<> w_EnumState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
         friend constexpr w_internal::binary::tree<> w_ClassInfoState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
         friend constexpr w_internal::binary::tree<> w_InterfaceState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+        template<typename T> static inline constexpr w_internal::StaticString<1> w_flagAlias(T) { return {""}; } \
     public: \
         struct W_MetaObjectCreatorHelper;
 
@@ -741,6 +791,7 @@ constexpr auto simple_hash(char const *p) {
     static constexpr w_internal::binary::tree<> w_EnumState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
     static constexpr w_internal::binary::tree<> w_ClassInfoState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
     static constexpr w_internal::binary::tree<> w_InterfaceState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+    template<typename T> static inline constexpr w_internal::StaticString<1> w_flagAlias(T) { return {""}; } \
     QT_ANNOTATE_CLASS(qt_fake, "")
 
 /**
@@ -872,7 +923,8 @@ constexpr auto simple_hash(char const *p) {
  */
 #define W_ENUM(NAME, ...) \
     W_STATE_APPEND(w_EnumState, w_internal::makeMetaEnumInfo<NAME,false>( \
-            #NAME, w_internal::enum_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
+            #NAME, w_flagAlias(NAME{}), \
+            w_internal::enum_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__))) \
     Q_ENUM(NAME)
 
 
@@ -881,7 +933,8 @@ constexpr auto simple_hash(char const *p) {
  */
 #define W_ENUM_NS(NAME, ...) \
     W_STATE_APPEND_NS(w_EnumState, w_internal::makeMetaEnumInfo<NAME,false>( \
-            #NAME, w_internal::enum_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
+            #NAME, w_flagAlias(NAME{}), \
+            w_internal::enum_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__))) \
     Q_ENUM_NS(NAME)
 
 /** W_FLAG(<name>, <values>)
@@ -893,7 +946,9 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 }
 #define W_FLAG(NAME, ...) \
     W_STATE_APPEND(w_EnumState, w_internal::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type,true>( \
-            #NAME, w_internal::enum_sequence<w_internal::QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
+            #NAME, w_flagAlias(NAME{}), \
+            w_internal::enum_sequence<w_internal::QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, \
+            W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__))) \
     Q_FLAG(NAME)
 
 /** W_FLAG_NS(<name>, <values>)
@@ -901,7 +956,9 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
  */
 #define W_FLAG_NS(NAME, ...) \
     W_STATE_APPEND_NS(w_EnumState, w_internal::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type,true>( \
-            #NAME, w_internal::enum_sequence<w_internal::QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, W_PARAM_TOSTRING(__VA_ARGS__))) \
+            #NAME, w_flagAlias(NAME{}), \
+            w_internal::enum_sequence<w_internal::QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, \
+            W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__))) \
     Q_FLAG_NS(NAME)
 
 /** Same as Q_CLASSINFO.  Note, Q_CLASSINFO_NS is required for namespace */
@@ -919,6 +976,10 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 #define W_INTERFACE(A) \
     W_STATE_APPEND(w_InterfaceState, static_cast<A*>(nullptr))
 
+/** Same as Q_DECLARE_FLAGS */
+#define W_DECLARE_FLAGS(Flags, Enum) \
+    Q_DECLARE_FLAGS(Flags, Enum) \
+    static inline constexpr w_internal::StaticString<sizeof(#Enum)> w_flagAlias(Flags) { return {#Enum}; }
 
 /** \macro W_REGISTER_ARGTYPE(TYPE)
  Registers TYPE so it can be used as a parameter of a signal/slot or return value.
@@ -945,4 +1006,5 @@ W_REGISTER_ARGTYPE(const char*)
 #define W_CONSTRUCTOR(...)
 #define W_FLAG(...)
 #define W_ENUM(...)
+#define W_DECLARE_FLAGS(...)
 #endif

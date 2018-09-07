@@ -78,8 +78,8 @@ namespace MyNamespace {
             MyFlag2 = 0x20,
             MyFlag3 = 0x40
         };
-        Q_DECLARE_FLAGS(MyFlags, MyFlag)
-        Q_DECLARE_FLAGS(MyScopedFlags, MyScopedFlag)
+        W_DECLARE_FLAGS(MyFlags, MyFlag)
+        W_DECLARE_FLAGS(MyScopedFlags, MyScopedFlag)
 
         MyEnum myEnum() const { return m_enum; }
         void setMyEnum(MyEnum val) { m_enum = val; }

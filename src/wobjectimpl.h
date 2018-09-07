@@ -76,7 +76,6 @@ struct IntermediateState {
             Flag | Strings::size>{s2};
     }
 
-
     template<uint... Add>
     constexpr IntermediateState<Strings, Ints..., Add...> add() const
     { return { strings }; }
@@ -356,13 +355,31 @@ template<typename T> struct NotifySignalGenerator<T,false> {
 struct EnumGenerator {
     template<typename Enum> static constexpr int offset() { return Enum::count * 2; }
     template<int DataIndex, typename State, typename Enum>
-    static constexpr auto generate(State s, Enum e) {
-        return s.addString(e.name).template add< //name
+    static constexpr auto generate(State s, Enum e, std::enable_if_t<Enum::hasAlias> * = nullptr) {
+        return s.addString(e.name) // name
+#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
+            .addString(e.alias) // alias
+#endif
+            .template add<
                 Enum::flags,
                 Enum::count,
                 DataIndex
             >();
     }
+
+    template<int DataIndex, typename State, typename Enum>
+    static constexpr auto generate(State s, Enum e, std::enable_if_t<!Enum::hasAlias> * = nullptr) {
+        return s.addString(e.name) // name
+            .template add<
+#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
+                s.strings.size, // alias is the same as the name
+#endif
+                Enum::flags,
+                Enum::count,
+                DataIndex
+            >();
+    }
+
 };
 
 // Generator for enum values
@@ -484,7 +501,7 @@ constexpr auto generateDataArray(const ObjI &objectInfo) {
     constexpr int methodOffset = classInfoOffstet + ObjI::classInfoCount * 2;
     constexpr int propertyOffset = methodOffset + ObjI::methodCount * 5;
     constexpr int enumOffset = propertyOffset + ObjI::propertyCount * (hasNotify ? 4: 3);
-    constexpr int constructorOffset = enumOffset + ObjI::enumCount* 4;
+    constexpr int constructorOffset = enumOffset + ObjI::enumCount * (QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 5 : 4);
     constexpr int paramIndex = constructorOffset + ObjI::constructorCount * 5 ;
     constexpr int constructorParamIndex = paramIndex +
         paramOffset<decltype(objectInfo.methods)>(make_index_sequence<ObjI::methodCount>{});
@@ -493,7 +510,7 @@ constexpr auto generateDataArray(const ObjI &objectInfo) {
 
     auto stringData = binary::tree_append(binary::tree_append(binary::tree<>{} , objectInfo.name), StaticString<1>(""));
     IntermediateState<decltype(stringData),
-            7,       // revision
+            QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 8 : 7, // revision
             0,       // classname
             ObjI::classInfoCount,  classInfoOffstet, // classinfo
             ObjI::methodCount,   methodOffset, // methods
