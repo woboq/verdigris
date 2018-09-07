@@ -3132,6 +3132,7 @@ void tst_QObject::dynamicProperties()
 
 void tst_QObject::recursiveSignalEmission()
 {
+#ifndef Q_OS_MAC
     QProcess proc;
     // signalbug helper app should always be next to this test binary
     const QString path = QStringLiteral("signalbug/signalbug");
@@ -3140,6 +3141,7 @@ void tst_QObject::recursiveSignalEmission()
     QVERIFY(proc.waitForFinished());
     QCOMPARE(proc.exitStatus(), QProcess::NormalExit);
     QCOMPARE(proc.exitCode(), 0);
+#endif
 }
 
 void tst_QObject::signalBlocking()
@@ -7700,12 +7702,14 @@ void tst_QObject::checkArgumentsForNarrowing()
 
 void tst_QObject::nullReceiver()
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 1)
     QObject o;
     QObject *nullObj = nullptr; // Passing nullptr directly doesn't compile with gcc 4.8
     QVERIFY(!connect(&o, &QObject::destroyed, nullObj, &QObject::deleteLater));
     QVERIFY(!connect(&o, &QObject::destroyed, nullObj, [] {}));
     QVERIFY(!connect(&o, &QObject::destroyed, nullObj, Functor_noexcept()));
     QVERIFY(!connect(&o, SIGNAL(destroyed()), nullObj, SLOT(deleteLater())));
+#endif
 }
 
 // Test for QtPrivate::HasQ_OBJECT_Macro
