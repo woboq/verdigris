@@ -523,7 +523,7 @@ template<int R, int N> constexpr StaticString<R> removeScope(StaticStringArray<N
 }
 
 // STRing REMove SCOPE:  strignify while removing the scope
-#define W_MACRO_STRREMSCOPE(E) w_internal::removeScope<w_internal::removedScopeSize(#E)>(#E)
+#define W_MACRO_STRREMSCOPE(...) w_internal::removeScope<w_internal::removedScopeSize("" #__VA_ARGS__)>("" #__VA_ARGS__)
 
 
 /**
