@@ -58,6 +58,11 @@ namespace MyNamespace {
             MyEnum2,
             MyEnum3
         };
+        enum class MyScopedEnum {
+            Enum1,
+            Enum2,
+            Enum3
+        };
         enum MyAnotherEnum {
             MyAnotherEnum1 = 1,
             MyAnotherEnum2 = 2,
@@ -68,7 +73,13 @@ namespace MyNamespace {
             MyFlag2 = 0x02,
             MyFlag3 = 0x04
         };
+        enum class MyScopedFlag {
+            MyFlag1 = 0x10,
+            MyFlag2 = 0x20,
+            MyFlag3 = 0x40
+        };
         Q_DECLARE_FLAGS(MyFlags, MyFlag)
+        Q_DECLARE_FLAGS(MyScopedFlags, MyScopedFlag)
 
         MyEnum myEnum() const { return m_enum; }
         void setMyEnum(MyEnum val) { m_enum = val; }
@@ -83,8 +94,11 @@ namespace MyNamespace {
                 { }
     private:
         W_ENUM(MyEnum, MyEnum1, MyEnum2, MyEnum3)
+        W_ENUM(MyScopedEnum, MyScopedEnum::Enum1, MyScopedEnum::Enum2, MyScopedEnum::Enum3)
         W_ENUM(MyAnotherEnum,MyAnotherEnum1,MyAnotherEnum2,MyAnotherEnum3)
         W_FLAG(MyFlags,MyFlag1,MyFlag2,MyFlag3)
+        W_FLAG(MyScopedFlags, MyScopedFlag::MyFlag1, MyScopedFlag::MyFlag2, MyScopedFlag::MyFlag3)
+
 
         MyEnum m_enum;
         MyFlags m_flags;
@@ -866,7 +880,7 @@ void testFunction(){}
 
 void tst_QMetaObject::invokePointer()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 1)
     QtTestObject obj;
     QtTestObject *const nullTestObject = nullptr;
 
@@ -903,13 +917,22 @@ void tst_QMetaObject::invokePointer()
     QCOMPARE(QtTestObject::staticResult, QString("staticFunction1"));
 
     // Test lambdas
-    QVERIFY(QMetaObject::invokeMethod(&obj, [&](){obj.sl1(t1);}));
-    QCOMPARE(obj.slotResult, QString("sl1:1"));
-
-    QString exp;
-    QVERIFY(QMetaObject::invokeMethod(&obj, [&]()->QString{return obj.sl1("bubu");}, &exp));
-    QCOMPARE(exp, QString("yessir"));
-    QCOMPARE(obj.slotResult, QString("sl1:bubu"));
+    QCOMPARE(countedStructObjectsCount, 0);
+    {
+        CountedStruct str;
+        QVERIFY(QMetaObject::invokeMethod(&obj, [str, &t1, &obj]() { obj.sl1(t1); }));
+        QCOMPARE(obj.slotResult, QString("sl1:1"));
+    }
+    QCOMPARE(countedStructObjectsCount, 0);
+    {
+        CountedStruct str;
+        QString exp;
+        QVERIFY(QMetaObject::invokeMethod(
+            &obj, [str, &obj]() -> QString { return obj.sl1("bubu"); }, &exp));
+        QCOMPARE(exp, QString("yessir"));
+        QCOMPARE(obj.slotResult, QString("sl1:bubu"));
+    }
+    QCOMPARE(countedStructObjectsCount, 0);
 #endif
 }
 
@@ -975,7 +998,7 @@ void tst_QMetaObject::invokeQueuedMetaMember()
 
 void tst_QMetaObject::invokeQueuedPointer()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 1)
     QtTestObject obj;
 
     // Test member function
@@ -999,16 +1022,28 @@ void tst_QMetaObject::invokeQueuedPointer()
     QCOMPARE(QtTestObject::staticResult, QString("staticFunction0"));
 
     // Test lambda
-    obj.slotResult.clear();
-    QVERIFY(QMetaObject::invokeMethod(&obj, [&](){obj.sl0();}, Qt::QueuedConnection));
-    QVERIFY(obj.slotResult.isEmpty());
-    qApp->processEvents(QEventLoop::AllEvents);
-    QCOMPARE(obj.slotResult, QString("sl0"));
-
-    qint32 var = 0;
-    QTest::ignoreMessage(QtWarningMsg, "QMetaObject::invokeMethod: Unable to invoke methods with return values in queued connections");
-    QVERIFY(!QMetaObject::invokeMethod(&obj, []()->qint32{return 1;}, Qt::QueuedConnection, &var));
-    QCOMPARE(var, 0);
+    QCOMPARE(countedStructObjectsCount, 0);
+    {
+        CountedStruct str;
+        obj.slotResult.clear();
+        QVERIFY(
+            QMetaObject::invokeMethod(&obj, [str, &obj]() { obj.sl0(); }, Qt::QueuedConnection));
+        QVERIFY(obj.slotResult.isEmpty());
+        qApp->processEvents(QEventLoop::AllEvents);
+        QCOMPARE(obj.slotResult, QString("sl0"));
+    }
+    QCOMPARE(countedStructObjectsCount, 0);
+    {
+        CountedStruct str;
+        qint32 var = 0;
+        QTest::ignoreMessage(QtWarningMsg,
+                             "QMetaObject::invokeMethod: Unable to invoke methods with return "
+                             "values in queued connections");
+        QVERIFY(!QMetaObject::invokeMethod(&obj, [str]() -> qint32 { return 1; },
+                                           Qt::QueuedConnection, &var));
+        QCOMPARE(var, 0);
+    }
+    QCOMPARE(countedStructObjectsCount, 0);
 #endif
 }
 
@@ -1148,7 +1183,7 @@ void tst_QMetaObject::invokeBlockingQueuedMetaMember()
 
 void tst_QMetaObject::invokeBlockingQueuedPointer()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 1)
     QtTestObject *const nullTestObject = nullptr;
 
     QThread t;
@@ -1191,17 +1226,26 @@ void tst_QMetaObject::invokeBlockingQueuedPointer()
     QCOMPARE(QtTestObject::staticResult, QString("staticFunction1"));
 
     // Test lambdas
-    QVERIFY(QMetaObject::invokeMethod(&obj, [&](){obj.sl1(t1);}, Qt::BlockingQueuedConnection));
-    QCOMPARE(obj.slotResult, QString("sl1:1"));
-
-    QString exp;
-    QVERIFY(QMetaObject::invokeMethod(&obj, [&]()->QString{return obj.sl1("bubu");}, Qt::BlockingQueuedConnection, &exp));
-    QCOMPARE(exp, QString("yessir"));
-    QCOMPARE(obj.slotResult, QString("sl1:bubu"));
-
+    QCOMPARE(countedStructObjectsCount, 0);
+    {
+        CountedStruct str;
+        QVERIFY(QMetaObject::invokeMethod(&obj, [str, &obj, &t1]() { obj.sl1(t1); },
+                                          Qt::BlockingQueuedConnection));
+        QCOMPARE(obj.slotResult, QString("sl1:1"));
+    }
+    {
+        CountedStruct str;
+        QString exp;
+        QVERIFY(QMetaObject::invokeMethod(&obj,
+                                          [&obj, str]() -> QString { return obj.sl1("bubu"); },
+                                          Qt::BlockingQueuedConnection, &exp));
+        QCOMPARE(exp, QString("yessir"));
+        QCOMPARE(obj.slotResult, QString("sl1:bubu"));
+    }
     QVERIFY(QMetaObject::invokeMethod(&obj, [&](){obj.moveToThread(QThread::currentThread());}, Qt::BlockingQueuedConnection));
     t.quit();
     QVERIFY(t.wait());
+    QCOMPARE(countedStructObjectsCount, 0);
 #endif
 }
 
@@ -1844,20 +1888,35 @@ void tst_QMetaObject::signalIndex()
 
 void tst_QMetaObject::enumDebugStream()
 {
-    QTest::ignoreMessage(QtDebugMsg, "hello MyNamespace::MyClass::MyEnum(MyEnum2) world ");
-    MyNamespace::MyClass::MyEnum e = MyNamespace::MyClass::MyEnum2;
-    qDebug() << "hello" << e << "world";
+    QTest::ignoreMessage(QtDebugMsg, "hello MyNamespace::MyClass::MyEnum2 world ");
+    qDebug() << "hello" << MyNamespace::MyClass::MyEnum2 << "world";
 
-    QTest::ignoreMessage(QtDebugMsg, "Qt::WindowType(WindowTitleHint) Qt::WindowType(Window) Qt::WindowType(Desktop) Qt::WindowType(WindowSystemMenuHint)");
-    qDebug() << Qt::WindowTitleHint << Qt::Window <<Qt::Desktop << Qt::WindowSystemMenuHint;
+    QTest::ignoreMessage(QtDebugMsg, "hello MyNamespace::MyClass::MyScopedEnum::Enum3 scoped world ");
+    qDebug() << "hello" << MyNamespace::MyClass::MyScopedEnum::Enum3 << "scoped world";
 
-    QTest::ignoreMessage(QtDebugMsg, "hello QFlags<MyNamespace::MyClass::MyFlags>(MyFlag1) world");
+    QTest::ignoreMessage(QtDebugMsg, "Qt::WindowTitleHint Qt::Window Qt::Desktop Qt::WindowSystemMenuHint");
+    qDebug() << Qt::WindowTitleHint << Qt::Window << Qt::Desktop << Qt::WindowSystemMenuHint;
+
+    QTest::ignoreMessage(QtDebugMsg, "hello QFlags<MyNamespace::MyClass::MyFlag>(MyFlag1) world");
     MyNamespace::MyClass::MyFlags f1 = MyNamespace::MyClass::MyFlag1;
     qDebug() << "hello" << f1 << "world";
 
     MyNamespace::MyClass::MyFlags f2 = MyNamespace::MyClass::MyFlag2 | MyNamespace::MyClass::MyFlag3;
-    QTest::ignoreMessage(QtDebugMsg, "QFlags<MyNamespace::MyClass::MyFlags>(MyFlag1) QFlags<MyNamespace::MyClass::MyFlags>(MyFlag2|MyFlag3)");
+    QTest::ignoreMessage(QtDebugMsg, "QFlags<MyNamespace::MyClass::MyFlag>(MyFlag1) QFlags<MyNamespace::MyClass::MyFlag>(MyFlag2|MyFlag3)");
     qDebug() << f1 << f2;
+
+    QTest::ignoreMessage(QtDebugMsg, "QFlags<MyNamespace::MyClass::MyScopedFlag>(MyFlag2)");
+    MyNamespace::MyClass::MyScopedFlags f3 = MyNamespace::MyClass::MyScopedFlag::MyFlag2;
+    qDebug() << f3;
+
+    QTest::ignoreMessage(QtDebugMsg, "QFlags<MyNamespace::MyClass::MyScopedFlag>(MyFlag2|MyFlag3)");
+    f3 |= MyNamespace::MyClass::MyScopedFlag::MyFlag3;
+    qDebug() << f3;
+
+    // Single flag recognized as enum:
+    QTest::ignoreMessage(QtDebugMsg, "MyNamespace::MyClass::MyFlag1");
+    MyNamespace::MyClass::MyFlag f4 = MyNamespace::MyClass::MyFlag1;
+    qDebug() << f4;
 }
 
 void tst_QMetaObject::inherits_data()
