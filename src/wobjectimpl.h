@@ -767,7 +767,7 @@ static void qt_static_metacall_impl(QObject *_o, QMetaObject::Call _c, int _id, 
     Q_UNUSED(_id) Q_UNUSED(_o) Q_UNUSED(_a)
     if (_c == QMetaObject::InvokeMetaMethod) {
         Q_ASSERT(T::staticMetaObject.cast(_o));
-        nop((invokeMethod<T, MethI>(static_cast<T*>(_o), _id, _a),0)...);
+        nop((invokeMethod<T, MethI>(reinterpret_cast<T*>(_o), _id, _a),0)...);
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
         nop((registerMethodArgumentType<T,MethI>(_id, _a),0)...);
     } else if (_c == QMetaObject::IndexOfMethod) {
