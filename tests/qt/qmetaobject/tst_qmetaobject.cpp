@@ -32,7 +32,7 @@
 #include <qmetaobject.h>
 #include <qabstractproxymodel.h>
 #ifdef QT_BUILD_INTERNAL
-#include <private/qmetaobject_p.h>
+#undef QT_BUILD_INTERNAL  // Verdigris don't test the internals
 #endif
 
 #include <wobjectimpl.h>

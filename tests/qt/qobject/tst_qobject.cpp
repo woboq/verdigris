@@ -44,7 +44,7 @@
 # include <QProcess>
 #include "qobject.h"
 #ifdef QT_BUILD_INTERNAL
-#include <private/qobject_p.h>
+#undef QT_BUILD_INTERNAL  // Verdigris don't test the internals
 #endif
 
 #include <math.h>
