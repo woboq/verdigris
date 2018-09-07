@@ -3134,7 +3134,7 @@ void tst_QObject::recursiveSignalEmission()
 {
     QProcess proc;
     // signalbug helper app should always be next to this test binary
-    const QString path = QStringLiteral("signalbug_helper");
+    const QString path = QStringLiteral("signalbug/signalbug");
     proc.start(path);
     QVERIFY2(proc.waitForStarted(), qPrintable(QString::fromLatin1("Cannot start '%1': %2").arg(path, proc.errorString())));
     QVERIFY(proc.waitForFinished());
