@@ -39,10 +39,10 @@ class tst_Internal : public QObject
 
 private:
     void removedScope() {
-        QCOMPARE(w_internal::removedScopeSize("foo"), sizeof("foo"));
-        QCOMPARE(w_internal::removedScopeSize("::foo"), sizeof("foo"));
-        QCOMPARE(w_internal::removedScopeSize("hallo::fo"), sizeof("fo"));
-        QCOMPARE(w_internal::removedScopeSize("x::hallo::fo"), sizeof("fo"));
+        QCOMPARE(w_internal::removedScopeSize("foo"), int(sizeof("foo")));
+        QCOMPARE(w_internal::removedScopeSize("::foo"), int(sizeof("foo")));
+        QCOMPARE(w_internal::removedScopeSize("hallo::fo"), int(sizeof("fo")));
+        QCOMPARE(w_internal::removedScopeSize("x::hallo::fo"), int(sizeof("fo")));
 
         QCOMPARE(QByteArray(W_MACRO_STRREMSCOPE(foo).data),  QByteArray("foo"));
         QCOMPARE(QByteArray(W_MACRO_STRREMSCOPE(::foo).data),  QByteArray("foo"));
