@@ -3132,7 +3132,7 @@ void tst_QObject::dynamicProperties()
 
 void tst_QObject::recursiveSignalEmission()
 {
-#ifndef Q_OS_MAC
+#if !defined(Q_OS_MAC) && !defined(Q_OS_WIN) // because it does not find the executable
     QProcess proc;
     // signalbug helper app should always be next to this test binary
     const QString path = QStringLiteral("signalbug/signalbug");
