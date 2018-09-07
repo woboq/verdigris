@@ -3107,6 +3107,7 @@ void tst_QObject::dynamicProperties()
     QCOMPARE(obj.dynamicPropertyNames().count(), 1);
     QCOMPARE(obj.dynamicPropertyNames().first(), QByteArray("myuserproperty"));
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
     // change type of the dynamic property
     obj.changedDynamicProperties.clear();
     QVERIFY(!obj.setProperty("myuserproperty", QByteArray("Hello")));
@@ -3114,6 +3115,7 @@ void tst_QObject::dynamicProperties()
     QCOMPARE(obj.changedDynamicProperties.first(), QByteArray("myuserproperty"));
     QCOMPARE(obj.property("myuserproperty").type(), QVariant::ByteArray);
     QCOMPARE(obj.property("myuserproperty").toString(), QByteArray("Hello"));
+#endif
 
     // unset the property
     obj.changedDynamicProperties.clear();
@@ -6932,6 +6934,9 @@ void tst_QObject::connectBase()
 
 void tst_QObject::connectWarnings()
 {
+#if QT_VERSION < QT_VERSION_CHECK(5, 12, 0)
+    return;
+#endif
     SubSender sub;
     SenderObject obj;
     ReceiverObject r1;
