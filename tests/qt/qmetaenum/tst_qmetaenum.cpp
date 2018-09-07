@@ -31,22 +31,25 @@
 
 #include <QtCore/qobject.h>
 #include <QtCore/qmetaobject.h>
+#include "wobjectimpl.h"
 
 class tst_QMetaEnum : public QObject
 {
-    Q_OBJECT
+    W_OBJECT(tst_QMetaEnum)
 public:
     enum SuperEnum { SuperValue1 = 1 , SuperValue2 = 2 };
     enum Flag { Flag1 = 1 , Flag2 = 2 };
-    Q_DECLARE_FLAGS(Flags, Flag)
-    Q_ENUM(SuperEnum)
-    Q_FLAG(Flags)
+    W_DECLARE_FLAGS(Flags, Flag)
+    W_ENUM(SuperEnum, SuperValue1, SuperValue2)
+    W_FLAG(Flags, Flag1, Flag2)
 
-private slots:
-    void fromType();
-    void valuesToKeys_data();
-    void valuesToKeys();
+private:
+    void fromType(); W_SLOT(fromType)
+    void valuesToKeys_data(); W_SLOT(valuesToKeys_data)
+    void valuesToKeys(); W_SLOT(valuesToKeys)
 };
+
+W_OBJECT_IMPL(tst_QMetaEnum)
 
 void tst_QMetaEnum::fromType()
 {
@@ -54,7 +57,9 @@ void tst_QMetaEnum::fromType()
     QVERIFY(meta.isValid());
     QVERIFY(!meta.isFlag());
     QCOMPARE(meta.name(), "SuperEnum");
+#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
     QCOMPARE(meta.enumName(), "SuperEnum");
+#endif
     QCOMPARE(meta.enclosingMetaObject(), &staticMetaObject);
     QCOMPARE(meta.keyCount(), 2);
 
@@ -62,7 +67,9 @@ void tst_QMetaEnum::fromType()
     QVERIFY(meta.isValid());
     QVERIFY(meta.isFlag());
     QCOMPARE(meta.name(), "Flags");
+#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
     QCOMPARE(meta.enumName(), "Flag");
+#endif
     QCOMPARE(meta.enclosingMetaObject(), &staticMetaObject);
     QCOMPARE(meta.keyCount(), 2);
 }
@@ -107,5 +114,5 @@ Q_STATIC_ASSERT(!QtPrivate::IsQEnumHelper<QObject>::Value);
 Q_STATIC_ASSERT(!QtPrivate::IsQEnumHelper<QObject*>::Value);
 Q_STATIC_ASSERT(!QtPrivate::IsQEnumHelper<void>::Value);
 
+
 QTEST_MAIN(tst_QMetaEnum)
-#include "tst_qmetaenum.moc"
