@@ -7,6 +7,8 @@ Version ?.? (????)
    declared in another translation unit (#38)
  * Workaround MSVC 2017 Update 7 compiler crash (#30)
  * Automatically mark the properties as FINAL for final classes (#40)
+ * Added support for enum class in Q_ENUM
+ * Added support enum alias (Qt 5.12 freature)
 
 Version 1.0 (February 2018)
  * Error out early without C++14 (#2)
