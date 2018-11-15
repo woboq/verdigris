@@ -27,6 +27,11 @@ https://code.woboq.org/woboq/verdigris/tutorial/tutorial.cpp.html
 Tested with Qt >= 5.5.
 Need a compiler that can do C++14 relaxed constexpr such as GCC 5.1 or Clang 3.5, or MSVC 2017
 
+### Translations
+
+When running `lupdate`, add the argument `-tr-function-alias Q_DECLARE_TR_FUNCTIONS+=W_OBJECT` to
+avoid the warning that your class are not using the Q_OBJECT macro.
+
 
 ## Status
 

@@ -886,6 +886,17 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) const QT_INIT_METAOBJECT QMetaObject W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::staticMetaObject = \
         w_internal::createMetaObject<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>();
 
+/** \macro W_OBJECT_IMPL(TYPE [, TEMPLATE_STUFF])
+ * This macro expand to the code that instantiate the QMetaObject. It must be placed outside of
+ * the class, in the .cpp file. The TYPE argument must be the qualified name of the class,
+ * including the namespace, if any.
+ * Example: `W_OBJECT_IMPL(Namespace::MyClass)`
+ *
+ * If the class is a templated class, the second argument contains the template introducer.
+ * Example:  `W_OBJECT_IMPL(MyTemplate<T>, template <typename T>)`
+ * Parentheses are required if there is several template arguments:
+ * `W_OBJECT_IMPL((MyTemplate2<A,B>), template<typename A, typename B>)`
+ */
 #define W_OBJECT_IMPL(...) \
     W_OBJECT_IMPL_COMMON(__VA_ARGS__) \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) void W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
@@ -897,12 +908,17 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
     { return w_internal::qt_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(this, _c, _id, _a); }
 
 
+/** \macro W_OBJECT_IMPL(TYPE [, TEMPLATE_STUFF])
+ * Same as W_OBJECT_IMPL, but for a W_GADGET
+ */
 #define W_GADGET_IMPL(...) \
     W_OBJECT_IMPL_COMMON(__VA_ARGS__) \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) void W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
     { w_internal::qt_static_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(reinterpret_cast<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)*>(_o), _c, _id, _a); }
 
-
+/** \macro W_NAMESPACE_IMPL(...)
+ * Same as W_OBJECT_IMPL, but for a W_NAMESPACE
+ */
 #define W_NAMESPACE_IMPL(...) \
     W_OBJECT_IMPL_COMMON(__VA_ARGS__)
 
