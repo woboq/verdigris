@@ -46,7 +46,8 @@ template<typename A, typename B> constexpr auto concatenate(StaticStringList<bin
     return concatenate_helper<make_index_sequence<a.size>, make_index_sequence<b.size>>::concatenate(a, b);
 }
 
-enum { IsUnresolvedType = 0x80000000, IsUnresolvedNotifySignal = 0x70000000 };
+// Match MetaDataFlags constants form the MetaDataFlags in qmetaobject_p.h
+enum : uint { IsUnresolvedType = 0x80000000, IsUnresolvedNotifySignal = 0x70000000 };
 
 /*
  * The QMetaObject is basically an array of int and an array of string.
