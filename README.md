@@ -1,3 +1,5 @@
+## About
+
 This (header-only) library can be used to create an application using Qt, without the need of the
 moc (MetaObject Compiler). It uses a different set of macro than Qt and templated constexpr code to
 generate the QMetaObject at compile-time. It is entirely binary compatible with Qt.
@@ -12,26 +14,10 @@ Travis: [![Travis Build Status](https://travis-ci.org/woboq/verdigris.svg?branch
 Appveyor: 
 [![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/povubj5thvlsu6sy/branch/master?svg=true)](https://ci.appveyor.com/project/ogoffart/verdigris)
 
+## Documentation
 
-## How to Use
-
-The library consist of only two headers files. You can either copy these header files in your
-project, or adjust the include paths so that the compiler finds them.
-You will find the headers in the 'src/' sub-directory.
-Also make sure to set your compiler in, at least, C++14 mode. With qmake, you can do that with
-`CONFIG += c++14`.
-
-For the documentation, see the tutorial.
-https://code.woboq.org/woboq/verdigris/tutorial/tutorial.cpp.html
-
-Tested with Qt >= 5.5.
-Need a compiler that can do C++14 relaxed constexpr such as GCC 5.1 or Clang 3.5, or MSVC 2017
-
-### Translations
-
-When running `lupdate`, add the argument `-tr-function-alias Q_DECLARE_TR_FUNCTIONS+=W_OBJECT` to
-avoid the warning that your class are not using the Q_OBJECT macro.
-
+For an introduction, see the [tutorial.cpp](https://code.woboq.org/woboq/verdigris/tutorial/tutorial.cpp.html).
+See also a more detailed documetation of the macros in the source code.
 
 ## Status
 
@@ -43,10 +29,43 @@ Features that are not yet working:
                        for anything. (not even tested by Qt's auto test)
  - Q_ENUM: Working, but requires to repeat the name of every enum value. Could be improved.
 
-New features compared to Qt with moc:
+**New features compared to Qt with moc:**
  - Support for templated QObject.
  - Support for QObject nested in another class.
+ 
+## How to Use
 
+The library consist of only two headers files. You can either copy these header files in your
+project, or adjust the include paths so that the compiler finds them.
+You will find the headers in the 'src/' sub-directory.
+Also make sure to set your compiler in, at least, C++14 mode. With qmake, you can do that with
+`CONFIG += c++14`.
+
+Tested with Qt >= 5.5.
+Need a compiler that can do C++14 relaxed constexpr such as GCC 5.1 or Clang 3.5, or MSVC 2017
+
+### Translations
+
+When running `lupdate`, add the argument `-tr-function-alias Q_DECLARE_TR_FUNCTIONS+=W_OBJECT` to
+avoid the warning that your class are not using the Q_OBJECT macro.
+
+### Correspondance Table
+
+This table show the correspondence between Qt macro and Verdigris macro:
+
+| Qt macro                                     | Use the Verdigris macro instead                   |
+|----------------------------------------------|---------------------------------------------------|
+| `Q_OBJECT`                                   | `W_OBJECT(MyClass)` ...  `W_OBJECT_IMPL(MyClass)` |
+| `public slots: void mySlot(int x);`          |  `void mySlot(int x); W_SLOT(mySlot)`             |
+| `signals: void mySignal(int x);`             |  `void mySignal(int x) W_SIGNAL(mySignal,x)`	     |
+| `Q_PROPERTY(int myProperty WRITE setProp READ getProp NOTIFY propChanged)` | `W_PROPERTY(int, myProperty WRITE setProp READ getProp NOTIFY propChanged)` |
+| `Q_GADGET`                                   | `W_GADGET(MyClass)` ...  `W_GADGET_IMPL(MyClass)` |
+| `Q_INVOKABLE void myFunction(int foo);`      |  `void myFunction(int foo); W_INVOKABLE(myFunction)`
+| `Q_INVOKABLE MyClass(int foo);`              |  `MyClass(int foo); W_CONSTRUCTOR(int)`           |
+| `Q_CLASSINFO("foo", "bar")`                  | `W_CLASSINFO("foo", "bar")`                       |
+| `Q_DECLARE_INTERFACE(MyInterface, "my.interface")` ... `Q_INTERFACE(MyInterface)`     | `Q_DECLARE_INTERFACE(MyInterface, "my.interface")` ... `W_INTERFACE(MyInterface)` |
+| `Q_NAMESPACE`                                | `W_NAMESPACE(MyNs)` ...  `W_NAMESPACE_IMPL(MyNs)` |
+| Q_ENUM/Q_FLAG/Q_ENUM_NS/Q_FLAG_NS            | W_ENUM/W_FLAG/W_ENUM_NS/W_FLAG_NS                 |
 
 ## Context
 
