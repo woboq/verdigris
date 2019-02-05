@@ -67,6 +67,19 @@ This table show the correspondence between Qt macro and Verdigris macro:
 | `Q_NAMESPACE`                                | `W_NAMESPACE(MyNs)` ...  `W_NAMESPACE_IMPL(MyNs)` |
 | Q_ENUM/Q_FLAG/Q_ENUM_NS/Q_FLAG_NS            | W_ENUM/W_FLAG/W_ENUM_NS/W_FLAG_NS                 |
 
+## Who uses Verdigris ?
+
+* [Ossia Score](https://ossia.io/), an interactive intermedia sequencer. ([github](https://github.com/OSSIA/score))
+  It uses Verdigris in productions. Verdigris allowed ossia score to use template with their QObject's, and solve some trouble with the build system.
+
+
+<img align="right" src="https://woboq.com/logos/isotronic.png"> 
+
+* [ISOTRONIC GmbH](https://isotronic.de/), a provider for visual inspection QA systems for automatic glass vial manufacturing, uses Verdigris in production:
+> The transition from standard Qt affected more than 100 source code files and was done in not much more than a day. The reason for the switch was to be able to use a build system that has no interface for Qt's MOC process. In the rare cases of questions or problems the Verdigris team was quick and competent in resolving the issues. After more than 6 months of real-world experience we are still very happy with that decision. 
+
+* If you are using Verdigris and want to appear here, please open an issue, or a pull request
+
 ## Context
 
 The macros were inspired by [CopperSpice](http://www.copperspice.com/).
@@ -94,5 +107,4 @@ Differences with CopperSpice:
 Like Qt, this library is under the dual licence LGPLv3 and GPLv2.
 Being header-only, this removes many of the obligations of the LGPLv3.
 
-If you have any questions or remark please email  contact@woboq.com
-
+If you have any questions or remark please email  info@woboq.com
