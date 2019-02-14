@@ -749,7 +749,11 @@ constexpr auto simple_hash(char const *p) {
 
 //
 // public macros
-
+#ifdef __clang__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-member-function"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#endif
 /** \macro W_OBJECT(TYPE)
  * Like the Q_OBJECT macro, this declare that the object might have signals, slots or properties.
  * Must contains the class name as a parameter and need to be put before any other W_ macro in the class.
@@ -761,6 +765,11 @@ constexpr auto simple_hash(char const *p) {
             w_internal::getParentObjectHelper(&W_ThisType::qt_metacast))>; \
     Q_OBJECT \
     QT_ANNOTATE_CLASS(qt_fake, "")
+
+#ifdef __clang__
+#pragma GCC diagnostic pop
+#endif
+
 
 /** \macro W_GADGET(TYPE)
  * Like the Q_GADGET macro, this declare that the object might have properties.
