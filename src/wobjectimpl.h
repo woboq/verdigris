@@ -498,8 +498,8 @@ template<typename T, typename ObjI>
 constexpr auto generateDataArray(const ObjI &objectInfo) {
 
     constexpr bool hasNotify = hasNotifySignal<T>(make_index_sequence<ObjI::propertyCount>{});
-    constexpr int classInfoOffstet = 14;
-    constexpr int methodOffset = classInfoOffstet + ObjI::classInfoCount * 2;
+    constexpr int classInfoOffset = 14;
+    constexpr int methodOffset = classInfoOffset + ObjI::classInfoCount * 2;
     constexpr int propertyOffset = methodOffset + ObjI::methodCount * 5;
     constexpr int enumOffset = propertyOffset + ObjI::propertyCount * (hasNotify ? 4: 3);
     constexpr int constructorOffset = enumOffset + ObjI::enumCount * (QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 5 : 4);
@@ -513,7 +513,7 @@ constexpr auto generateDataArray(const ObjI &objectInfo) {
     IntermediateState<decltype(stringData),
             QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 8 : 7, // revision
             0,       // classname
-            ObjI::classInfoCount,  classInfoOffstet, // classinfo
+            ObjI::classInfoCount,  classInfoOffset, // classinfo
             ObjI::methodCount,   methodOffset, // methods
             ObjI::propertyCount,    propertyOffset, // properties
             ObjI::enumCount,    enumOffset, // enums/sets
