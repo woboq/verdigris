@@ -72,8 +72,6 @@ private /*slots*/:
     void testFinal();
     W_SLOT(testFinal, W_Access::Private)
 
-    void anonymousNamespace();
-    W_SLOT(anonymousNamespace, W_Access::Private)
 };
 
 #include <wobjectimpl.h>
