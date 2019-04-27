@@ -20,7 +20,9 @@
 
 #pragma once
 
-#include <wobjectdefs.h>
+#include <QObject>
+#include <wobjectimpl.h>
+
 namespace AnotherTU {
 struct Gaga {
     W_GADGET(Gaga)
@@ -28,4 +30,26 @@ public:
     int m_foo;
     W_PROPERTY(int, foo MEMBER m_foo);
 };
+
+
+struct InlineGadget {
+    W_GADGET(InlineGadget)
+public:
+    int m_foo;
+    W_PROPERTY(int, foo MEMBER m_foo)
+};
+
+struct InlineObject : QObject {
+    W_OBJECT(InlineObject)
+public:
+    int m_foo;
+    W_PROPERTY(int, foo MEMBER m_foo)
+};
+
 }
+
+#ifdef __cpp_inline_variables
+W_GADGET_IMPL_INLINE(AnotherTU::InlineGadget)
+W_OBJECT_IMPL_INLINE(AnotherTU::InlineObject)
+#endif
+

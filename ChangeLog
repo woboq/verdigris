@@ -1,3 +1,6 @@
+Version 1.2 (???)
+ * Added W_OBJECT_IMPL_INLINE / W_GADGET_IMPL_INLINE / W_NAMESPACE_IMPL_INLINE
+
 Version 1.1 (September 2018)
  * Auto-detect the access specifier. (No need to add W_Access::Private or
    W_Access::Protected anymore)

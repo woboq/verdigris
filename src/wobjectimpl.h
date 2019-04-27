@@ -876,7 +876,7 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
 #define W_MACRO_TEMPLATE_STUFF_HELPER_SECOND2(A,B,...) B
 #define W_MACRO_FIRST_REMOVEPAREN(...) W_MACRO_REMOVEPAREN(W_MACRO_FIRST(__VA_ARGS__))
 
-#define W_OBJECT_IMPL_COMMON(...) \
+#define W_OBJECT_IMPL_COMMON(INLINE, ...) \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) struct W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_MetaObjectCreatorHelper { \
         static constexpr auto objectInfo = \
             w_internal::makeObjectInfo<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>(W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))); \
@@ -884,7 +884,7 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
         static constexpr auto string_data = data.first; \
         static constexpr auto int_data = data.second; \
     }; \
-    W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) const QT_INIT_METAOBJECT QMetaObject W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::staticMetaObject = \
+    W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) INLINE const QT_INIT_METAOBJECT QMetaObject W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::staticMetaObject = \
         w_internal::createMetaObject<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>();
 
 /** \macro W_OBJECT_IMPL(TYPE [, TEMPLATE_STUFF])
@@ -899,7 +899,7 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
  * `W_OBJECT_IMPL((MyTemplate2<A,B>), template<typename A, typename B>)`
  */
 #define W_OBJECT_IMPL(...) \
-    W_OBJECT_IMPL_COMMON(__VA_ARGS__) \
+    W_OBJECT_IMPL_COMMON(W_MACRO_EMPTY, __VA_ARGS__) \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) void W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
     { w_internal::qt_static_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(_o, _c, _id, _a); } \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) const QMetaObject *W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::metaObject() const  { return &staticMetaObject; } \
@@ -909,11 +909,11 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
     { return w_internal::qt_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(this, _c, _id, _a); }
 
 
-/** \macro W_OBJECT_IMPL(TYPE [, TEMPLATE_STUFF])
+/** \macro W_GADGET_IMPL(TYPE [, TEMPLATE_STUFF])
  * Same as W_OBJECT_IMPL, but for a W_GADGET
  */
 #define W_GADGET_IMPL(...) \
-    W_OBJECT_IMPL_COMMON(__VA_ARGS__) \
+    W_OBJECT_IMPL_COMMON(W_MACRO_EMPTY, __VA_ARGS__) \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) void W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
     { w_internal::qt_static_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(reinterpret_cast<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)*>(_o), _c, _id, _a); }
 
@@ -921,5 +921,37 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
  * Same as W_OBJECT_IMPL, but for a W_NAMESPACE
  */
 #define W_NAMESPACE_IMPL(...) \
-    W_OBJECT_IMPL_COMMON(__VA_ARGS__)
+    W_OBJECT_IMPL_COMMON(W_MACRO_EMPTY, __VA_ARGS__)
+
+
+/** \macro W_OBJECT_IMPL_INLINE(TYPE [, TEMPLATE_STUFF])
+ * Same as W_OBJECT_IMPL, but to be used in a header
+ * (Requires support for c++17 inline variables)
+ */
+#define W_OBJECT_IMPL_INLINE(...) \
+    W_OBJECT_IMPL_COMMON(inline, __VA_ARGS__) \
+    W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) inline void W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
+    { w_internal::qt_static_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(_o, _c, _id, _a); } \
+    W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) inline const QMetaObject *W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::metaObject() const  { return &staticMetaObject; } \
+    W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) inline void *W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_metacast(const char *_clname) \
+    { return w_internal::qt_metacast_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(this, _clname); } \
+    W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) inline int W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_metacall(QMetaObject::Call _c, int _id, void** _a) \
+    { return w_internal::qt_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(this, _c, _id, _a); }
+
+
+/** \macro W_GADGET_IMPL_INLINE(TYPE [, TEMPLATE_STUFF])
+ * Same as W_GADGET_IMPL, but to be used in a header
+ * (Requires support for c++17 inline variables)
+ */
+#define W_GADGET_IMPL_INLINE(...) \
+    W_OBJECT_IMPL_COMMON(inline, __VA_ARGS__) \
+    W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) inline void W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
+    { w_internal::qt_static_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(reinterpret_cast<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)*>(_o), _c, _id, _a); }
+
+/** \macro W_NAMESPACE_IMPL_INLINE(...)
+ * Same as W_NAMESPACE_IMPL, but to be used in a header
+ * (Requires support for c++17 inline variables)
+ */
+#define W_NAMESPACE_IMPL_inline(...) \
+    W_OBJECT_IMPL_COMMON(inline, __VA_ARGS__)
 

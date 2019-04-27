@@ -18,6 +18,5 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "anothertu.h"
-#include <wobjectimpl.h>
 
 W_GADGET_IMPL(AnotherTU::Gaga)
