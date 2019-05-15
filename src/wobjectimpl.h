@@ -370,10 +370,11 @@ struct EnumGenerator {
 
     template<int DataIndex, typename State, typename Enum>
     static constexpr auto generate(State s, Enum e, std::enable_if_t<!Enum::hasAlias> * = nullptr) {
+        constexpr auto index = s.strings.size; // required for MSVC-2019
         return s.addString(e.name) // name
             .template add<
 #if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
-                s.strings.size, // alias is the same as the name
+                index, // alias is the same as the name
 #endif
                 Enum::flags,
                 Enum::count,
