@@ -322,6 +322,18 @@ void tst_Basic::testQNamespace()
     QCOMPARE(info.enclosingMetaObject(), &TestQNamespace::staticMetaObject);
 
     QCOMPARE(TestQNamespace::staticMetaObject.className(), "TestQNamespace");
+
+    QCOMPARE(AnotherTU::staticMetaObject.className(), "AnotherTU");
+    QCOMPARE(AnotherTU::staticMetaObject.enumeratorCount(), 1);
+    QCOMPARE(AnotherTU::staticMetaObject.enumerator(0).name(), "ATTestEnum");
+    QCOMPARE(QMetaEnum::fromType<AnotherTU::ATTestEnum>().name(), "ATTestEnum");
+
+#ifdef __cpp_inline_variables
+    QCOMPARE(Inline_NS::staticMetaObject.className(), "Inline_NS");
+    QCOMPARE(Inline_NS::staticMetaObject.enumeratorCount(), 1);
+    QCOMPARE(Inline_NS::staticMetaObject.enumerator(0).name(), "InlineEnum");
+    QCOMPARE(QMetaEnum::fromType<Inline_NS::InlineEnum>().name(), "InlineEnum");
+#endif
 #endif
 }
 

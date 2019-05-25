@@ -46,10 +46,30 @@ public:
     W_PROPERTY(int, foo MEMBER m_foo)
 };
 
+#ifdef Q_NAMESPACE // Since Qt 5.8
+W_NAMESPACE(AnotherTU)
+enum ATTestEnum {
+    Key1 = 31,
+    Key2,
+    Key3
+};
+W_ENUM_NS(ATTestEnum, Key1, Key2, Key3)
+#endif
 }
 
 #ifdef __cpp_inline_variables
 W_GADGET_IMPL_INLINE(AnotherTU::InlineGadget)
 W_OBJECT_IMPL_INLINE(AnotherTU::InlineObject)
-#endif
 
+#ifdef Q_NAMESPACE // Since Qt 5.8
+namespace Inline_NS {
+    W_NAMESPACE(Inline_NS)
+    enum InlineEnum {
+        I1 = 45,
+        I2
+    };
+    W_ENUM_NS(InlineEnum, I1, I2)
+}
+W_NAMESPACE_IMPL_INLINE(Inline_NS)
+#endif
+#endif

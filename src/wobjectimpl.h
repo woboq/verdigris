@@ -953,6 +953,6 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
  * Same as W_NAMESPACE_IMPL, but to be used in a header
  * (Requires support for c++17 inline variables)
  */
-#define W_NAMESPACE_IMPL_inline(...) \
+#define W_NAMESPACE_IMPL_INLINE(...) \
     W_OBJECT_IMPL_COMMON(inline, __VA_ARGS__)
 

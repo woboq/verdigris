@@ -20,3 +20,8 @@
 #include "anothertu.h"
 
 W_GADGET_IMPL(AnotherTU::Gaga)
+
+#ifdef Q_NAMESPACE // Since Qt 5.8
+W_NAMESPACE_IMPL(AnotherTU)
+#endif
+
