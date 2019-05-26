@@ -464,7 +464,7 @@ void tst_Basic::overloadedAddressOperator()
 {
     OverloadedAddressOperator o;
     OverloadedAddressOperator *p = std::addressof(o);
-    QCOMPARE(&o, nullptr);
+    QCOMPARE(&o, static_cast<void *>(nullptr));
     QVERIFY(p);
     QObject::connect(p, &OverloadedAddressOperator::self, p, &OverloadedAddressOperator::assertSelf);
     emit o.self(o);
