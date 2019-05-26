@@ -35,10 +35,10 @@ template<std::size_t... I1, std::size_t... I2> struct concatenate_helper<std::in
     static constexpr int size = sizeof...(I1) + sizeof...(I2);
     static constexpr auto concatenate(const StaticString<sizeof...(I1)> &s1, const StaticString<sizeof...(I2)> &s2) {
         StaticStringArray<size> d = { s1[I1]... , s2[I2]... };
-        return StaticString<size>( d );
+        return makeStaticString(d);
     }
 };
-constexpr StaticString<1> concatenate(StaticStringList<>) { return {""}; }
+constexpr StaticString<1> concatenate(StaticStringList<>) { return {0}; }
 template<typename T> constexpr auto concatenate(StaticStringList<binary::Leaf<T>> s) { return s.root.data; }
 template<typename A, typename B> constexpr auto concatenate(StaticStringList<binary::Node<A,B>> s) {
     auto a = concatenate(binary::tree<A>{s.root.a});
@@ -207,7 +207,7 @@ static constexpr auto makeObjectInfo(StaticStringArray<N> &name) {
     constexpr int sigCount = sigState.size;
     return ObjectInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo),
                         decltype(enumInfo), decltype(classInfo), decltype(interfaceInfo), sigCount>
-        { {name}, methodInfo, constructorInfo, propertyInfo, enumInfo, classInfo, interfaceInfo };
+        { makeStaticString(name), methodInfo, constructorInfo, propertyInfo, enumInfo, classInfo, interfaceInfo };
 }
 
 // Generator for Q_CLASSINFO to be used in generate<>()
@@ -510,7 +510,7 @@ constexpr auto generateDataArray(const ObjI &objectInfo) {
     constexpr int enumValueOffset = constructorParamIndex +
         paramOffset<decltype(objectInfo.constructors)>(make_index_sequence<ObjI::constructorCount>{});
 
-    auto stringData = binary::tree_append(binary::tree_append(binary::tree<>{} , objectInfo.name), StaticString<1>(""));
+    auto stringData = binary::tree_append(binary::tree_append(binary::tree<>{} , objectInfo.name), StaticString<1>{0});
     IntermediateState<decltype(stringData),
             QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 8 : 7, // revision
             0,       // classname

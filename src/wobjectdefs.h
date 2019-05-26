@@ -203,15 +203,19 @@ constexpr int summed = sums(Args...);
 template<std::size_t N> using StaticStringArray = const char [N];
 
 /** Represents a string of size N  (N includes the '\0' at the end) */
-template<std::size_t N, typename = make_index_sequence<N>> struct StaticString;
-template<std::size_t N, std::size_t... I> struct StaticString<N, std::index_sequence<I...>>
+template<std::size_t N> struct StaticString
 {
     StaticStringArray<N> data;
-    constexpr StaticString(StaticStringArray<N> &d) : data{ (d[I])... } { }
     static constexpr std::size_t size = N;
     constexpr char operator[](int p) const { return data[p]; }
 };
-template <std::size_t N> constexpr StaticString<N> makeStaticString(StaticStringArray<N> &d) { return {d}; }
+template <std::size_t N, std::size_t... Is>
+constexpr StaticString<N> makeStaticString(StaticStringArray<N> &d, std::index_sequence<Is...>) {
+    return { {d[Is]...} };
+}
+template <std::size_t N> constexpr StaticString<N> makeStaticString(StaticStringArray<N> &d) {
+    return makeStaticString(d, make_index_sequence<N>{});
+}
 
 /** A list containing many StaticString with possibly different sizes */
 template<typename T = void> using StaticStringList = binary::tree<T>;
@@ -223,7 +227,7 @@ constexpr StaticStringList<> makeStaticStringList(StaticStringArray<1> &, T...)
 { return {}; }
 template<std::size_t N, typename... T>
 constexpr auto makeStaticStringList(StaticStringArray<N> &h, T&...t)
-{ return binary::tree_prepend(makeStaticStringList(t...), StaticString<N>(h)); }
+{ return binary::tree_prepend(makeStaticStringList(t...), makeStaticString(h)); }
 template<typename... T>
 constexpr StaticStringList<> makeStaticStringList(StaticString<1>, T...)
 { return {}; }
@@ -339,13 +343,13 @@ struct MetaMethodInfo {
 template<typename F, std::size_t N, typename ParamTypes, int... Flags, typename IntegralConstant>
 constexpr MetaMethodInfo<F, N, summed<Flags...> | W_MethodType::Slot.value, IntegralConstant, ParamTypes>
 makeMetaSlotInfo(F f, StaticStringArray<N> &name, IntegralConstant, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
-{ return { f, {name}, paramTypes, {} }; }
+{ return { f, makeStaticString(name), paramTypes, {} }; }
 
 // Called from the W_METHOD macro
 template<typename F, std::size_t N, typename ParamTypes, int... Flags, typename IntegralConstant>
 constexpr MetaMethodInfo<F, N, summed<Flags...> | W_MethodType::Method.value, IntegralConstant, ParamTypes>
 makeMetaMethodInfo(F f, StaticStringArray<N> &name, IntegralConstant, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
-{ return { f, {name}, paramTypes, {} }; }
+{ return { f, makeStaticString(name), paramTypes, {} }; }
 
 // Called from the W_SIGNAL macro
 template<typename F, std::size_t N, typename ParamTypes, typename ParamNames, int... Flags, typename IntegralConstant>
@@ -353,7 +357,7 @@ constexpr MetaMethodInfo<F, N, summed<Flags...> | W_MethodType::Signal.value, In
                             ParamTypes, ParamNames>
 makeMetaSignalInfo(F f, StaticStringArray<N> &name, IntegralConstant, const ParamTypes &paramTypes,
                     const ParamNames &paramNames, W_MethodFlags<Flags>...)
-{ return { f, {name}, paramTypes, paramNames }; }
+{ return { f, makeStaticString(name), paramTypes, paramNames }; }
 
 /** Holds information about a constructor */
 template<std::size_t NameLength, typename... Args> struct MetaConstructorInfo {
@@ -363,7 +367,7 @@ template<std::size_t NameLength, typename... Args> struct MetaConstructorInfo {
     StaticString<NameLength> name;
     template<std::size_t N>
     constexpr MetaConstructorInfo<N, Args...> setName(StaticStringArray<N> &n)
-    { return { { n } }; }
+        { return { makeStaticString(n) }; }
     template<typename T, std::size_t... I>
     void createInstance(void **_a, std::index_sequence<I...>) const {
         *reinterpret_cast<T**>(_a[0]) =
@@ -477,7 +481,7 @@ constexpr auto parseProperty(const PropInfo &p, std::integral_constant<int, Flag
 template<typename T, std::size_t N1, std::size_t N2, typename ... Args>
 constexpr auto makeMetaPropertyInfo(StaticStringArray<N1> &name, StaticStringArray<N2> &type, Args... args) {
     MetaPropertyInfo<T, N1, N2> meta
-    { {name}, {type}, {}, {}, {}, {}, {} };
+    { makeStaticString(name), makeStaticString(type), {}, {}, {}, {}, {} };
     return parseProperty(meta, args...);
 }
 
@@ -504,7 +508,7 @@ constexpr MetaEnumInfo<NameLength, AliasLength, std::index_sequence<size_t(Value
                        Flag | EnumIsScoped<Enum>::Value> makeMetaEnumInfo(
                 StaticStringArray<NameLength> &name, StaticString<AliasLength> alias,
                 enum_sequence<Enum, Values...>, Names names) {
-    return { {name}, alias, names };
+    return { makeStaticString(name), alias, names };
 }
 
 // Helper function to remove the scope in a scoped enum name. (so "Foo::Bar" -> Bar)
@@ -523,7 +527,7 @@ template<int R, int N> constexpr StaticString<R> removeScope(StaticStringArray<N
     for (int i = 0; i < R; ++i) {
         result[i] = name[N - R + i];
     }
-    return { result };
+    return makeStaticString(result);
 }
 
 // STRing REMove SCOPE:  strignify while removing the scope
@@ -968,12 +972,12 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 /** Same as Q_CLASSINFO.  Note, Q_CLASSINFO_NS is required for namespace */
 #define W_CLASSINFO(A, B) \
     W_STATE_APPEND(w_ClassInfoState, \
-        std::pair<w_internal::StaticString<sizeof(A)>, w_internal::StaticString<sizeof(B)>>{ {A}, {B} })
+        std::pair<w_internal::StaticString<sizeof(A)>, w_internal::StaticString<sizeof(B)>>{ w_internal::makeStaticString(A), w_internal::makeStaticString(B) })
 
 /** Same as Q_CLASSINFO, but within a namespace */
 #define W_CLASSINFO_NS(A, B) \
     W_STATE_APPEND_NS(w_ClassInfoState, \
-        std::pair<w_internal::StaticString<sizeof(A)>, w_internal::StaticString<sizeof(B)>>{ {A}, {B} })
+        std::pair<w_internal::StaticString<sizeof(A)>, w_internal::StaticString<sizeof(B)>>{ w_internal::makeStaticString(A), w_internal::makeStaticString(B) })
 
 
 /** Same as Q_INTERFACE */
@@ -983,7 +987,7 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 /** Same as Q_DECLARE_FLAGS */
 #define W_DECLARE_FLAGS(Flags, Enum) \
     Q_DECLARE_FLAGS(Flags, Enum) \
-    static inline constexpr w_internal::StaticString<sizeof(#Enum)> w_flagAlias(Flags) { return {#Enum}; }
+    static inline constexpr w_internal::StaticString<sizeof(#Enum)> w_flagAlias(Flags) { return w_internal::makeStaticString(#Enum); }
 
 /** \macro W_REGISTER_ARGTYPE(TYPE)
  Registers TYPE so it can be used as a parameter of a signal/slot or return value.
