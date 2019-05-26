@@ -1,9 +1,14 @@
 The tests here are modified version of the test within Qt.
 
-Here is the methodilogy used to update the tests:
+The branch `tests_from_qt` contains the tests from Qt as is and is updated
+and merged into master.
+
+Here is the method used to update the tests:
 
 ```
  export QTBASE=~/path/to/qt/sources/qtbase
+
+ git checkout tests_from_qt
  
  # remove the previous tests, and replace it by the newer test from Qt
  rm -r qmetamethod qmetaproperty qmetaobject qobject qmetaenum
@@ -20,6 +25,7 @@ Here is the methodilogy used to update the tests:
  
  git checkout master 
  git merge tests_from_qt
+ # Fix conflicts and adapt to verdigris
 ```
 
 
