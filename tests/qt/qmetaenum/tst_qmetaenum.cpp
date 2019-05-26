@@ -111,7 +111,9 @@ void tst_QMetaEnum::defaultConstructed()
 {
     QMetaEnum e;
     QVERIFY(!e.isValid());
+#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
     QVERIFY(!e.isScoped());
+#endif
     QVERIFY(!e.isFlag());
     QCOMPARE(QByteArray(e.name()), QByteArray());
 }
