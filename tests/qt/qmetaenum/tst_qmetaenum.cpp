@@ -113,7 +113,7 @@ void tst_QMetaEnum::defaultConstructed()
     QVERIFY(!e.isValid());
     QVERIFY(!e.isScoped());
     QVERIFY(!e.isFlag());
-    QCOMPARE(e.name(), QByteArray());
+    QCOMPARE(QByteArray(e.name()), QByteArray());
 }
 
 Q_STATIC_ASSERT(QtPrivate::IsQEnumHelper<tst_QMetaEnum::SuperEnum>::Value);

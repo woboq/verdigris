@@ -28,4 +28,9 @@ Here is the method used to update the tests:
  # Fix conflicts and adapt to verdigris
 ```
 
+The tests are still supposed to work with older Qt version, so tests that test Qt behavior
+should be wrapped with `#if QT_VERSION >= QT_VERSION_CHECK(5, X, 0)` or be skipped
+with old version
+
+
 

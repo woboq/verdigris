@@ -3972,6 +3972,10 @@ void tst_QObject::isSignalConnected()
 
 void tst_QObject::isSignalConnectedAfterDisconnection()
 {
+#if QT_VERSION < QT_VERSION_CHECK(5, 13, 0)
+    QSKIP("Fixed in 5.13 only");
+#endif
+
     ManySignals o;
     const QMetaObject *meta = o.metaObject();
 
