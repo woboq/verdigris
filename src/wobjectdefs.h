@@ -545,7 +545,7 @@ struct SignalImplementation<Ret (Obj::*)(Args...), Idx>{
     Obj *this_;
     Ret operator()(Args... args, int) const {
         Ret r{};
-        const void * a[]= { &r, (&args)... };
+        const void * a[]= { std::addressof(r), std::addressof(args)... };
         QMetaObject::activate(this_, &Obj::staticMetaObject, Idx, const_cast<void **>(a));
         return r;
     }
@@ -554,7 +554,7 @@ template<typename Obj, typename... Args, int Idx>
 struct SignalImplementation<void (Obj::*)(Args...), Idx>{
     Obj *this_;
     void operator()(Args... args, int) {
-        const void *a[]= { nullptr, (&args)... };
+        const void * a[]= { nullptr, std::addressof(args)... };
         QMetaObject::activate(this_, &Obj::staticMetaObject, Idx, const_cast<void **>(a));
     }
 };
@@ -563,7 +563,7 @@ struct SignalImplementation<Ret (Obj::*)(Args...) const, Idx>{
     const Obj *this_;
     Ret operator()(Args... args, int) const {
         Ret r{};
-        const void * a[]= { &r, (&args)... };
+        const void * a[]= { std::addressof(r), std::addressof(args)... };
         QMetaObject::activate(const_cast<Obj*>(this_), &Obj::staticMetaObject, Idx, const_cast<void **>(a));
         return r;
     }
@@ -572,7 +572,7 @@ template<typename Obj, typename... Args, int Idx>
 struct SignalImplementation<void (Obj::*)(Args...) const, Idx>{
     const Obj *this_;
     void operator()(Args... args, int) {
-        const void *a[]= { nullptr, (&args)... };
+        const void * a[]= { nullptr, std::addressof(args)... };
         QMetaObject::activate(const_cast<Obj*>(this_), &Obj::staticMetaObject, Idx, const_cast<void **>(a));
     }
 };

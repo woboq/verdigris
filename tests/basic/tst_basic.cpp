@@ -72,6 +72,8 @@ private /*slots*/:
     void testFinal();
     W_SLOT(testFinal, W_Access::Private)
 
+    void overloadedAddressOperator();
+    W_SLOT(overloadedAddressOperator, W_Access::Private)
 };
 
 #include <wobjectimpl.h>
@@ -436,5 +438,37 @@ void tst_Basic::testFinal()
     }
 }
 
+class OverloadedAddressOperator : public QObject
+{
+   W_OBJECT(OverloadedAddressOperator)
+public:
+   void* operator&() { return nullptr; }
+signals:
+   void self(OverloadedAddressOperator &s) W_SIGNAL(self, s)
+public slots:
+    void assertSelf(OverloadedAddressOperator &o)
+    {
+        QCOMPARE(std::addressof(o), this);
+        testResult = (std::addressof(o) == this);
+    }
+    W_SLOT(assertSelf)
+public:
+    bool testResult = false;
+};
+
+W_REGISTER_ARGTYPE(OverloadedAddressOperator&);
+
+W_OBJECT_IMPL(OverloadedAddressOperator)
+
+void tst_Basic::overloadedAddressOperator()
+{
+    OverloadedAddressOperator o;
+    OverloadedAddressOperator *p = std::addressof(o);
+    QCOMPARE(&o, nullptr);
+    QVERIFY(p);
+    QObject::connect(p, &OverloadedAddressOperator::self, p, &OverloadedAddressOperator::assertSelf);
+    emit o.self(o);
+    QVERIFY(o.testResult);
+}
 
 QTEST_MAIN(tst_Basic)
