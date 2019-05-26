@@ -47,6 +47,7 @@ private:
     void fromType(); W_SLOT(fromType)
     void valuesToKeys_data(); W_SLOT(valuesToKeys_data)
     void valuesToKeys(); W_SLOT(valuesToKeys)
+    void defaultConstructed();
 };
 
 W_OBJECT_IMPL(tst_QMetaEnum)
@@ -104,6 +105,15 @@ void tst_QMetaEnum::valuesToKeys()
 
     QMetaEnum me = QMetaEnum::fromType<Qt::WindowFlags>();
     QCOMPARE(me.valueToKeys(windowFlags), expected);
+}
+
+void tst_QMetaEnum::defaultConstructed()
+{
+    QMetaEnum e;
+    QVERIFY(!e.isValid());
+    QVERIFY(!e.isScoped());
+    QVERIFY(!e.isFlag());
+    QCOMPARE(e.name(), QByteArray());
 }
 
 Q_STATIC_ASSERT(QtPrivate::IsQEnumHelper<tst_QMetaEnum::SuperEnum>::Value);
