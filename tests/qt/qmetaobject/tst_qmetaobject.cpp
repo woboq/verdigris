@@ -1376,11 +1376,13 @@ void tst_QMetaObject::invokeMetaConstructor()
         QVERIFY(qobject_cast<NamespaceWithConstructibleClass::ConstructibleClass*>(obj2) != 0);
     }
     // gadget shouldn't return a valid pointer
+#if QT_VERSION >= QT_VERSION_CHECK(5, 13, 0)
     {
         QCOMPARE(MyGadget::staticMetaObject.constructorCount(), 1);
         QTest::ignoreMessage(QtWarningMsg, "QMetaObject::newInstance: type MyGadget does not inherit QObject");
         QVERIFY(!MyGadget::staticMetaObject.newInstance());
     }
+#endif
 }
 
 void tst_QMetaObject::invokeTypedefTypes()

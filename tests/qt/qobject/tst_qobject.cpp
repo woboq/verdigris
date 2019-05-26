@@ -4127,13 +4127,13 @@ void tst_QObject::qMetaObjectConnect()
     OverloadObject obj1;
     QObject obj2, obj3;
 
-    QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(int)) , &r1, slot1Index);
-    QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(QObject *, QObject *, QObject *)) ,
+    QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(int, int)) , &r1, slot1Index);
+    QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(QObject *, QObject *, QObject *, QObject *)) ,
                          &r2, slot1Index);
 
     QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(QObject *, QObject *, QObject *, QObject *)) ,
                          &r1, slot2Index);
-    QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(QObject *)) , &r2, slot2Index);
+    QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(QObject *, OverloadObject *,QObject *,QObject *)) , &r2, slot2Index);
     QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(int, int)) , &r1, slot3Index);
 
     emit obj1.sig(0.5); //connected to nothing
