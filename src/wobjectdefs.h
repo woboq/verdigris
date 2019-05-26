@@ -33,6 +33,7 @@
 namespace w_internal {
 using std::index_sequence;  // From C++14, make sure to enable the C++14 option in your compiler
 
+#ifdef W_USE_CUSTOM_MAKE_INDEX_SEQUENCE
 /* The default std::make_index_sequence from libstdc++ is recursing O(N) times which is reaching
     recursion limits level for big strings. This implementation has only O(log N) recursion */
 template<size_t... I1, size_t... I2>
@@ -47,6 +48,9 @@ template<std::size_t N> struct make_index_sequence_helper {
 template<> struct make_index_sequence_helper<1> { using result = index_sequence<0>; };
 template<> struct make_index_sequence_helper<0> { using result = index_sequence<>; };
 template<std::size_t N> using make_index_sequence = typename make_index_sequence_helper<N>::result;
+#else
+using std::make_index_sequence;
+#endif
 
 /* workaround for MSVC bug that can't do decltype(xxx)::foo when xxx is dependent of a template */
 template<typename T> using identity_t = T;
