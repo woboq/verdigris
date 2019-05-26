@@ -184,9 +184,13 @@ namespace binary {
 
 
 /** Compute the sum of many integers */
-constexpr int sums() { return 0; }
+template<typename... Args> constexpr void noOp(Args...) {}
 template<typename... Args>
-constexpr int sums(int i, Args... args) { return i + sums(args...);  }
+constexpr int sums(Args... args) {
+    auto i = int{};
+    noOp((i += args, 0)...);
+    return i;
+}
 // This indirection is required to work around a MSVC bug. (See https://github.com/woboq/verdigris/issues/6 )
 template <int ...Args>
 constexpr int summed = sums(Args...);
