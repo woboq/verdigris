@@ -783,7 +783,7 @@ constexpr auto simple_hash(char const *p) {
         static constexpr auto qt_static_metacall = nullptr; \
     }; \
     static constexpr auto &W_UnscopedName = #NAMESPACE; \
-    static constexpr w_internal::binary::tree<> w_SlotState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
+    static constexpr w_internal::binary::tree<> w_SlotState(w_internal::w_number<0>, W_ThisType**) { Q_UNUSED(W_UnscopedName) return {}; } \
     static constexpr w_internal::binary::tree<> w_SignalState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
     static constexpr w_internal::binary::tree<> w_MethodState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
     static constexpr w_internal::binary::tree<> w_ConstructorState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
