@@ -188,11 +188,11 @@ namespace binary {
 
 
 /** Compute the sum of many integers */
-template<typename... Args> constexpr void noOp(Args...) {}
+template<typename T> constexpr void ordered(std::initializer_list<T>) {}
 template<typename... Args>
 constexpr int sums(Args... args) {
     auto i = int{};
-    noOp((i += args, 0)...);
+    ordered<int>({(i += args, 0)...});
     return i;
 }
 // This indirection is required to work around a MSVC bug. (See https://github.com/woboq/verdigris/issues/6 )
