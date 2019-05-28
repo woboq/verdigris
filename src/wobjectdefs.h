@@ -101,6 +101,8 @@ struct TupleImpl<TypePack<Ts...>, Offset, index_sequence<Is...>>
     static constexpr auto size = sizeof...(Ts);
     static_assert (size == sizeof... (Is), "Index has wrong length");
 
+    constexpr TupleImpl() = default;
+
     template<class... Us
               , class = std::enable_if_t< sizeof...( Us ) == sizeof...( Ts ) >
 #ifndef Q_CC_GNU // Gcc seems to fail on this
