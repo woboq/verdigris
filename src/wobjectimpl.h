@@ -38,7 +38,7 @@ constexpr auto store(char*& p, const T& s) {
 template<size_t ... Ls, size_t Offset, size_t... Is>
 constexpr auto concatenate(const constple::TupleImpl<TypePack<StaticString<Ls>...>, Offset, index_sequence<Is...>>& ssl) {
     StaticString<summed<Ls...>> r;
-    auto p = const_cast<char*>(r.data);
+    auto p = r.data;
     ordered<int>({store(p, constple::getImpl<Is>(ssl))...});
     return r;
 }

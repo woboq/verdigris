@@ -302,7 +302,7 @@ template<std::size_t N> using StaticStringArray = const char [N];
 /** Represents a string of size N  (N includes the '\0' at the end) */
 template<std::size_t N> struct StaticString
 {
-    StaticStringArray<N> data = {};
+    char data[N] = {};
     static constexpr std::size_t size = N;
     constexpr char operator[](int p) const { return data[p]; }
 };
