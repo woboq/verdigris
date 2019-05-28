@@ -55,6 +55,98 @@ using std::make_index_sequence;
 /* workaround for MSVC bug that can't do decltype(xxx)::foo when xxx is dependent of a template */
 template<typename T> using identity_t = T;
 
+template<typename T> constexpr void ordered(std::initializer_list<T>) {}
+
+namespace constple {
+
+template <class...> struct TypePack {};
+template <size_t> struct Index {};
+
+template<class... Ts>
+constexpr auto typeCount(TypePack<Ts...>) -> size_t { return sizeof... (Ts); }
+
+template <class T, size_t I>
+struct Indexed {
+    T data;
+    static constexpr size_t Index = I;
+};
+
+// notice: T is inferred if index is given
+template <size_t I, class T>
+constexpr auto getImpl(const Indexed<T, I>& i) -> const T& { return i.data; }
+
+template<size_t Offset, size_t... Is>
+auto offsetIndices(index_sequence<Is...>) -> index_sequence<Offset + Is...>;
+template<size_t Offset, typename Seq>
+using offset_indices = decltype (offsetIndices<Offset>(Seq{}));
+
+template<class Tp, size_t Offset = 1000>
+struct Tuple;
+
+template<class... Vs>
+constexpr bool isAll(Vs... vs) {
+    auto r = true;
+    ordered({(r = r && vs, true)..., true});
+    return r;
+}
+
+template<class Tp, size_t Offset, class Is>
+struct TupleImpl;
+
+template<class... Ts, size_t Offset, size_t... Is>
+struct TupleImpl<TypePack<Ts...>, Offset, index_sequence<Is...>>
+    : Indexed<Ts, Is>...{
+
+    using Pack = TypePack<Ts...>;
+    static constexpr auto size = sizeof...(Ts);
+    static_assert (size == sizeof... (Is), "Index has wrong length");
+
+    template<class... Us
+              , class = std::enable_if_t< sizeof...( Us ) == sizeof...( Ts ) >
+#ifndef Q_CC_GNU // Gcc seems to fail on this
+              , class = std::enable_if_t< isAll(std::is_same<decltype(Indexed<Ts, Is>{std::declval<Us>()}), Indexed<Ts,Is>>::value...) >
+#endif
+            >
+    constexpr TupleImpl(Us&& ...us)
+        : Indexed<Ts, Is>{(Us&&)us}... {}
+
+    template<class T>
+    constexpr auto append(const T& v) const {
+        return Tuple<TypePack<Ts..., T>, Offset>{getImpl<Is>(*this)..., v};
+    }
+
+    template<class T>
+    constexpr auto prepend(const T& v) const {
+        return Tuple<TypePack<T, Ts...>, Offset-1>{v, getImpl<Is>(*this)...};
+    }
+};
+
+template<class Tp, size_t Offset>
+struct Tuple : TupleImpl<Tp, Offset, offset_indices<Offset, make_index_sequence<typeCount(Tp{})>>> {
+    using TupleImpl<Tp, Offset, offset_indices<Offset, make_index_sequence<typeCount(Tp{})>>>::TupleImpl;
+};
+
+template<class... ATs, size_t AOffset, size_t... AIs, class... BTs, size_t BOffset, size_t... BIs>
+constexpr auto concat(const TupleImpl<TypePack<ATs...>, AOffset, index_sequence<AIs...>>& a, const TupleImpl<TypePack<BTs...>, BOffset, index_sequence<BIs...>>& b)
+    -> Tuple<TypePack<ATs..., BTs...>> {
+    return { getImpl<AIs, ATs>(a)..., getImpl<BIs, BTs>(b)...};
+}
+template<class A, class B, class C>
+constexpr auto concat(const A& a, const B& b, const C& c) {
+    return concat(concat(a,b), c);
+}
+
+template<size_t I, class TP, size_t Offset>
+constexpr auto get(const Tuple<TP, Offset>& t) { return getImpl<I+Offset>(t); }
+
+template<size_t I, class TP, size_t Offset>
+constexpr auto fetch(const Tuple<TP, Offset>& t, std::enable_if_t<(I < Tuple<TP, Offset>::size)>* = {}) { return getImpl<I+Offset>(t); }
+
+template<size_t I, class TP, size_t Offset>
+constexpr auto fetch(const Tuple<TP, Offset>&, std::enable_if_t<(I >= Tuple<TP, Offset>::size)>* = {}) { struct _{}; return _{}; }
+
+}
+
 /**
  * In this namespace we find the implementation of a template binary tree container
  * It has a similar API than std::tuple, but is stored in a binary way.
@@ -188,7 +280,6 @@ namespace binary {
 
 
 /** Compute the sum of many integers */
-template<typename T> constexpr void ordered(std::initializer_list<T>) {}
 template<typename... Args>
 constexpr int sums(Args... args) {
     auto i = int{};
@@ -209,12 +300,12 @@ template<std::size_t N> using StaticStringArray = const char [N];
 /** Represents a string of size N  (N includes the '\0' at the end) */
 template<std::size_t N> struct StaticString
 {
-    StaticStringArray<N> data;
+    StaticStringArray<N> data = {};
     static constexpr std::size_t size = N;
     constexpr char operator[](int p) const { return data[p]; }
 };
 template <std::size_t N, std::size_t... Is>
-constexpr StaticString<N> makeStaticString(StaticStringArray<N> &d, std::index_sequence<Is...>) {
+constexpr StaticString<N> makeStaticString(StaticStringArray<N> &d, index_sequence<Is...>) {
     return { {d[Is]...} };
 }
 template <std::size_t N> constexpr StaticString<N> makeStaticString(StaticStringArray<N> &d) {
@@ -222,7 +313,9 @@ template <std::size_t N> constexpr StaticString<N> makeStaticString(StaticString
 }
 
 /** A list containing many StaticString with possibly different sizes */
-template<typename T = void> using StaticStringList = binary::tree<T>;
+using constple::TypePack;
+template<size_t Offset = 1000, size_t... Ls>
+using StaticStringList = constple::Tuple<TypePack<StaticString<Ls>...>, Offset>;
 
 /** Make a StaticStringList out of many char array  */
 constexpr StaticStringList<> makeStaticStringList() { return {}; }
@@ -231,19 +324,25 @@ constexpr StaticStringList<> makeStaticStringList(StaticStringArray<1> &, T...)
 { return {}; }
 template<std::size_t N, typename... T>
 constexpr auto makeStaticStringList(StaticStringArray<N> &h, T&...t)
-{ return binary::tree_prepend(makeStaticStringList(t...), makeStaticString(h)); }
+{ return makeStaticStringList(t...).prepend(makeStaticString(h)); }
+// { return binary::tree_prepend(makeStaticStringList(t...), makeStaticString(h)); }
 template<typename... T>
 constexpr StaticStringList<> makeStaticStringList(StaticString<1>, T...)
 { return {}; }
 template<std::size_t N, typename... T>
 constexpr auto makeStaticStringList(StaticString<N> h, T...t)
-{ return binary::tree_prepend(makeStaticStringList(t...), h); }
+{ return makeStaticStringList(t...).prepend(h); }
+//{ return binary::tree_prepend(makeStaticStringList(t...), h); }
 
+static_assert(std::is_same<decltype(makeStaticStringList()), StaticStringList<>>::value, "");
+static_assert(std::is_same<decltype(makeStaticStringList("H", "el"))::Pack, TypePack<StaticString<2>, StaticString<3>>>::value, "");
+static_assert(std::is_same<decltype(makeStaticStringList("H", "", "el"))::Pack, TypePack<StaticString<2>>>::value, "");
 
 /** Add a string in a StaticStringList */
-template<std::size_t L, typename T>
-constexpr auto addString(const StaticStringList<T> &l, const StaticString<L> & s) {
-    return binary::tree_append(l, s);
+template<std::size_t L, size_t Offset, size_t... Ls>
+constexpr auto addString(const StaticStringList<Offset, Ls...> &l, const StaticString<L> & s) {
+    return l.append(s);
+    //return binary::tree_append(l, s);
 }
 
 
@@ -373,7 +472,7 @@ template<std::size_t NameLength, typename... Args> struct MetaConstructorInfo {
     constexpr MetaConstructorInfo<N, Args...> setName(StaticStringArray<N> &n)
         { return { makeStaticString(n) }; }
     template<typename T, std::size_t... I>
-    void createInstance(void **_a, std::index_sequence<I...>) const {
+    void createInstance(void **_a, index_sequence<I...>) const {
         *reinterpret_cast<T**>(_a[0]) =
             new T(*reinterpret_cast<std::remove_reference_t<Args> *>(_a[I+1])...);
     }
@@ -508,7 +607,7 @@ struct MetaEnumInfo {
 template<typename Enum, Enum... Value> struct enum_sequence {};
 // called from W_ENUM and W_FLAG
 template<typename Enum, int Flag, std::size_t NameLength, std::size_t AliasLength, Enum... Values, typename Names>
-constexpr MetaEnumInfo<NameLength, AliasLength, std::index_sequence<size_t(Values)...> , Names,
+constexpr MetaEnumInfo<NameLength, AliasLength, index_sequence<size_t(Values)...> , Names,
                        Flag | EnumIsScoped<Enum>::Value> makeMetaEnumInfo(
                 StaticStringArray<NameLength> &name, StaticString<AliasLength> alias,
                 enum_sequence<Enum, Values...>, Names names) {

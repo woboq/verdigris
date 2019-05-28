@@ -30,21 +30,36 @@ namespace w_internal {
  * Returns a StaticString which is the concatenation of all the strings in a StaticStringList
  * Note:  keeps the \0 between the strings
  */
-template<typename I1, typename I2> struct concatenate_helper;
-template<std::size_t... I1, std::size_t... I2> struct concatenate_helper<std::index_sequence<I1...>, std::index_sequence<I2...>> {
-    static constexpr int size = sizeof...(I1) + sizeof...(I2);
-    static constexpr auto concatenate(const StaticString<sizeof...(I1)> &s1, const StaticString<sizeof...(I2)> &s2) {
-        StaticStringArray<size> d = { s1[I1]... , s2[I2]... };
-        return makeStaticString(d);
-    }
-};
+//template<typename I1, typename I2> struct concatenate_helper;
+//template<std::size_t... I1, std::size_t... I2> struct concatenate_helper<std::index_sequence<I1...>, std::index_sequence<I2...>> {
+//    static constexpr int size = sizeof...(I1) + sizeof...(I2);
+//    static constexpr auto concatenate(const StaticString<sizeof...(I1)> &s1, const StaticString<sizeof...(I2)> &s2) {
+//        StaticStringArray<size> d = { s1[I1]... , s2[I2]... };
+//        return makeStaticString(d);
+//    }
+//};
+
+template<class T>
+constexpr auto store(char*& p, const T& s) {
+    for (auto chr : s.data) *p++ = chr;
+    return 0;
+}
+
+template<size_t ... Ls, size_t Offset, size_t... Is>
+constexpr auto concatenate(const constple::TupleImpl<TypePack<StaticString<Ls>...>, Offset, index_sequence<Is...>>& ssl) {
+    StaticString<summed<Ls...>> r;
+    auto p = const_cast<char*>(r.data);
+    ordered<int>({store(p, constple::getImpl<Is>(ssl))...});
+    return r;
+}
 constexpr StaticString<1> concatenate(StaticStringList<>) { return {'\0'}; }
-template<typename T> constexpr auto concatenate(StaticStringList<binary::Leaf<T>> s) { return s.root.data; }
-template<typename A, typename B> constexpr auto concatenate(StaticStringList<binary::Node<A,B>> s) {
+
+//template<typename T> constexpr auto concatenate(StaticStringList<binary::Leaf<T>> s) { return s.root.data; }
+/*template<typename A, typename B> constexpr auto concatenate(StaticStringList<binary::Node<A,B>> s) {
     auto a = concatenate(binary::tree<A>{s.root.a});
     auto b = concatenate(binary::tree<B>{s.root.b});
     return concatenate_helper<make_index_sequence<a.size>, make_index_sequence<b.size>>::concatenate(a, b);
-}
+}*/
 
 // Match MetaDataFlags constants form the MetaDataFlags in qmetaobject_p.h
 enum : uint { IsUnresolvedType = 0x80000000, IsUnresolvedNotifySignal = 0x70000000 };
@@ -65,14 +80,16 @@ struct IntermediateState {
     /// add a string to the strings state and add its index to the end of the int array
     template<std::size_t L>
     constexpr auto addString(const StaticString<L> & s) const {
-        auto s2 = binary::tree_append(strings, s);
+        //auto s2 = binary::tree_append(strings, s);
+        auto s2 = strings.append(s);
         return IntermediateState<decltype(s2), Ints..., Strings::size>{s2};
     }
 
     /// same as before but add the IsUnresolvedType flag
     template<uint Flag = IsUnresolvedType, std::size_t L>
     constexpr auto addTypeString(const StaticString<L> & s) const {
-        auto s2 = binary::tree_append(strings, s);
+        //auto s2 = binary::tree_append(strings, s);
+        auto s2 = strings.append(s);
         return IntermediateState<decltype(s2), Ints...,
             Flag | Strings::size>{s2};
     }
@@ -386,14 +403,14 @@ struct EnumGenerator {
 
 // Generator for enum values
 struct EnumValuesGenerator {
-    template<typename Strings>
-    static constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<>, binary::tree<>)
+    template<typename Strings, typename Names, size_t I = 0>
+    static constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<>, const Names&, constple::Index<I> = {})
     { return s; }
 
-    template<typename Strings, std::size_t Value, std::size_t... I, typename Names>
-    static constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<Value, I...>, Names names) {
-        auto s2 = s.addString(binary::tree_head(names)).template add<uint(Value)>();
-        return generateSingleEnumValues(s2, std::index_sequence<I...>{}, binary::tree_tail(names));
+    template<typename Strings, std::size_t Value, std::size_t... Vs, typename Names, size_t I = 0>
+    static constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<Value, Vs...>, const Names& names, constple::Index<I> = {}) {
+        auto s2 = s.addString(constple::get<I>(names)).template add<uint(Value)>();
+        return generateSingleEnumValues(s2, std::index_sequence<Vs...>{}, names, constple::Index<I+1>{});
     }
 
     template<typename> static constexpr int offset() { return 0; }
@@ -408,36 +425,36 @@ struct EnumValuesGenerator {
  * generate the parameter array
  */
 template<typename ...Args> struct HandleArgsHelper {
-    template<typename Strings, typename ParamTypes>
-    static constexpr auto result(const Strings &ss, const ParamTypes&)
+    template<typename Strings, typename ParamTypes, size_t I = 0>
+    static constexpr auto result(const Strings &ss, const ParamTypes&, constple::Index<I> = {})
     { return ss; }
 };
 template<typename A, typename... Args>
 struct HandleArgsHelper<A, Args...> {
-    template<typename Strings, typename ParamTypes>
-    static constexpr auto result(const Strings &ss, const ParamTypes &paramTypes) {
+    template<typename Strings, typename ParamTypes, size_t I = 0>
+    static constexpr auto result(const Strings &ss, const ParamTypes &paramTypes, constple::Index<I> = {}) {
         using Type = typename QtPrivate::RemoveConstRef<A>::Type;
-        auto typeStr = binary::tree_head(paramTypes);
+        auto typeStr = constple::fetch<I>(paramTypes);
         using ts_t = decltype(typeStr);
         // This way, the overload of result will not pick the StaticString one if it is a tuple (because registered types have the priority)
         auto typeStr2 = std::conditional_t<std::is_same<A, Type>::value, ts_t, std::tuple<ts_t>>{typeStr};
         auto r1 = HandleType<Type>::result(ss, typeStr2);
-        return HandleArgsHelper<Args...>::result(r1, binary::tree_tail(paramTypes));
+        return HandleArgsHelper<Args...>::result(r1, paramTypes, constple::Index<I+1>{});
     }
 };
 template<std::size_t N> struct HandleArgNames {
-    template<typename Strings, typename Str>
-    static constexpr auto result(const Strings &ss, StaticStringList<Str> pn)
-    {
-        auto s2 = ss.addString(binary::tree_head(pn));
-        auto tail = binary::tree_tail(pn);
-        return HandleArgNames<N-1>::result(s2, tail);
+    template<typename Strings, size_t Offset, size_t... Ls, size_t I = 0>
+    static constexpr auto result(const Strings &ss, const StaticStringList<Offset, Ls...>& pn, constple::Index<I> = {}, std::enable_if_t<(I < sizeof... (Ls))>* = {}) {
+        auto s2 = ss.addString(constple::get<I>(pn));
+        return HandleArgNames<N-1>::result(s2, pn, constple::Index<I+1>{});
     }
-    template<typename Strings> static constexpr auto result(const Strings &ss, StaticStringList<> pn)
-    { return HandleArgNames<N-1>::result(ss.template add<1>(), pn); }
+    template<typename Strings, size_t Offset, size_t...Ls, size_t I = 0>
+    static constexpr auto result(const Strings &ss, const StaticStringList<Offset, Ls...>& pn, constple::Index<I> = {}, std::enable_if_t<(I >= sizeof... (Ls))>* = {})
+    { return HandleArgNames<N-1>::result(ss.template add<1>(), pn, constple::Index<I+1>{}); }
 };
 template<> struct HandleArgNames<0> {
-    template<typename Strings, typename PN> static constexpr auto result(const Strings &ss, PN)
+    template<typename Strings, typename PN, size_t I = 0>
+    static constexpr auto result(const Strings &ss, const PN&, constple::Index<I> = {})
     { return ss; }
 };
 
@@ -448,21 +465,21 @@ private:
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
     static constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...),
                                                         const ParamTypes &paramTypes, const ParamNames &paramNames ) {
-        auto types = HandleArgsHelper<Ret, Args...>::result(ss, binary::tree_prepend(paramTypes, 0));
+        auto types = HandleArgsHelper<Ret, Args...>::result(ss, paramTypes.prepend(0));
         return HandleArgNames<sizeof...(Args)>::result(types, paramNames);
     }
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
     // const function
     static constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...) const,
                                                  const ParamTypes &paramTypes, const ParamNames &paramNames ) {
-        auto types = HandleArgsHelper<Ret, Args...>::result(ss, binary::tree_prepend(paramTypes, 0));
+        auto types = HandleArgsHelper<Ret, Args...>::result(ss, paramTypes.prepend(0));
         return HandleArgNames<sizeof...(Args)>::result(types, paramNames);
     }
     // static member functions
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Ret, typename... Args>
     static constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (*)(Args...),
                                                  const ParamTypes &paramTypes, const ParamNames &paramNames ) {
-        auto types = HandleArgsHelper<Ret, Args...>::result(ss, binary::tree_prepend(paramTypes, 0));
+        auto types = HandleArgsHelper<Ret, Args...>::result(ss, paramTypes.prepend(0));
         return HandleArgNames<sizeof...(Args)>::result(types, paramNames);
     }
 public:
@@ -481,7 +498,7 @@ struct ConstructorParametersGenerator {
     template<int, typename State, std::size_t N, typename... Args>
     static constexpr auto generate(State s, MetaConstructorInfo<N,Args...>) {
         auto s2 = s.template add<IsUnresolvedType | 1>();
-        auto s3 = HandleArgsHelper<Args...>::result(s2, binary::tree<>{});
+        auto s3 = HandleArgsHelper<Args...>::result(s2, StaticStringList<>{});
         return s3.template add<((void)sizeof(Args),1)...>(); // all the names are 1 (for "\0")
     }
 };
@@ -510,7 +527,8 @@ constexpr auto generateDataArray(const ObjI &objectInfo) {
     constexpr int enumValueOffset = constructorParamIndex +
         paramOffset<decltype(objectInfo.constructors)>(make_index_sequence<ObjI::constructorCount>{});
 
-    auto stringData = binary::tree_append(binary::tree_append(binary::tree<>{} , objectInfo.name), StaticString<1>{'\0'});
+    //auto stringData = binary::tree_append(binary::tree_append(binary::tree<>{} , objectInfo.name), StaticString<1>{'\0'});
+    auto stringData = makeStaticStringList(objectInfo.name, StaticString<1>{'\0'});
     IntermediateState<decltype(stringData),
             QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 8 : 7, // revision
             0,       // classname
@@ -598,7 +616,8 @@ constexpr const QByteArrayData *build_string_data()  {
 }
 template<typename T, std::size_t... I>
 constexpr const QByteArrayData *build_string_data(std::index_sequence<I...>)  {
-    return build_string_data<T, decltype(binary::get<I>(T::string_data))::size...>();
+    //return build_string_data<T, decltype(binary::get<I>(T::string_data))::size...>();
+    return build_string_data<T, decltype(constple::get<I>(T::string_data))::size...>();
 }
 
 
