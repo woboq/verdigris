@@ -380,7 +380,7 @@ template<std::size_t NameLength, typename... Args> struct MetaConstructorInfo {
 };
 // called from the W_CONSTRUCTOR macro
 template<typename...  Args> constexpr MetaConstructorInfo<1,Args...> makeMetaConstructorInfo()
-{ return { {""} }; }
+{ return { {'\0'} }; }
 
 struct Empty{
     constexpr operator bool() const { return false; }
@@ -735,7 +735,7 @@ constexpr auto simple_hash(char const *p) {
         friend constexpr w_internal::binary::tree<> w_EnumState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
         friend constexpr w_internal::binary::tree<> w_ClassInfoState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
         friend constexpr w_internal::binary::tree<> w_InterfaceState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-        template<typename W_Flag> static inline constexpr w_internal::StaticString<1> w_flagAlias(W_Flag) { return {""}; } \
+        template<typename W_Flag> static inline constexpr w_internal::StaticString<1> w_flagAlias(W_Flag) { return {'\0'}; } \
     public: \
         struct W_MetaObjectCreatorHelper;
 
@@ -803,7 +803,7 @@ constexpr auto simple_hash(char const *p) {
     static constexpr w_internal::binary::tree<> w_EnumState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
     static constexpr w_internal::binary::tree<> w_ClassInfoState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
     static constexpr w_internal::binary::tree<> w_InterfaceState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-    template<typename W_Flag> static inline constexpr w_internal::StaticString<1> w_flagAlias(W_Flag) { return {""}; } \
+    template<typename W_Flag> static inline constexpr w_internal::StaticString<1> w_flagAlias(W_Flag) { return {'\0'}; } \
     QT_ANNOTATE_CLASS(qt_fake, "")
 
 /**

@@ -510,7 +510,7 @@ constexpr auto generateDataArray(const ObjI &objectInfo) {
     constexpr int enumValueOffset = constructorParamIndex +
         paramOffset<decltype(objectInfo.constructors)>(make_index_sequence<ObjI::constructorCount>{});
 
-    auto stringData = binary::tree_append(binary::tree_append(binary::tree<>{} , objectInfo.name), StaticString<1>{0});
+    auto stringData = binary::tree_append(binary::tree_append(binary::tree<>{} , objectInfo.name), StaticString<1>{'\0'});
     IntermediateState<decltype(stringData),
             QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 8 : 7, // revision
             0,       // classname
