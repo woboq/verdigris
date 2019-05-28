@@ -325,26 +325,16 @@ constexpr StaticStringList<> makeStaticStringList(StaticStringArray<1> &, T...)
 template<std::size_t N, typename... T>
 constexpr auto makeStaticStringList(StaticStringArray<N> &h, T&...t)
 { return makeStaticStringList(t...).prepend(makeStaticString(h)); }
-// { return binary::tree_prepend(makeStaticStringList(t...), makeStaticString(h)); }
 template<typename... T>
 constexpr StaticStringList<> makeStaticStringList(StaticString<1>, T...)
 { return {}; }
 template<std::size_t N, typename... T>
 constexpr auto makeStaticStringList(StaticString<N> h, T...t)
 { return makeStaticStringList(t...).prepend(h); }
-//{ return binary::tree_prepend(makeStaticStringList(t...), h); }
 
 static_assert(std::is_same<decltype(makeStaticStringList()), StaticStringList<>>::value, "");
 static_assert(std::is_same<decltype(makeStaticStringList("H", "el"))::Pack, TypePack<StaticString<2>, StaticString<3>>>::value, "");
 static_assert(std::is_same<decltype(makeStaticStringList("H", "", "el"))::Pack, TypePack<StaticString<2>>>::value, "");
-
-/** Add a string in a StaticStringList */
-template<std::size_t L, size_t Offset, size_t... Ls>
-constexpr auto addString(const StaticStringList<Offset, Ls...> &l, const StaticString<L> & s) {
-    return l.append(s);
-    //return binary::tree_append(l, s);
-}
-
 
 /*-----------*/
 

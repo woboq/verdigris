@@ -30,21 +30,11 @@ namespace w_internal {
  * Returns a StaticString which is the concatenation of all the strings in a StaticStringList
  * Note:  keeps the \0 between the strings
  */
-//template<typename I1, typename I2> struct concatenate_helper;
-//template<std::size_t... I1, std::size_t... I2> struct concatenate_helper<std::index_sequence<I1...>, std::index_sequence<I2...>> {
-//    static constexpr int size = sizeof...(I1) + sizeof...(I2);
-//    static constexpr auto concatenate(const StaticString<sizeof...(I1)> &s1, const StaticString<sizeof...(I2)> &s2) {
-//        StaticStringArray<size> d = { s1[I1]... , s2[I2]... };
-//        return makeStaticString(d);
-//    }
-//};
-
 template<class T>
 constexpr auto store(char*& p, const T& s) {
     for (auto chr : s.data) *p++ = chr;
     return 0;
 }
-
 template<size_t ... Ls, size_t Offset, size_t... Is>
 constexpr auto concatenate(const constple::TupleImpl<TypePack<StaticString<Ls>...>, Offset, index_sequence<Is...>>& ssl) {
     StaticString<summed<Ls...>> r;
@@ -53,13 +43,6 @@ constexpr auto concatenate(const constple::TupleImpl<TypePack<StaticString<Ls>..
     return r;
 }
 constexpr StaticString<1> concatenate(StaticStringList<>) { return {'\0'}; }
-
-//template<typename T> constexpr auto concatenate(StaticStringList<binary::Leaf<T>> s) { return s.root.data; }
-/*template<typename A, typename B> constexpr auto concatenate(StaticStringList<binary::Node<A,B>> s) {
-    auto a = concatenate(binary::tree<A>{s.root.a});
-    auto b = concatenate(binary::tree<B>{s.root.b});
-    return concatenate_helper<make_index_sequence<a.size>, make_index_sequence<b.size>>::concatenate(a, b);
-}*/
 
 // Match MetaDataFlags constants form the MetaDataFlags in qmetaobject_p.h
 enum : uint { IsUnresolvedType = 0x80000000, IsUnresolvedNotifySignal = 0x70000000 };
@@ -80,7 +63,6 @@ struct IntermediateState {
     /// add a string to the strings state and add its index to the end of the int array
     template<std::size_t L>
     constexpr auto addString(const StaticString<L> & s) const {
-        //auto s2 = binary::tree_append(strings, s);
         auto s2 = strings.append(s);
         return IntermediateState<decltype(s2), Ints..., Strings::size>{s2};
     }
@@ -88,7 +70,6 @@ struct IntermediateState {
     /// same as before but add the IsUnresolvedType flag
     template<uint Flag = IsUnresolvedType, std::size_t L>
     constexpr auto addTypeString(const StaticString<L> & s) const {
-        //auto s2 = binary::tree_append(strings, s);
         auto s2 = strings.append(s);
         return IntermediateState<decltype(s2), Ints...,
             Flag | Strings::size>{s2};
@@ -527,7 +508,6 @@ constexpr auto generateDataArray(const ObjI &objectInfo) {
     constexpr int enumValueOffset = constructorParamIndex +
         paramOffset<decltype(objectInfo.constructors)>(make_index_sequence<ObjI::constructorCount>{});
 
-    //auto stringData = binary::tree_append(binary::tree_append(binary::tree<>{} , objectInfo.name), StaticString<1>{'\0'});
     auto stringData = makeStaticStringList(objectInfo.name, StaticString<1>{'\0'});
     IntermediateState<decltype(stringData),
             QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 8 : 7, // revision
@@ -616,7 +596,6 @@ constexpr const QByteArrayData *build_string_data()  {
 }
 template<typename T, std::size_t... I>
 constexpr const QByteArrayData *build_string_data(std::index_sequence<I...>)  {
-    //return build_string_data<T, decltype(binary::get<I>(T::string_data))::size...>();
     return build_string_data<T, decltype(constple::get<I>(T::string_data))::size...>();
 }
 
