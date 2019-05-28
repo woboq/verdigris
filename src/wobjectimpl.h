@@ -38,7 +38,7 @@ template<std::size_t... I1, std::size_t... I2> struct concatenate_helper<std::in
         return makeStaticString(d);
     }
 };
-constexpr StaticString<1> concatenate(StaticStringList<>) { return {0}; }
+constexpr StaticString<1> concatenate(StaticStringList<>) { return {'\0'}; }
 template<typename T> constexpr auto concatenate(StaticStringList<binary::Leaf<T>> s) { return s.root.data; }
 template<typename A, typename B> constexpr auto concatenate(StaticStringList<binary::Node<A,B>> s) {
     auto a = concatenate(binary::tree<A>{s.root.a});
