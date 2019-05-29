@@ -620,11 +620,11 @@ template<int N> constexpr int removedScopeSize(StaticStringArray<N> &name) {
 }
 
 template<int R, int N> constexpr StaticString<R> removeScope(StaticStringArray<N> &name) {
-    char result[R] = {};
+    StaticString<R> r;
     for (int i = 0; i < R; ++i) {
-        result[i] = name[N - R + i];
+        r.data[i] = name[N - R + i];
     }
-    return makeStaticString(result);
+    return r;
 }
 
 // STRing REMove SCOPE:  strignify while removing the scope
