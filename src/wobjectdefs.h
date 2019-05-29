@@ -320,13 +320,15 @@ template<size_t Offset = 1000, size_t... Ls>
 using StaticStringList = constple::Tuple<TypePack<StaticString<Ls>...>, Offset>;
 
 /** Make a StaticStringList out of many char array  */
-constexpr StaticStringList<> makeStaticStringList() { return {}; }
+constexpr StaticStringList<> makeStaticLiteralList() { return {}; }
 template<typename... T>
-constexpr StaticStringList<> makeStaticStringList(StaticStringArray<1> &, T...)
+constexpr StaticStringList<> makeStaticLiteralList(StaticStringArray<1> &, T...)
 { return {}; }
 template<std::size_t N, typename... T>
-constexpr auto makeStaticStringList(StaticStringArray<N> &h, T&...t)
-{ return makeStaticStringList(t...).prepend(makeStaticString(h)); }
+constexpr auto makeStaticLiteralList(StaticStringArray<N> &h, T&...t)
+{ return makeStaticLiteralList(t...).prepend(makeStaticString(h)); }
+
+constexpr StaticStringList<> makeStaticStringList() { return {}; }
 template<typename... T>
 constexpr StaticStringList<> makeStaticStringList(StaticString<1>, T...)
 { return {}; }
@@ -334,9 +336,9 @@ template<std::size_t N, typename... T>
 constexpr auto makeStaticStringList(StaticString<N> h, T...t)
 { return makeStaticStringList(t...).prepend(h); }
 
-static_assert(std::is_same<decltype(makeStaticStringList()), StaticStringList<>>::value, "");
-static_assert(std::is_same<decltype(makeStaticStringList("H", "el"))::Pack, TypePack<StaticString<2>, StaticString<3>>>::value, "");
-static_assert(std::is_same<decltype(makeStaticStringList("H", "", "el"))::Pack, TypePack<StaticString<2>>>::value, "");
+static_assert(std::is_same<decltype(makeStaticLiteralList()), StaticStringList<>>::value, "");
+static_assert(std::is_same<decltype(makeStaticLiteralList("H", "el"))::Pack, TypePack<StaticString<2>, StaticString<3>>>::value, "");
+static_assert(std::is_same<decltype(makeStaticLiteralList("H", "", "el"))::Pack, TypePack<StaticString<2>>>::value, "");
 
 /*-----------*/
 
@@ -757,7 +759,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 // strignify and make a StaticStringList out of an array of arguments
 #define W_PARAM_TOSTRING(...) W_MACRO_MSVC_EMPTY W_MACRO_MSVC_DELAY(W_PARAM_TOSTRING2,__VA_ARGS__ ,,,,,,,,,,,,,,,,)
 #define W_PARAM_TOSTRING2(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
-    w_internal::makeStaticStringList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
+    w_internal::makeStaticLiteralList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
 
 #define W_PARAM_TOSTRING_REMOVE_SCOPE(...) W_MACRO_MSVC_EMPTY W_MACRO_MSVC_DELAY(W_PARAM_TOSTRING2_REMOVE_SCOPE,__VA_ARGS__ ,,,,,,,,,,,,,,,,)
 #define W_PARAM_TOSTRING2_REMOVE_SCOPE(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
