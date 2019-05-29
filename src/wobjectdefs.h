@@ -67,10 +67,7 @@ constexpr auto typeCount(TypePack<Ts...>) -> size_t { return sizeof... (Ts); }
 namespace constple {
 
 template <class T, size_t I>
-struct Indexed {
-    T data;
-    static constexpr size_t Index = I;
-};
+struct Indexed { T data; };
 
 // notice: T is inferred if index is given
 template <size_t I, class T>
@@ -81,57 +78,46 @@ auto offsetIndices(index_sequence<Is...>) -> index_sequence<Offset + Is...>;
 template<size_t Offset, typename Seq>
 using offset_indices = decltype (offsetIndices<Offset>(Seq{}));
 
-template<class Tp, size_t Offset = 1000>
+template<class Tp, size_t Offset = 1000, class Is = offset_indices<Offset, make_index_sequence<typeCount(Tp{})>>>
 struct Tuple;
 
 template<class... Vs>
-constexpr bool isAll(Vs... vs) {
-    auto r = true;
-    ordered({(r = r && vs, true)..., true});
-    return r;
-}
-
-template<class Tp, size_t Offset, class Is>
-struct TupleImpl;
+constexpr bool isAll(Vs... vs) { return (vs && ... && true); }
 
 template<class... Ts, size_t Offset, size_t... Is>
-struct TupleImpl<TypePack<Ts...>, Offset, index_sequence<Is...>>
+struct Tuple<TypePack<Ts...>, Offset, index_sequence<Is...>>
     : Indexed<Ts, Is>...{
 
     using Pack = TypePack<Ts...>;
     static constexpr auto size = sizeof...(Ts);
-    static_assert (size == sizeof... (Is), "Index has wrong length");
+    //static_assert (size == sizeof... (Is), "Index has wrong length");
 
-    constexpr TupleImpl() = default;
+    constexpr Tuple() = default;
 
     template<class... Us
               , class = std::enable_if_t< sizeof...( Us ) == sizeof...( Ts ) >
 #ifndef Q_CC_GNU // Gcc seems to fail on this
-              , class = std::enable_if_t< isAll(std::is_same<decltype(Indexed<Ts, Is>{std::declval<Us>()}), Indexed<Ts,Is>>::value...) >
+              , class = std::enable_if_t< isAll((std::is_same<std::decay_t<Us>, Indexed<Ts, Is>>::value
+                                             || std::is_constructible<Ts, Us>::value)...) >
 #endif
             >
-    constexpr TupleImpl(Us&& ...us)
+    constexpr Tuple(Us&& ...us)
         : Indexed<Ts, Is>{(Us&&)us}... {}
 
     template<class T>
     constexpr auto append(const T& v) const {
-        return Tuple<TypePack<Ts..., T>, Offset>{getImpl<Is>(*this)..., v};
+        return Tuple<TypePack<Ts..., T>, Offset>{static_cast<const Indexed<Ts, Is>&>(*this)..., v};
     }
 
     template<class T>
     constexpr auto prepend(const T& v) const {
-        return Tuple<TypePack<T, Ts...>, Offset-1>{v, getImpl<Is>(*this)...};
+        return Tuple<TypePack<T, Ts...>, Offset-1>{v, static_cast<const Indexed<Ts, Is>&>(*this)...};
     }
 };
 
-template<class Tp, size_t Offset>
-struct Tuple : TupleImpl<Tp, Offset, offset_indices<Offset, make_index_sequence<typeCount(Tp{})>>> {
-    using TupleImpl<Tp, Offset, offset_indices<Offset, make_index_sequence<typeCount(Tp{})>>>::TupleImpl;
-};
-
 template<class... ATs, size_t AOffset, size_t... AIs, class... BTs, size_t BOffset, size_t... BIs>
-constexpr auto concat(const TupleImpl<TypePack<ATs...>, AOffset, index_sequence<AIs...>>& a, const TupleImpl<TypePack<BTs...>, BOffset, index_sequence<BIs...>>& b)
-    -> Tuple<TypePack<ATs..., BTs...>> {
+constexpr auto concat(const Tuple<TypePack<ATs...>, AOffset, index_sequence<AIs...>>& a, const Tuple<TypePack<BTs...>, BOffset, index_sequence<BIs...>>& b)
+    -> Tuple<TypePack<ATs..., BTs...>, AOffset> {
     return { getImpl<AIs, ATs>(a)..., getImpl<BIs, BTs>(b)...};
 }
 template<class A, class B, class C>
@@ -142,13 +128,19 @@ constexpr auto concat(const A& a, const B& b, const C& c) {
 template<size_t I, class TP, size_t Offset>
 constexpr auto get(const Tuple<TP, Offset>& t) { return getImpl<I+Offset>(t); }
 
-template<size_t I, class TP, size_t Offset>
-constexpr auto fetch(const Tuple<TP, Offset>& t, std::enable_if_t<(I < Tuple<TP, Offset>::size)>* = {}) { return getImpl<I+Offset>(t); }
-
-template<size_t I, class TP, size_t Offset>
-constexpr auto fetch(const Tuple<TP, Offset>&, std::enable_if_t<(I >= Tuple<TP, Offset>::size)>* = {}) { struct _{}; return _{}; }
-
+template<size_t I, class T>
+constexpr auto fetch(const T& t) {
+    if constexpr (I < T::size) {
+        return get<I>(t);
+    }
+    else {
+        (void)t; // unused
+        struct _{};
+        return _{};
+    }
 }
+
+} // namespace constple
 
 /**
  * In this namespace we find the implementation of a template binary tree container
@@ -284,14 +276,10 @@ namespace binary {
 
 /** Compute the sum of many integers */
 template<typename... Args>
-constexpr int sums(Args... args) {
-    auto i = int{};
-    ordered<int>({(i += args, 0)...});
-    return i;
-}
+constexpr int sums(Args... args) { return static_cast<int>((args + ... + 0)); }
 // This indirection is required to work around a MSVC bug. (See https://github.com/woboq/verdigris/issues/6 )
-template <int ...Args>
-constexpr int summed = sums(Args...);
+template <auto ...args>
+constexpr int summed = sums(args...);
 
 /*
  * Helpers to play with static strings
