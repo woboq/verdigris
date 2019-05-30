@@ -301,18 +301,15 @@ constexpr int summed = sums(Args...);
 template<std::size_t N> using StaticStringArray = const char [N];
 
 /** Represents a string of size N  (N includes the '\0' at the end) */
-template<std::size_t N> struct StaticString
-{
+template<std::size_t N> struct StaticString {
     char data[N] = {};
     static constexpr std::size_t size = N;
     constexpr char operator[](int p) const { return data[p]; }
 };
-template <std::size_t N, std::size_t... Is>
-constexpr StaticString<N> makeStaticString(StaticStringArray<N> &d, index_sequence<Is...>) {
-    return { {d[Is]...} };
-}
 template <std::size_t N> constexpr StaticString<N> makeStaticString(StaticStringArray<N> &d) {
-    return makeStaticString(d, make_index_sequence<N>{});
+    auto r = StaticString<N>{};
+    for (auto i = 0u; i < N; ++i) r.data[i] = d[i];
+    return r;
 }
 
 /** A list containing many StaticString with possibly different sizes */
