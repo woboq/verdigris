@@ -385,13 +385,13 @@ struct EnumGenerator {
 // Generator for enum values
 struct EnumValuesGenerator {
     template<typename Strings, typename Names, size_t I = 0>
-    static constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<>, const Names&, constple::Index<I> = {})
+    static constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<>, const Names&, Index<I> = {})
     { return s; }
 
     template<typename Strings, std::size_t Value, std::size_t... Vs, typename Names, size_t I = 0>
-    static constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<Value, Vs...>, const Names& names, constple::Index<I> = {}) {
+    static constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<Value, Vs...>, const Names& names, Index<I> = {}) {
         auto s2 = s.addString(constple::get<I>(names)).template add<uint(Value)>();
-        return generateSingleEnumValues(s2, std::index_sequence<Vs...>{}, names, constple::Index<I+1>{});
+        return generateSingleEnumValues(s2, std::index_sequence<Vs...>{}, names, index<I+1>);
     }
 
     template<typename> static constexpr int offset() { return 0; }
@@ -407,35 +407,35 @@ struct EnumValuesGenerator {
  */
 template<typename ...Args> struct HandleArgsHelper {
     template<typename Strings, typename ParamTypes, size_t I = 0>
-    static constexpr auto result(const Strings &ss, const ParamTypes&, constple::Index<I> = {})
+    static constexpr auto result(const Strings &ss, const ParamTypes&, Index<I> = {})
     { return ss; }
 };
 template<typename A, typename... Args>
 struct HandleArgsHelper<A, Args...> {
     template<typename Strings, typename ParamTypes, size_t I = 0>
-    static constexpr auto result(const Strings &ss, const ParamTypes &paramTypes, constple::Index<I> = {}) {
+    static constexpr auto result(const Strings &ss, const ParamTypes &paramTypes, Index<I> = {}) {
         using Type = typename QtPrivate::RemoveConstRef<A>::Type;
         auto typeStr = constple::fetch<I>(paramTypes);
         using ts_t = decltype(typeStr);
         // This way, the overload of result will not pick the StaticString one if it is a tuple (because registered types have the priority)
         auto typeStr2 = std::conditional_t<std::is_same<A, Type>::value, ts_t, std::tuple<ts_t>>{typeStr};
         auto r1 = HandleType<Type>::result(ss, typeStr2);
-        return HandleArgsHelper<Args...>::result(r1, paramTypes, constple::Index<I+1>{});
+        return HandleArgsHelper<Args...>::result(r1, paramTypes, index<I+1>);
     }
 };
 template<std::size_t N> struct HandleArgNames {
     template<typename Strings, size_t Offset, size_t... Ls, size_t I = 0>
-    static constexpr auto result(const Strings &ss, const StaticStringList<Offset, Ls...>& pn, constple::Index<I> = {}, std::enable_if_t<(I < sizeof... (Ls))>* = {}) {
+    static constexpr auto result(const Strings &ss, const StaticStringList<Offset, Ls...>& pn, Index<I> = {}, std::enable_if_t<(I < sizeof... (Ls))>* = {}) {
         auto s2 = ss.addString(constple::get<I>(pn));
-        return HandleArgNames<N-1>::result(s2, pn, constple::Index<I+1>{});
+        return HandleArgNames<N-1>::result(s2, pn, index<I+1>);
     }
     template<typename Strings, size_t Offset, size_t...Ls, size_t I = 0>
-    static constexpr auto result(const Strings &ss, const StaticStringList<Offset, Ls...>& pn, constple::Index<I> = {}, std::enable_if_t<(I >= sizeof... (Ls))>* = {})
-    { return HandleArgNames<N-1>::result(ss.template add<1>(), pn, constple::Index<I+1>{}); }
+    static constexpr auto result(const Strings &ss, const StaticStringList<Offset, Ls...>& pn, Index<I> = {}, std::enable_if_t<(I >= sizeof... (Ls))>* = {})
+    { return HandleArgNames<N-1>::result(ss.template add<1>(), pn, index<I+1>); }
 };
 template<> struct HandleArgNames<0> {
     template<typename Strings, typename PN, size_t I = 0>
-    static constexpr auto result(const Strings &ss, const PN&, constple::Index<I> = {})
+    static constexpr auto result(const Strings &ss, const PN&, Index<I> = {})
     { return ss; }
 };
 

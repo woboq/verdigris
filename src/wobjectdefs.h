@@ -57,13 +57,14 @@ template<typename T> using identity_t = T;
 
 template<typename T> constexpr void ordered(std::initializer_list<T>) {}
 
-namespace constple {
-
 template <class...> struct TypePack {};
 template <size_t> struct Index {};
+template <size_t I> constexpr auto index = Index<I>{};
 
 template<class... Ts>
 constexpr auto typeCount(TypePack<Ts...>) -> size_t { return sizeof... (Ts); }
+
+namespace constple {
 
 template <class T, size_t I>
 struct Indexed {
@@ -315,7 +316,6 @@ template <std::size_t N> constexpr StaticString<N> makeStaticString(StaticString
 }
 
 /** A list containing many StaticString with possibly different sizes */
-using constple::TypePack;
 template<size_t Offset = 1000, size_t... Ls>
 using StaticStringList = constple::Tuple<TypePack<StaticString<Ls>...>, Offset>;
 
