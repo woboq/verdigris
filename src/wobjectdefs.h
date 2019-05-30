@@ -61,86 +61,11 @@ template <class...> struct TypePack {};
 template <size_t> struct Index {};
 template <size_t I> constexpr auto index = Index<I>{};
 
+template <size_t I> constexpr auto indexValue(Index<I> = {}) { return I; }
+template <class IV> constexpr auto index_value = indexValue(IV{});
+
 template<class... Ts>
 constexpr auto typeCount(TypePack<Ts...>) -> size_t { return sizeof... (Ts); }
-
-namespace constple {
-
-template <class T, size_t I>
-struct Indexed { T data; };
-
-// notice: T is inferred if index is given
-template <size_t I, class T>
-constexpr auto getImpl(const Indexed<T, I>& i) -> const T& { return i.data; }
-
-template<size_t Offset, size_t... Is>
-auto offsetIndices(index_sequence<Is...>) -> index_sequence<Offset + Is...>;
-template<size_t Offset, typename Seq>
-using offset_indices = decltype (offsetIndices<Offset>(Seq{}));
-
-template<class Tp, size_t Offset = 1000, class Is = offset_indices<Offset, make_index_sequence<typeCount(Tp{})>>>
-struct Tuple;
-
-template<class... Vs>
-constexpr bool isAll(Vs... vs) { return (vs && ... && true); }
-
-template<class... Ts, size_t Offset, size_t... Is>
-struct Tuple<TypePack<Ts...>, Offset, index_sequence<Is...>>
-    : Indexed<Ts, Is>...{
-
-    using Pack = TypePack<Ts...>;
-    static constexpr auto size = sizeof...(Ts);
-    //static_assert (size == sizeof... (Is), "Index has wrong length");
-
-    constexpr Tuple() = default;
-
-    template<class... Us
-              , class = std::enable_if_t< sizeof...( Us ) == sizeof...( Ts ) >
-#ifndef Q_CC_GNU // Gcc seems to fail on this
-              , class = std::enable_if_t< isAll((std::is_same<std::decay_t<Us>, Indexed<Ts, Is>>::value
-                                             || std::is_constructible<Ts, Us>::value)...) >
-#endif
-            >
-    constexpr Tuple(Us&& ...us)
-        : Indexed<Ts, Is>{(Us&&)us}... {}
-
-    template<class T>
-    constexpr auto append(const T& v) const {
-        return Tuple<TypePack<Ts..., T>, Offset>{static_cast<const Indexed<Ts, Is>&>(*this)..., v};
-    }
-
-    template<class T>
-    constexpr auto prepend(const T& v) const {
-        return Tuple<TypePack<T, Ts...>, Offset-1>{v, static_cast<const Indexed<Ts, Is>&>(*this)...};
-    }
-};
-
-template<class... ATs, size_t AOffset, size_t... AIs, class... BTs, size_t BOffset, size_t... BIs>
-constexpr auto concat(const Tuple<TypePack<ATs...>, AOffset, index_sequence<AIs...>>& a, const Tuple<TypePack<BTs...>, BOffset, index_sequence<BIs...>>& b)
-    -> Tuple<TypePack<ATs..., BTs...>, AOffset> {
-    return { getImpl<AIs, ATs>(a)..., getImpl<BIs, BTs>(b)...};
-}
-template<class A, class B, class C>
-constexpr auto concat(const A& a, const B& b, const C& c) {
-    return concat(concat(a,b), c);
-}
-
-template<size_t I, class TP, size_t Offset>
-constexpr auto get(const Tuple<TP, Offset>& t) { return getImpl<I+Offset>(t); }
-
-template<size_t I, class T>
-constexpr auto fetch(const T& t) {
-    if constexpr (I < T::size) {
-        return get<I>(t);
-    }
-    else {
-        (void)t; // unused
-        struct _{};
-        return _{};
-    }
-}
-
-} // namespace constple
 
 /**
  * In this namespace we find the implementation of a template binary tree container
@@ -278,7 +203,7 @@ namespace binary {
 template<typename... Args>
 constexpr int sums(Args... args) { return static_cast<int>((args + ... + 0)); }
 // This indirection is required to work around a MSVC bug. (See https://github.com/woboq/verdigris/issues/6 )
-template <auto ...args>
+template <int ...args>
 constexpr int summed = sums(args...);
 
 /*
@@ -300,30 +225,190 @@ template <std::size_t N> constexpr StaticString<N> makeStaticString(StaticString
     return r;
 }
 
-/** A list containing many StaticString with possibly different sizes */
-template<size_t Offset = 1000, size_t... Ls>
-using StaticStringList = constple::Tuple<TypePack<StaticString<Ls>...>, Offset>;
+template<size_t... Vs> struct IndexPack {};
+template<size_t... Vs> constexpr auto index_pack = IndexPack<Vs...>{};
 
-/** Make a StaticStringList out of many char array  */
-constexpr StaticStringList<> makeStaticLiteralList() { return {}; }
-template<typename... T>
-constexpr StaticStringList<> makeStaticLiteralList(StaticStringArray<1> &, T...)
-{ return {}; }
-template<std::size_t N, typename... T>
-constexpr auto makeStaticLiteralList(StaticStringArray<N> &h, T&...t)
-{ return makeStaticLiteralList(t...).prepend(makeStaticString(h)); }
+template<size_t N>
+struct IndexArray {
+    size_t data[N] = {};
 
-constexpr StaticStringList<> makeStaticStringList() { return {}; }
-template<typename... T>
-constexpr StaticStringList<> makeStaticStringList(StaticString<1>, T...)
-{ return {}; }
-template<std::size_t N, typename... T>
-constexpr auto makeStaticStringList(StaticString<N> h, T...t)
-{ return makeStaticStringList(t...).prepend(h); }
+    constexpr IndexArray() = default;
+    template<size_t... Vs> constexpr IndexArray(IndexPack<Vs...>) : data{Vs...} {}
 
-static_assert(std::is_same<decltype(makeStaticLiteralList()), StaticStringList<>>::value, "");
-static_assert(std::is_same<decltype(makeStaticLiteralList("H", "el"))::Pack, TypePack<StaticString<2>, StaticString<3>>>::value, "");
-static_assert(std::is_same<decltype(makeStaticLiteralList("H", "", "el"))::Pack, TypePack<StaticString<2>>>::value, "");
+    static constexpr auto size() noexcept -> size_t { return N; }
+    static constexpr bool empty() noexcept { return false; }
+
+    constexpr auto operator[](size_t i) const noexcept -> size_t { return data[i]; }
+};
+
+template<size_t... Vs>
+IndexArray(IndexPack<Vs...>) -> IndexArray<sizeof...(Vs)>;
+
+
+template<size_t N, size_t Base = 0> constexpr void computeOffsets(IndexArray<N> &offsets, const IndexArray<N>& sizes) {
+    auto o = Base;
+    for (auto i = 0u; i < N; ++i) {
+        offsets.data[i] = o;
+        o += sizes[i];
+    }
+}
+
+template<size_t... Sizes> constexpr auto toOffsetArray(IndexPack<Sizes...> = {}) {
+    auto offsets = IndexArray<sizeof...(Sizes)>{};
+    computeOffsets(offsets, IndexArray(index_pack<Sizes...>));
+    return offsets;
+}
+
+template<size_t... Ns>
+struct StaticStrings {
+    static constexpr auto size = sizeof...(Ns);
+    static constexpr auto N = summed<Ns ...>;
+
+    char data[N] = {0};
+
+    constexpr StaticStrings() = default;
+
+    constexpr StaticStrings(const StaticString<Ns>& ... os) {
+        auto p = data;
+        auto l = [&](const auto& s) {
+            for (auto c : s.data) *p++ = c;
+        };
+        (l(os), ...);
+    }
+
+    static constexpr auto sizeSequence() { return index_sequence<Ns...>{}; }
+
+    template<size_t I> constexpr auto operator[] (Index<I>) const {
+        constexpr auto o = toOffsetArray<Ns...>()[I];
+        constexpr auto n = IndexArray(index_pack<Ns...>)[I];
+        auto r = StaticString<n>{};
+        for (auto i = size_t{}; i < n; i++) r.data[i] = data[o + i];
+        return r;
+    }
+};
+template<>
+struct StaticStrings<> {
+    static constexpr auto size = 0;
+    static constexpr auto N = 0;
+    char data[1] = {0};
+};
+template<size_t... Ns>
+StaticStrings(const StaticString<Ns>&...) -> StaticStrings<Ns...>;
+
+template<size_t I, size_t...Ns>
+constexpr auto stringFetch(const StaticStrings<Ns...>& s, Index<I>) {
+    if constexpr (I < sizeof... (Ns)) {
+        return s[index<I>];
+    }
+    else {
+        struct _{};
+        return _{};
+    }
+}
+
+template<size_t... Ns, size_t On>
+constexpr auto operator+ (const StaticStrings<Ns...>& s, const StaticString<On>& o)
+        -> StaticStrings<Ns..., On> {
+    static_assert (((On > 0) && ... && (Ns > 0)));
+    auto r = StaticStrings<Ns..., On>{};
+    auto p = r.data;
+    auto l = [&](const auto& s) {
+        for (auto c : s.data) *p++ = c;
+    };
+    if constexpr (sizeof... (Ns) > 0) l(s);
+    l(o);
+    return r;
+}
+
+static_assert(
+    (StaticStrings{makeStaticString("Hello")} + makeStaticString("World"))
+        .data[5] == '\0');
+static_assert(
+    (StaticStrings{makeStaticString("Hello"), makeStaticString("World")}[index<1>])
+        .data[0] == 'W');
+
+template<size_t... Ns>
+constexpr size_t countValidStringLiterals() {
+    //constexpr auto na = IndexArray{index_pack<Ns...>};
+    constexpr size_t na[sizeof... (Ns)] = {Ns...}; // Workaround for internal compiler error VS2017 & VS2019
+    auto i = size_t{};
+    for (auto n : na) { if (n <= 1) break; i++; }
+    return i;
+}
+template<size_t... Ns, size_t... Rs, size_t... Is>
+constexpr auto makeStaticLiterals(index_sequence<Rs...>, index_sequence<Is...>, const char (& ...ns)[Ns]) {
+    //constexpr auto na = IndexArray{index_pack<Ns...>};
+    constexpr size_t na[sizeof... (Ns)] = {Ns...}; // Workaround for internal compiler error VS2017 & VS2019
+    auto r = StaticStrings<na[Rs]...>{};
+    auto p = r.data;
+    auto l = [&p](auto& s, auto i) {
+        constexpr auto si = index_value<decltype(i)>;
+        if constexpr (si < sizeof... (Rs)) {
+            for (auto c : s) *p++ = c;
+        }
+        else (void)s;
+    };
+    (l(ns, index<Is>),...);
+    return r;
+}
+template<size_t... Ns>
+constexpr auto makeStaticLiterals(const char (& ...ns)[Ns]) {
+    if constexpr (sizeof... (Ns) == 0) return StaticStrings<>{};
+    else {
+        constexpr auto r = countValidStringLiterals<Ns...>();
+        if constexpr (r == 0) {
+            ((void)ns,...);
+            return StaticStrings<>{};
+        }
+        else {
+            constexpr auto rs = make_index_sequence<r>{};
+            constexpr auto is = make_index_sequence<sizeof... (Ns)>{};
+            return makeStaticLiterals(rs, is, ns...);
+        }
+    }
+}
+
+template<size_t... Ns, size_t... Rs, size_t... Is>
+constexpr auto makeStaticStrings(index_sequence<Rs...>, index_sequence<Is...>, const StaticString<Ns>& ... ns) {
+    //constexpr auto na = IndexArray{index_pack<Ns...>};
+    constexpr size_t na[sizeof... (Ns)] = {Ns...}; // Workaround for internal compiler error VS2017 & VS2019
+    auto r = StaticStrings<na[Rs]...>{};
+    auto p = r.data;
+    auto l = [&](const auto& s, auto i) mutable {
+        constexpr auto si = indexValue(decltype(i){});
+        if constexpr (si < sizeof... (Rs)) {
+            for (auto c : s.data) *p++ = c;
+        }
+        else (void)s;
+    };
+    (l(ns, index<Is>),...);
+    return r;
+}
+template<size_t... Ns>
+constexpr auto makeStaticStrings(const StaticString<Ns>& ... ns) {
+    if constexpr (sizeof... (Ns) == 0) return StaticStrings<>{};
+    else {
+        constexpr auto r = countValidStringLiterals<Ns...>();
+        if constexpr (r == 0) {
+            ((void)ns,...);
+            return StaticStrings<>{};
+        }
+        else {
+            constexpr auto rs = make_index_sequence<r>{};
+            constexpr auto is = make_index_sequence<sizeof... (Ns)>{};
+            return makeStaticStrings(rs, is, ns...);
+        }
+    }
+}
+
+static_assert(std::is_same<decltype(makeStaticLiterals()), StaticStrings<>>::value, "");
+static_assert(std::is_same<decltype(makeStaticLiterals("H", "el")), StaticStrings<2, 3>>::value, "");
+static_assert(makeStaticLiterals("H", "el").data[1] == '\0');
+static_assert(std::is_same<decltype(makeStaticLiterals("H", "", "el")), StaticStrings<2>>::value, "");
+static_assert(makeStaticLiterals("H", "", "el").data[1] == '\0');
+
+static_assert(std::is_same<decltype(makeStaticStrings()), StaticStrings<>>::value, "");
+static_assert(makeStaticStrings(makeStaticString("H"), makeStaticString(""), makeStaticString("el")).data[1] == '\0');
 
 /*-----------*/
 
@@ -410,7 +495,7 @@ constexpr std::integral_constant<int, int(w_internal::PropertyFlags::Final)> W_F
 namespace w_internal {
 
 /** Holds information about a method */
-template<typename F, std::size_t NameLength, int Flags, typename IC, typename ParamTypes, typename ParamNames = StaticStringList<>>
+template<typename F, std::size_t NameLength, int Flags, typename IC, typename ParamTypes, typename ParamNames = StaticStrings<>>
 struct MetaMethodInfo {
     F func;
     StaticString<NameLength> name;
@@ -744,11 +829,11 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 // strignify and make a StaticStringList out of an array of arguments
 #define W_PARAM_TOSTRING(...) W_MACRO_MSVC_EMPTY W_MACRO_MSVC_DELAY(W_PARAM_TOSTRING2,__VA_ARGS__ ,,,,,,,,,,,,,,,,)
 #define W_PARAM_TOSTRING2(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
-    w_internal::makeStaticLiteralList(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
+    w_internal::makeStaticLiterals(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
 
 #define W_PARAM_TOSTRING_REMOVE_SCOPE(...) W_MACRO_MSVC_EMPTY W_MACRO_MSVC_DELAY(W_PARAM_TOSTRING2_REMOVE_SCOPE,__VA_ARGS__ ,,,,,,,,,,,,,,,,)
 #define W_PARAM_TOSTRING2_REMOVE_SCOPE(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
-    w_internal::makeStaticStringList(W_MACRO_STRREMSCOPE(A1), W_MACRO_STRREMSCOPE(A2), W_MACRO_STRREMSCOPE(A3), \
+    w_internal::makeStaticStrings(W_MACRO_STRREMSCOPE(A1), W_MACRO_STRREMSCOPE(A2), W_MACRO_STRREMSCOPE(A3), \
                                      W_MACRO_STRREMSCOPE(A4), W_MACRO_STRREMSCOPE(A5), W_MACRO_STRREMSCOPE(A6), \
                                      W_MACRO_STRREMSCOPE(A7), W_MACRO_STRREMSCOPE(A8), W_MACRO_STRREMSCOPE(A9), \
                                      W_MACRO_STRREMSCOPE(A10), W_MACRO_STRREMSCOPE(A11), W_MACRO_STRREMSCOPE(A12), \
