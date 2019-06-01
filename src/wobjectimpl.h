@@ -67,7 +67,7 @@ struct IntermediateState {
 
     /// add a string to the strings state and add its index to the end of the int array
     template<std::size_t L>
-    constexpr auto addString(const StaticString<L> & s) const {
+    constexpr auto addString(StaticString<L> s) const {
         auto s2 = strings + s;
         constexpr auto i2 = is.append(ints<Strings::size>);
         return IntermediateState<decltype (s2), decltype(i2)>{s2};
@@ -89,8 +89,8 @@ struct IntermediateState {
 };
 
 constexpr auto _test_tmp = IntermediateState<StaticStrings<>, Ints<23>>{{}}
-                               .addString(makeStaticString("Hello"))
-                               .addTypeString(makeStaticString("int"))
+                               .addString(StaticString{"Hello"})
+                               .addTypeString(StaticString{"int"})
                                .add(ints<42>)
                                .add(ints<10,11,12>);
 static_assert (_test_tmp.is.size == 7, "");
@@ -218,7 +218,7 @@ static constexpr auto makeObjectInfo(StaticStringArray<N> &name) {
     constexpr int sigCount = sigState.size;
     return ObjectInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo),
                         decltype(enumInfo), decltype(classInfo), decltype(interfaceInfo), sigCount>
-        { makeStaticString(name), methodInfo, constructorInfo, propertyInfo, enumInfo, classInfo, interfaceInfo };
+        { StaticString{name}, methodInfo, constructorInfo, propertyInfo, enumInfo, classInfo, interfaceInfo };
 }
 
 // Generator for Q_CLASSINFO to be used in generate<>()
@@ -527,7 +527,7 @@ constexpr auto generateDataArray(const ObjI &objectInfo) {
     constexpr int enumValueOffset = constructorParamIndex +
         paramOffset<decltype(objectInfo.constructors)>(make_index_sequence<ObjI::constructorCount>{});
 
-    auto stringData = StaticStrings(objectInfo.name, StaticString<1>{'\0'});
+    auto stringData = StaticStrings(objectInfo.name, StaticString{""});
     constexpr auto intData = ints<QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 8 : 7, // revision
         0,       // classname
         ObjI::classInfoCount,  classInfoOffset, // classinfo
@@ -579,7 +579,7 @@ struct BuildStringDataHelper<std::index_sequence<I...>, std::index_sequence<N...
     inline static meta_stringdata_t qt_meta_stringdata = {
         {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(N-1,
                 stringdata_offset + o[I] - I * sizeof(QByteArrayData))...},
-        makeStaticString(T::data.strings.data)
+        StaticString{T::data.strings.data}
     };
 };
 
@@ -635,7 +635,7 @@ template<typename T>
 static constexpr QMetaObject createMetaObject()
 {
     using Creator = typename T::W_MetaObjectCreatorHelper;
-    auto string_data = build_string_data<Creator>(Creator::data.strings.sizeSequence());
+    auto string_data = build_string_data<Creator>(Creator::data.strings.size_sequence);
     auto int_data = Creator::data.is;
     return { { parentMetaObject<T>(0) , string_data , int_data.array,  T::qt_static_metacall, {}, {} }  };
 }

@@ -217,70 +217,73 @@ template<std::size_t N> using StaticStringArray = const char [N];
 template<std::size_t N> struct StaticString {
     char data[N] = {};
     static constexpr std::size_t size = N;
-    constexpr char operator[](int p) const { return data[p]; }
+
+    constexpr StaticString() = default;
+    template<size_t L>
+    constexpr StaticString(const char (&d)[L]) {
+        static_assert (L == N);
+        auto p = data;
+        for (auto c : d) *p++ = c;
+    }
 };
-template <std::size_t N> constexpr StaticString<N> makeStaticString(StaticStringArray<N> &d) {
-    auto r = StaticString<N>{};
-    for (auto i = 0u; i < N; ++i) r.data[i] = d[i];
-    return r;
-}
+template<size_t N> StaticString(const char (&)[N]) -> StaticString<N>;
 
 template<size_t... Vs> struct IndexPack {};
 template<size_t... Vs> constexpr auto index_pack = IndexPack<Vs...>{};
 
+template<class T, size_t N> using RawArray = T[N];
+
 template<size_t N>
 struct IndexArray {
     size_t data[N] = {};
+    static constexpr size_t size = N;
 
     constexpr IndexArray() = default;
-    template<size_t... Vs> constexpr IndexArray(IndexPack<Vs...>) : data{Vs...} {}
-
-    static constexpr auto size() noexcept -> size_t { return N; }
-    static constexpr bool empty() noexcept { return false; }
+    template<size_t... Vs> constexpr IndexArray(IndexPack<Vs...>) : data{Vs...} {
+        static_assert (N == sizeof... (Vs));
+    }
 
     constexpr auto operator[](size_t i) const noexcept -> size_t { return data[i]; }
 };
-
-template<size_t... Vs>
-IndexArray(IndexPack<Vs...>) -> IndexArray<sizeof...(Vs)>;
+template<size_t... Vs> IndexArray(IndexPack<Vs...>) -> IndexArray<sizeof...(Vs)>;
 
 
-template<size_t N, size_t Base = 0> constexpr void computeOffsets(IndexArray<N> &offsets, const IndexArray<N>& sizes) {
-    auto o = Base;
-    for (auto i = 0u; i < N; ++i) {
-        offsets.data[i] = o;
-        o += sizes[i];
-    }
-}
-
-template<size_t... Sizes> constexpr auto toOffsetArray(IndexPack<Sizes...> = {}) {
+template<size_t... Sizes> constexpr auto toOffsetArray() {
     auto offsets = IndexArray<sizeof...(Sizes)>{};
-    computeOffsets(offsets, IndexArray(index_pack<Sizes...>));
+    auto o = size_t{};
+    auto p = offsets.data;
+    ((*p++ = o, o += Sizes),...);
     return offsets;
+}
+template<size_t I, size_t... Sizes> constexpr auto getOffset() -> size_t {
+    auto i = 0u;
+    auto o = size_t{};
+    ((i++ < I ? o += Sizes : 0u), ...);
+    return o;
 }
 
 template<size_t... Ns>
 struct StaticStrings {
+    static_assert (((Ns > 0) && ...));
     static constexpr auto size = sizeof...(Ns);
     static constexpr auto N = summed<Ns ...>;
 
     char data[N] = {0};
 
     constexpr StaticStrings() = default;
-
-    constexpr StaticStrings(const StaticString<Ns>& ... os) {
+    template<size_t... Ls>
+    constexpr StaticStrings(const StaticString<Ls>& ... os) {
+        static_assert (summed<Ls...> == N);
         auto p = data;
-        auto l = [&](const auto& s) {
-            for (auto c : s.data) *p++ = c;
-        };
+        auto l = [&](const auto& s) { for (auto c : s.data) *p++ = c; };
         (l(os), ...);
     }
 
-    static constexpr auto sizeSequence() { return index_sequence<Ns...>{}; }
+    static constexpr auto size_sequence = index_sequence<Ns...>{};
 
     template<size_t I> constexpr auto operator[] (Index<I>) const {
-        constexpr auto o = toOffsetArray<Ns...>()[I];
-        constexpr auto n = IndexArray(index_pack<Ns...>)[I];
+        constexpr auto o = getOffset<I, Ns...>();
+        constexpr auto n = (RawArray<size_t, sizeof... (Ns)>{Ns...})[I];
         auto r = StaticString<n>{};
         for (auto i = size_t{}; i < n; i++) r.data[i] = data[o + i];
         return r;
@@ -301,6 +304,7 @@ constexpr auto stringFetch(const StaticStrings<Ns...>& s, Index<I>) {
         return s[index<I>];
     }
     else {
+        (void)s;
         struct _{};
         return _{};
     }
@@ -309,22 +313,34 @@ constexpr auto stringFetch(const StaticStrings<Ns...>& s, Index<I>) {
 template<size_t... Ns, size_t On>
 constexpr auto operator+ (const StaticStrings<Ns...>& s, const StaticString<On>& o)
         -> StaticStrings<Ns..., On> {
-    static_assert (((On > 0) && ... && (Ns > 0)));
-    auto r = StaticStrings<Ns..., On>{};
-    auto p = r.data;
-    auto l = [&](const auto& s) {
+    if constexpr (0 == sizeof... (Ns)) {
+        (void)s;
+        return {o};
+    }
+    else {
+        // return {StaticString{s.data}, o}; // msvc2017/2019 does not like this
+        auto r = StaticStrings<Ns..., On>{};
+        auto p = r.data;
         for (auto c : s.data) *p++ = c;
-    };
-    if constexpr (sizeof... (Ns) > 0) l(s);
-    l(o);
-    return r;
+        for (auto c : o.data) *p++ = c;
+        return r;
+    }
 }
 
 static_assert(
-    (StaticStrings{makeStaticString("Hello")} + makeStaticString("World"))
+    (StaticStrings{StaticString{"Hello"}} + StaticString{"Worlds"})
+        .data[4] == 'o');
+static_assert(
+    (StaticStrings{StaticString{"Hello"}} + StaticString{"Worlds"})
         .data[5] == '\0');
 static_assert(
-    (StaticStrings{makeStaticString("Hello"), makeStaticString("World")}[index<1>])
+    (StaticStrings{StaticString{"Hello"}} + StaticString{"World"})
+        .data[6] == 'W');
+static_assert(
+    (StaticStrings{} + StaticString{"Hey"})
+        .data[3] == '\0');
+static_assert(
+    (StaticStrings{StaticString{"Hello"}, StaticString{"World"}}[index<1>])
         .data[0] == 'W');
 
 template<size_t... Ns>
@@ -408,7 +424,7 @@ static_assert(std::is_same<decltype(makeStaticLiterals("H", "", "el")), StaticSt
 static_assert(makeStaticLiterals("H", "", "el").data[1] == '\0');
 
 static_assert(std::is_same<decltype(makeStaticStrings()), StaticStrings<>>::value, "");
-static_assert(makeStaticStrings(makeStaticString("H"), makeStaticString(""), makeStaticString("el")).data[1] == '\0');
+static_assert(makeStaticStrings(StaticString{"H"}, StaticString{""}, StaticString{"el"}).data[1] == '\0');
 
 /*-----------*/
 
@@ -509,22 +525,22 @@ struct MetaMethodInfo {
 // Called from the W_SLOT macro
 template<typename F, std::size_t N, typename ParamTypes, int... Flags, typename IntegralConstant>
 constexpr MetaMethodInfo<F, N, summed<Flags...> | W_MethodType::Slot.value, IntegralConstant, ParamTypes>
-makeMetaSlotInfo(F f, StaticStringArray<N> &name, IntegralConstant, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
-{ return { f, makeStaticString(name), paramTypes, {} }; }
+makeMetaSlotInfo(F f, StaticString<N> name, IntegralConstant, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
+{ return { f, name, paramTypes, {} }; }
 
 // Called from the W_METHOD macro
 template<typename F, std::size_t N, typename ParamTypes, int... Flags, typename IntegralConstant>
 constexpr MetaMethodInfo<F, N, summed<Flags...> | W_MethodType::Method.value, IntegralConstant, ParamTypes>
-makeMetaMethodInfo(F f, StaticStringArray<N> &name, IntegralConstant, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
-{ return { f, makeStaticString(name), paramTypes, {} }; }
+makeMetaMethodInfo(F f, StaticString<N> name, IntegralConstant, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
+{ return { f, name, paramTypes, {} }; }
 
 // Called from the W_SIGNAL macro
 template<typename F, std::size_t N, typename ParamTypes, typename ParamNames, int... Flags, typename IntegralConstant>
 constexpr MetaMethodInfo<F, N, summed<Flags...> | W_MethodType::Signal.value, IntegralConstant,
                             ParamTypes, ParamNames>
-makeMetaSignalInfo(F f, StaticStringArray<N> &name, IntegralConstant, const ParamTypes &paramTypes,
+makeMetaSignalInfo(F f, StaticString<N> name, IntegralConstant, const ParamTypes &paramTypes,
                     const ParamNames &paramNames, W_MethodFlags<Flags>...)
-{ return { f, makeStaticString(name), paramTypes, paramNames }; }
+{ return { f, name, paramTypes, paramNames }; }
 
 /** Holds information about a constructor */
 template<std::size_t NameLength, typename... Args> struct MetaConstructorInfo {
@@ -534,7 +550,7 @@ template<std::size_t NameLength, typename... Args> struct MetaConstructorInfo {
     StaticString<NameLength> name;
     template<std::size_t N>
     constexpr MetaConstructorInfo<N, Args...> setName(StaticStringArray<N> &n)
-        { return { makeStaticString(n) }; }
+        { return { StaticString{n} }; }
     template<typename T, std::size_t... I>
     void createInstance(void **_a, index_sequence<I...>) const {
         *reinterpret_cast<T**>(_a[0]) =
@@ -543,7 +559,7 @@ template<std::size_t NameLength, typename... Args> struct MetaConstructorInfo {
 };
 // called from the W_CONSTRUCTOR macro
 template<typename...  Args> constexpr MetaConstructorInfo<1,Args...> makeMetaConstructorInfo()
-{ return { {'\0'} }; }
+{ return { {""} }; }
 
 struct Empty{
     constexpr operator bool() const { return false; }
@@ -646,9 +662,8 @@ constexpr auto parseProperty(const PropInfo &p, std::integral_constant<int, Flag
 { return parseProperty(p.template addFlag<Flag>() ,t...); }
 
 template<typename T, std::size_t N1, std::size_t N2, typename ... Args>
-constexpr auto makeMetaPropertyInfo(StaticStringArray<N1> &name, StaticStringArray<N2> &type, Args... args) {
-    MetaPropertyInfo<T, N1, N2> meta
-    { makeStaticString(name), makeStaticString(type), {}, {}, {}, {}, {} };
+constexpr auto makeMetaPropertyInfo(StaticString<N1> name, StaticString<N2> type, Args... args) {
+    auto meta = MetaPropertyInfo<T, N1, N2>{ name, type, {}, {}, {}, {}, {} };
     return parseProperty(meta, args...);
 }
 
@@ -675,7 +690,7 @@ constexpr MetaEnumInfo<NameLength, AliasLength, index_sequence<size_t(Values)...
                        Flag | EnumIsScoped<Enum>::Value> makeMetaEnumInfo(
                 StaticStringArray<NameLength> &name, StaticString<AliasLength> alias,
                 enum_sequence<Enum, Values...>, Names names) {
-    return { makeStaticString(name), alias, names };
+    return { StaticString{name}, alias, names };
 }
 
 // Helper function to remove the scope in a scoped enum name. (so "Foo::Bar" -> Bar)
@@ -898,7 +913,7 @@ constexpr auto simple_hash(char const *p) {
         friend constexpr w_internal::binary::tree<> w_EnumState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
         friend constexpr w_internal::binary::tree<> w_ClassInfoState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
         friend constexpr w_internal::binary::tree<> w_InterfaceState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-        template<typename W_Flag> static inline constexpr w_internal::StaticString<1> w_flagAlias(W_Flag) { return {'\0'}; } \
+        template<typename W_Flag> static inline constexpr w_internal::StaticString<1> w_flagAlias(W_Flag) { return {""}; } \
     public: \
         struct W_MetaObjectCreatorHelper;
 
@@ -966,7 +981,7 @@ constexpr auto simple_hash(char const *p) {
     static constexpr w_internal::binary::tree<> w_EnumState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
     static constexpr w_internal::binary::tree<> w_ClassInfoState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
     static constexpr w_internal::binary::tree<> w_InterfaceState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-    template<typename W_Flag> static inline constexpr w_internal::StaticString<1> w_flagAlias(W_Flag) { return {'\0'}; } \
+    template<typename W_Flag> static inline constexpr w_internal::StaticString<1> w_flagAlias(W_Flag) { return {""}; } \
     QT_ANNOTATE_CLASS(qt_fake, "")
 
 /**
@@ -986,7 +1001,7 @@ constexpr auto simple_hash(char const *p) {
 #define W_SLOT(...) W_MACRO_MSVC_EXPAND(W_SLOT2(__VA_ARGS__, w_internal::W_EmptyFlag))
 #define W_SLOT2(NAME, ...) \
     W_STATE_APPEND(w_SlotState, w_internal::makeMetaSlotInfo( \
-            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
+            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::StaticString{#NAME},  \
             W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__))) \
@@ -999,7 +1014,7 @@ constexpr auto simple_hash(char const *p) {
 #define W_INVOKABLE(...) W_MACRO_MSVC_EXPAND(W_INVOKABLE2(__VA_ARGS__, w_internal::W_EmptyFlag))
 #define W_INVOKABLE2(NAME, ...) \
     W_STATE_APPEND(w_MethodState, w_internal::makeMetaMethodInfo( \
-            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME,  \
+            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::StaticString{#NAME},  \
             W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__))) \
@@ -1031,7 +1046,7 @@ constexpr auto simple_hash(char const *p) {
     friend constexpr auto w_SignalState(w_internal::w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> w_counter, W_ThisType **w_this) \
         W_RETURN(w_internal::binary::tree_append(w_SignalState(w_counter.prev(), w_this), \
             w_internal::makeMetaSignalInfo( \
-                W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
+                W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::StaticString{#NAME}, \
                 W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
                 W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__))))) \
     static inline void w_GetAccessSpecifierHelper(W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)) {}
@@ -1050,7 +1065,7 @@ constexpr auto simple_hash(char const *p) {
     friend constexpr auto w_SignalState(w_internal::w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> w_counter, W_ThisType **w_this) \
         W_RETURN(w_internal::binary::tree_append(w_SignalState(w_counter.prev(), w_this), \
             w_internal::makeMetaSignalInfo( \
-                W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), #NAME, \
+                W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::StaticString{#NAME}, \
                 W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
                 W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat))) \
     static inline void w_GetAccessSpecifierHelper(W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)) {}
@@ -1080,7 +1095,7 @@ constexpr auto simple_hash(char const *p) {
 #define W_PROPERTY2(TYPE, NAME, ...) \
     W_STATE_APPEND(w_PropertyState, \
         w_internal::makeMetaPropertyInfo<W_MACRO_REMOVEPAREN(TYPE)>(\
-                            #NAME, W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE)), __VA_ARGS__))
+                            w_internal::StaticString{#NAME}, w_internal::StaticString{W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE))}, __VA_ARGS__))
 
 #define WRITE , &W_ThisType::
 #define READ , &W_ThisType::
@@ -1139,12 +1154,12 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 /** Same as Q_CLASSINFO.  Note, Q_CLASSINFO_NS is required for namespace */
 #define W_CLASSINFO(A, B) \
     W_STATE_APPEND(w_ClassInfoState, \
-        std::pair<w_internal::StaticString<sizeof(A)>, w_internal::StaticString<sizeof(B)>>{ w_internal::makeStaticString(A), w_internal::makeStaticString(B) })
+        std::pair<w_internal::StaticString<sizeof(A)>, w_internal::StaticString<sizeof(B)>>{ w_internal::StaticString{A}, w_internal::StaticString{B} })
 
 /** Same as Q_CLASSINFO, but within a namespace */
 #define W_CLASSINFO_NS(A, B) \
     W_STATE_APPEND_NS(w_ClassInfoState, \
-        std::pair<w_internal::StaticString<sizeof(A)>, w_internal::StaticString<sizeof(B)>>{ w_internal::makeStaticString(A), w_internal::makeStaticString(B) })
+        std::pair<w_internal::StaticString<sizeof(A)>, w_internal::StaticString<sizeof(B)>>{ w_internal::StaticString{A}, w_internal::StaticString{B} })
 
 
 /** Same as Q_INTERFACE */
@@ -1154,7 +1169,7 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 /** Same as Q_DECLARE_FLAGS */
 #define W_DECLARE_FLAGS(Flags, Enum) \
     Q_DECLARE_FLAGS(Flags, Enum) \
-    static inline constexpr w_internal::StaticString<sizeof(#Enum)> w_flagAlias(Flags) { return w_internal::makeStaticString(#Enum); }
+    static inline constexpr w_internal::StaticString<sizeof(#Enum)> w_flagAlias(Flags) { return w_internal::StaticString{#Enum}; }
 
 /** \macro W_REGISTER_ARGTYPE(TYPE)
  Registers TYPE so it can be used as a parameter of a signal/slot or return value.
@@ -1165,7 +1180,7 @@ namespace w_internal { template<typename T> struct W_TypeRegistery { enum { regi
 #define W_REGISTER_ARGTYPE(...) namespace w_internal { \
     template<> struct W_TypeRegistery<__VA_ARGS__> { \
     enum { registered = true }; \
-    static constexpr auto name = makeStaticString(#__VA_ARGS__); \
+    static constexpr auto name = StaticString{#__VA_ARGS__}; \
   };}
 W_REGISTER_ARGTYPE(char*)
 W_REGISTER_ARGTYPE(const char*)
