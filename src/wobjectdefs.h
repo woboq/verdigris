@@ -58,7 +58,8 @@ template<typename T> using identity_t = T;
 template<typename T> constexpr void ordered(std::initializer_list<T>) {}
 
 template <class...> struct TypePack {};
-template <size_t> struct Index {};
+struct IndexBase {};
+template <size_t> struct Index : IndexBase {};
 template <size_t I> constexpr auto index = Index<I>{};
 
 template <size_t I> constexpr auto indexValue(Index<I> = {}) { return I; }
@@ -268,11 +269,11 @@ struct StaticStrings {
     static constexpr auto size = sizeof...(Ns);
     static constexpr auto N = summed<Ns ...>;
 
-    char data[N] = {0};
+    char data[(N > 0 ? N : 1)] = {0};
 
     constexpr StaticStrings() = default;
-    template<size_t... Ls>
-    constexpr StaticStrings(const StaticString<Ls>& ... os) {
+    template<size_t... Ls, class = std::enable_if_t<(sizeof... (Ls) > 0)>>
+    constexpr StaticStrings(StaticString<Ls> ... os) {
         static_assert (summed<Ls...> == N);
         auto p = data;
         auto l = [&](const auto& s) { for (auto c : s.data) *p++ = c; };
@@ -289,14 +290,13 @@ struct StaticStrings {
         return r;
     }
 };
-template<>
-struct StaticStrings<> {
-    static constexpr auto size = 0;
-    static constexpr auto N = 0;
-    char data[1] = {0};
-};
-template<size_t... Ns>
-StaticStrings(const StaticString<Ns>&...) -> StaticStrings<Ns...>;
+template<size_t N, size_t... Ns>
+StaticStrings(StaticString<N>, StaticString<Ns>...) -> StaticStrings<N, Ns...>;
+
+static_assert(StaticStrings(StaticString{"Hello"}, StaticString{"World"}).data[4] == 'o');
+static_assert(
+    (StaticStrings{StaticString{"Hello"}, StaticString{"World"}}[index<1>])
+        .data[0] == 'W');
 
 template<size_t I, size_t...Ns>
 constexpr auto stringFetch(const StaticStrings<Ns...>& s, Index<I>) {
@@ -339,9 +339,6 @@ static_assert(
 static_assert(
     (StaticStrings{} + StaticString{"Hey"})
         .data[3] == '\0');
-static_assert(
-    (StaticStrings{StaticString{"Hello"}, StaticString{"World"}}[index<1>])
-        .data[0] == 'W');
 
 template<size_t... Ns>
 constexpr size_t countValidStringLiterals() {
@@ -901,41 +898,80 @@ constexpr auto simple_hash(char const *p) {
 #define W_INTEGRAL_CONSTANT_HELPER(NAME, ...) std::integral_constant<unsigned long long, w_internal::simple_hash(#NAME #__VA_ARGS__)>
 #endif
 
+namespace w_internal {
+
+template<size_t L, size_t N = 0, size_t M = 1024, size_t X = (N+M)/2, class F, class... As>
+constexpr auto count(F f, As... as) {
+    using R = decltype(std::declval<F>()(index<X>, As{}...));
+    if constexpr (N==X) {
+        (void)f;
+        ((void)as, ...);
+        return std::is_same_v<void, R> ? N : M;
+    }
+    else if constexpr (std::is_same_v<void, R>) {
+        return count<L, N, X>(f, as...);
+    }
+    else {
+        return count<L, X, M>(f, as...);
+    }
+}
+
+template<class T>
+constexpr void w_SlotState(IndexBase, T**);
+template<size_t L, class ThisType>
+constexpr auto w_SlotStateCount = count<L>([](auto... a) -> decltype(w_SlotState(a...)) {}, ThisType{});
+
+template<class T>
+constexpr void w_SignalState(IndexBase, T**);
+template<size_t L, class ThisType>
+constexpr auto w_SignalStateCount = count<L>([](auto... a) -> decltype(w_SignalState(a...)) {}, ThisType{});
+
+template<class T>
+constexpr void w_MethodState(IndexBase, T**);
+template<size_t L, class ThisType>
+constexpr auto w_MethodStateCount = count<L>([](auto... a) -> decltype(w_MethodState(a...)) {}, ThisType{});
+
+template<class T>
+constexpr void w_ConstructorState(IndexBase, T**);
+template<size_t L, class ThisType>
+constexpr auto w_ConstructorStateCount = count<L>([](auto... a) -> decltype(w_ConstructorState(a...)) {}, ThisType{});
+
+template<class T>
+constexpr void w_PropertyState(IndexBase, T**);
+template<size_t L, class ThisType>
+constexpr auto w_PropertyStateCount = count<L>([](auto... a) -> decltype(w_PropertyState(a...)) {}, ThisType{});
+
+template<class T>
+constexpr void w_EnumState(IndexBase, T**);
+template<size_t L, class ThisType>
+constexpr auto w_EnumStateCount = count<L>([](auto... a) -> decltype(w_EnumState(a...)) {}, ThisType{});
+
+template<class T>
+constexpr void w_ClassInfoState(IndexBase, T**);
+template<size_t L, class ThisType>
+constexpr auto w_ClassInfoStateCount = count<L>([](auto... a) -> decltype(w_ClassInfoState(a...)) {}, ThisType{});
+
+template<class T>
+constexpr void w_InterfaceState(IndexBase, T**);
+template<size_t L, class ThisType>
+constexpr auto w_InterfaceStateCount = count<L>([](auto... a) -> decltype(w_InterfaceState(a...)) {}, ThisType{});
+
+}
+
 #define W_OBJECT_COMMON(TYPE) \
         using W_ThisType = TYPE; \
         static constexpr auto &W_UnscopedName = #TYPE; /* so we don't repeat it in W_CONSTRUCTOR */ \
         friend struct w_internal::FriendHelper; \
-        friend constexpr w_internal::binary::tree<> w_SlotState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr w_internal::binary::tree<> w_SignalState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr w_internal::binary::tree<> w_MethodState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr w_internal::binary::tree<> w_ConstructorState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr w_internal::binary::tree<> w_PropertyState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr w_internal::binary::tree<> w_EnumState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr w_internal::binary::tree<> w_ClassInfoState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-        friend constexpr w_internal::binary::tree<> w_InterfaceState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
         template<typename W_Flag> static inline constexpr w_internal::StaticString<1> w_flagAlias(W_Flag) { return {""}; } \
     public: \
         struct W_MetaObjectCreatorHelper;
 
-#if defined Q_CC_GNU && !defined Q_CC_CLANG
-// workaround gcc bug  (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=69836)
 #define W_STATE_APPEND(STATE, ...) \
-    static constexpr int W_MACRO_CONCAT(W_WORKAROUND_, __LINE__) = \
-        decltype(STATE(w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))::size+1; \
-    friend constexpr auto STATE(w_internal::w_number<W_MACRO_CONCAT(W_WORKAROUND_, __LINE__)> w_counter, W_ThisType **w_this) \
-        W_RETURN(w_internal::binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
-#else
-#define W_STATE_APPEND(STATE, ...) \
-    friend constexpr auto STATE(w_internal::w_number<w_internal::identity_t<decltype(STATE( \
-            w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))>::size+1> w_counter, \
-            W_ThisType **w_this) \
-        W_RETURN(w_internal::binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
-#endif
+    friend constexpr auto STATE(w_internal::Index<w_internal::STATE##Count<__COUNTER__, W_ThisType**>>, \
+            W_ThisType**) W_RETURN((__VA_ARGS__))
 #define W_STATE_APPEND_NS(STATE, ...) \
-    static constexpr auto STATE(w_internal::w_number<decltype(STATE( \
-            w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))::size+1> w_counter, \
-            W_ThisType **w_this) \
-        W_RETURN(w_internal::binary::tree_append(STATE(w_counter.prev(), w_this), __VA_ARGS__))
+    static constexpr auto STATE(w_internal::Index<w_internal::STATE##Count<__COUNTER__, W_ThisType**>>, \
+            W_ThisType**) W_RETURN((__VA_ARGS__))
 
 //
 // public macros
@@ -973,15 +1009,7 @@ constexpr auto simple_hash(char const *p) {
         static constexpr auto qt_static_metacall = nullptr; \
     }; \
     static constexpr auto &W_UnscopedName = #NAMESPACE; \
-    static constexpr w_internal::binary::tree<> w_SlotState(w_internal::w_number<0>, W_ThisType**) { Q_UNUSED(W_UnscopedName) return {}; } \
-    static constexpr w_internal::binary::tree<> w_SignalState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-    static constexpr w_internal::binary::tree<> w_MethodState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-    static constexpr w_internal::binary::tree<> w_ConstructorState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-    static constexpr w_internal::binary::tree<> w_PropertyState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-    static constexpr w_internal::binary::tree<> w_EnumState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-    static constexpr w_internal::binary::tree<> w_ClassInfoState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-    static constexpr w_internal::binary::tree<> w_InterfaceState(w_internal::w_number<0>, W_ThisType**) { return {}; } \
-    template<typename W_Flag> static inline constexpr w_internal::StaticString<1> w_flagAlias(W_Flag) { return {""}; } \
+    template<typename W_Flag> static inline constexpr w_internal::StaticString<1> w_flagAlias(W_Flag) { Q_UNUSED(W_UnscopedName) return {""}; } \
     QT_ANNOTATE_CLASS(qt_fake, "")
 
 /**
@@ -1042,13 +1070,12 @@ constexpr auto simple_hash(char const *p) {
         return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
     } \
     static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = \
-        decltype(w_SignalState(w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))::size; \
-    friend constexpr auto w_SignalState(w_internal::w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> w_counter, W_ThisType **w_this) \
-        W_RETURN(w_internal::binary::tree_append(w_SignalState(w_counter.prev(), w_this), \
-            w_internal::makeMetaSignalInfo( \
+        w_internal::w_SignalStateCount<__COUNTER__, W_ThisType**>; \
+    friend constexpr auto w_SignalState(w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>, W_ThisType**) \
+        W_RETURN(w_internal::makeMetaSignalInfo( \
                 W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::StaticString{#NAME}, \
                 W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
-                W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__))))) \
+                W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))) \
     static inline void w_GetAccessSpecifierHelper(W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)) {}
 
 /** \macro W_SIGNAL_COMPAT
@@ -1061,13 +1088,12 @@ constexpr auto simple_hash(char const *p) {
         return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
     } \
     static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = \
-        decltype(w_SignalState(w_internal::w_number<>{}, static_cast<W_ThisType**>(nullptr)))::size; \
-    friend constexpr auto w_SignalState(w_internal::w_number<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) + 1> w_counter, W_ThisType **w_this) \
-        W_RETURN(w_internal::binary::tree_append(w_SignalState(w_counter.prev(), w_this), \
-            w_internal::makeMetaSignalInfo( \
+        w_internal::w_SignalStateCount<__COUNTER__, W_ThisType**>; \
+    friend constexpr auto w_SignalState(w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>, W_ThisType**) \
+        W_RETURN(w_internal::makeMetaSignalInfo( \
                 W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::StaticString{#NAME}, \
                 W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
-                W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat))) \
+                W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat)) \
     static inline void w_GetAccessSpecifierHelper(W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)) {}
 
 /** W_CONSTRUCTOR(<parameter types>)

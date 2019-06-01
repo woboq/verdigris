@@ -95,6 +95,47 @@ constexpr auto _test_tmp = IntermediateState<StaticStrings<>, Ints<23>>{{}}
                                .add(ints<10,11,12>);
 static_assert (_test_tmp.is.size == 7, "");
 
+
+template<class F, size_t... Is>
+constexpr auto toTree(index_sequence<Is...>, F f) {
+    (void)f;
+    if constexpr (0 == sizeof... (Is)) return binary::tree<>{};
+    else if constexpr (1 == sizeof... (Is)) return (binary::tree_append(binary::tree<>{}, f(index<Is>)), ...);
+    else return binary::tree_cat(binary::tree_append(binary::tree<>{}, f(index<Is>)) ...);
+}
+
+template<size_t L, class ThisType>
+constexpr auto w_SlotStateTree = toTree(make_index_sequence<w_SlotStateCount<L, ThisType>>{},
+                                        [](auto i) { return w_SlotState(i, ThisType{}); });
+
+template<size_t L, class ThisType>
+constexpr auto w_SignalStateTree = toTree(make_index_sequence<w_SignalStateCount<L, ThisType>>{},
+                                          [](auto i) { return w_SignalState(i, ThisType{}); });
+
+template<size_t L, class ThisType>
+constexpr auto w_MethodStateTree = toTree(make_index_sequence<w_MethodStateCount<L, ThisType>>{},
+                                          [](auto i) { return w_MethodState(i, ThisType{}); });
+
+template<size_t L, class ThisType>
+constexpr auto w_ConstructorStateTree = toTree(make_index_sequence<w_ConstructorStateCount<L, ThisType>>{},
+                                               [](auto i) { return w_ConstructorState(i, ThisType{}); });
+
+template<size_t L, class ThisType>
+constexpr auto w_PropertyStateTree = toTree(make_index_sequence<w_PropertyStateCount<L, ThisType>>{},
+                                            [](auto i) { return w_PropertyState(i, ThisType{}); });
+
+template<size_t L, class ThisType>
+constexpr auto w_EnumStateTree = toTree(make_index_sequence<w_EnumStateCount<L, ThisType>>{},
+                                        [](auto i) { return w_EnumState(i, ThisType{}); });
+
+template<size_t L, class ThisType>
+constexpr auto w_ClassInfoStateTree = toTree(make_index_sequence<w_ClassInfoStateCount<L, ThisType>>{},
+                                             [](auto i) { return w_ClassInfoState(i, ThisType{}); });
+
+template<size_t L, class ThisType>
+constexpr auto w_InterfaceStateTree = toTree(make_index_sequence<w_InterfaceStateCount<L, ThisType>>{},
+                                             [](auto i) { return w_InterfaceState(i, ThisType{}); });
+
 /**
  * Iterate over all the items of a tree and call the Generator::generate function
  *
@@ -122,10 +163,10 @@ constexpr auto generate(const State& s, Tree t) {
 #if defined Q_CC_GNU && !defined Q_CC_CLANG /* Work around GCC bug 69681 */
 template <typename T> constexpr bool getSignalIndexHelperCompare(T f1, T f2) { return f1 == f2; }
 /** Helper to get information about the notify signal of the property within object T */
-template<typename T, int PropIdx, typename BaseT = T>
+template<size_t L, typename T, int PropIdx, typename BaseT = T>
 struct ResolveNotifySignal {
-    static constexpr auto signalState = w_SignalState(w_number<>{},static_cast<BaseT**>(nullptr));
-    static constexpr auto propertyInfo = w_PropertyState(w_number<>{},static_cast<T**>(nullptr));
+    static constexpr auto signalState = w_SignalStateTree<L, BaseT**>;
+    static constexpr auto propertyInfo = w_PropertyStateTree<L, T**>;
 private:
     static constexpr auto prop = binary::get<PropIdx>(propertyInfo);
     // We need to use SFINAE because of GCC bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=69681
@@ -154,9 +195,9 @@ template <typename T> constexpr bool getSignalIndexHelperCompare(T f1, T f2) { r
 template <typename T1, typename T2> constexpr bool getSignalIndexHelperCompare(T1, T2) { return false; }
 
 /** Helper to get information about the notify signal of the property within object T */
-template<typename T>
+template<size_t L, typename T>
 struct ResolveNotifySignal {
-    static constexpr auto signalState = w_SignalState(w_number<>{},static_cast<T**>(nullptr));
+    static constexpr auto signalState = w_SignalStateTree<L, T**>;
 private:
     template<typename F, size_t... I>
     static constexpr int computeSignalIndex(F f, index_sequence<I...>) {
@@ -171,10 +212,10 @@ public:
 #endif
 
 /** returns true if the object T has at least one property with a notify signal */
-template <typename T, std::size_t... I>
+template <size_t L, typename T, std::size_t... I>
 static constexpr bool hasNotifySignal(std::index_sequence<I...>)
 {
-    constexpr auto propertyInfo = w_PropertyState(w_number<>{},static_cast<T**>(nullptr));
+    constexpr auto propertyInfo = w_PropertyStateTree<L, T**>;
     Q_UNUSED(propertyInfo) // in case I is empty
     return sums(!std::is_same<decltype(binary::get<I>(propertyInfo).notify), std::nullptr_t>::value ...);
 }
@@ -205,16 +246,15 @@ struct ObjectInfo {
  * Pass the (qualified) name as a static string.
  * Called from W_OBJECT_IMPL
  */
-template<typename T, int N>
+template<size_t L, typename T, int N>
 static constexpr auto makeObjectInfo(StaticStringArray<N> &name) {
-    constexpr auto sigState = w_SignalState(w_number<>{}, static_cast<T**>(nullptr));
-    constexpr auto methodInfo = binary::tree_cat(sigState, w_SlotState(w_number<>{}, static_cast<T**>(nullptr)),
-                                                    w_MethodState(w_number<>{}, static_cast<T**>(nullptr)));
-    constexpr auto constructorInfo = w_ConstructorState(w_number<>{}, static_cast<T**>(nullptr));
-    constexpr auto propertyInfo = w_PropertyState(w_number<>{}, static_cast<T**>(nullptr));
-    constexpr auto enumInfo = w_EnumState(w_number<>{}, static_cast<T**>(nullptr));
-    constexpr auto classInfo = w_ClassInfoState(w_number<>{}, static_cast<T**>(nullptr));
-    constexpr auto interfaceInfo = w_InterfaceState(w_number<>{}, static_cast<T**>(nullptr));
+    constexpr auto sigState = w_SignalStateTree<L,T**>;
+    constexpr auto methodInfo = binary::tree_cat(sigState, w_SlotStateTree<L,T**>, w_MethodStateTree<L,T**>);
+    constexpr auto constructorInfo = w_ConstructorStateTree<L, T**>;
+    constexpr auto propertyInfo = w_PropertyStateTree<L, T**>;
+    constexpr auto enumInfo = w_EnumStateTree<L, T**>;
+    constexpr auto classInfo = w_ClassInfoStateTree<L, T**>;
+    constexpr auto interfaceInfo = w_InterfaceStateTree<L, T**>;
     constexpr int sigCount = sigState.size;
     return ObjectInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo),
                         decltype(enumInfo), decltype(classInfo), decltype(interfaceInfo), sigCount>
@@ -238,12 +278,16 @@ template <typename T, typename = std::enable_if_t<!std::is_final<T>::value>>
 struct Derived : T { template<typename M, typename X = T> static decltype(X::w_GetAccessSpecifierHelper(std::declval<M>())) test(M); };
 template <typename T, typename M> struct isProtected<T, M, decltype(Derived<T>::test(std::declval<M>()))> : std::true_type {};
 
+template<class... T>
+struct debug_types;
+
 // Generator for methods to be used in generate<>()
 template <typename T>
 struct MethodGenerator {
     template<typename Method> static constexpr int offset() { return 1 + Method::argCount * 2; }
     template<int ParamIndex, typename State, typename Method>
-    static constexpr auto generate(const State& s, const Method& method) {
+    static constexpr auto generate(State s, const Method& method) {
+        //auto x = debug_types<decltype(s)>{};
         return s.addString(method.name) // name
             .add(ints<Method::argCount,
                       ParamIndex, //parameters
@@ -308,7 +352,7 @@ struct PropertyGenerator {
 };
 
 // Generator for notify signals to be used in generate
-template<typename T, bool hasNotify>
+template<size_t L, typename T, bool hasNotify>
 struct NotifySignalGenerator {
     template<typename> static constexpr int offset() { return 1; }
         template<int Idx, typename State, typename Prop>
@@ -317,7 +361,7 @@ struct NotifySignalGenerator {
     }
 private:
 
-    static constexpr auto propertyInfo = w_PropertyState(w_number<>{},static_cast<T**>(nullptr));
+    static constexpr auto propertyInfo = w_PropertyStateTree<L, T**>;
 
     // No notify signal
     template<int, typename State>
@@ -331,9 +375,9 @@ private:
         std::is_same<T, typename QtPrivate::FunctionPointer<Func>::Object>::value, int> = 0)
     {
 #if defined Q_CC_GNU && !defined Q_CC_CLANG
-        constexpr int signalIndex = ResolveNotifySignal<T, Idx>::signalIndex();
+        constexpr int signalIndex = ResolveNotifySignal<L, T, Idx>::signalIndex();
 #else
-        constexpr int signalIndex = ResolveNotifySignal<T>::signalIndex(binary::get<Idx>(propertyInfo).notify);
+        constexpr int signalIndex = ResolveNotifySignal<L, T>::signalIndex(binary::get<Idx>(propertyInfo).notify);
 #endif
         static_assert(signalIndex >= 0, "NOTIFY signal not registered as a signal");
         return s.add(ints<signalIndex>);
@@ -345,10 +389,10 @@ private:
         !std::is_same<T, typename QtPrivate::FunctionPointer<Func>::Object>::value, int> = 0)
     {
 #if defined Q_CC_GNU && !defined Q_CC_CLANG
-        using Finder = ResolveNotifySignal<T, Idx, typename QtPrivate::FunctionPointer<Func>::Object>;
+        using Finder = ResolveNotifySignal<L, T, Idx, typename QtPrivate::FunctionPointer<Func>::Object>;
         constexpr int signalIndex = Finder::signalIndex();
 #else
-        using Finder = ResolveNotifySignal<typename QtPrivate::FunctionPointer<Func>::Object>;
+        using Finder = ResolveNotifySignal<L, typename QtPrivate::FunctionPointer<Func>::Object>;
         constexpr int signalIndex = Finder::signalIndex(binary::get<Idx>(propertyInfo).notify);
 #endif
         static_assert(signalIndex >= 0, "NOTIFY signal in parent class not registered as a W_SIGNAL");
@@ -358,7 +402,7 @@ private:
         return s.template addTypeString<IsUnresolvedNotifySignal>(sig.name);
     }
 };
-template<typename T> struct NotifySignalGenerator<T,false> {
+template<size_t L, typename T> struct NotifySignalGenerator<L, T,false> {
     template<typename> static constexpr int offset() { return 0; }
     template<int, typename State, typename Prop>
     static constexpr auto generate(State s, Prop) { return s; }
@@ -512,10 +556,10 @@ constexpr int paramOffset(std::index_sequence<I...>)
 /**
  * Generate the integer array and the lists of string
  */
-template<typename T, typename ObjI>
+template<size_t L, typename T, typename ObjI>
 constexpr auto generateDataArray(const ObjI &objectInfo) {
 
-    constexpr bool hasNotify = hasNotifySignal<T>(make_index_sequence<ObjI::propertyCount>{});
+    constexpr bool hasNotify = hasNotifySignal<L, T>(make_index_sequence<ObjI::propertyCount>{});
     constexpr int classInfoOffset = 14;
     constexpr int methodOffset = classInfoOffset + ObjI::classInfoCount * 2;
     constexpr int propertyOffset = methodOffset + ObjI::methodCount * 5;
@@ -542,7 +586,7 @@ constexpr auto generateDataArray(const ObjI &objectInfo) {
     auto classInfos = generate<ClassInfoGenerator, paramIndex>(header , objectInfo.classInfos);
     auto methods = generate<MethodGenerator<T>, paramIndex>(classInfos , objectInfo.methods);
     auto properties = generate<PropertyGenerator<T>, 0>(methods, objectInfo.properties);
-    auto notify = generate<NotifySignalGenerator<T, hasNotify>, 0>(properties, objectInfo.properties);
+    auto notify = generate<NotifySignalGenerator<L, T, hasNotify>, 0>(properties, objectInfo.properties);
     auto enums = generate<EnumGenerator, enumValueOffset>(notify, objectInfo.enums);
     auto constructors = generate<MethodGenerator<T>, constructorParamIndex>(enums, objectInfo.constructors);
     auto parametters = generate<MethodParametersGenerator, 0>(constructors, objectInfo.methods);
@@ -863,8 +907,8 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
 #define W_OBJECT_IMPL_COMMON(INLINE, ...) \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) struct W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_MetaObjectCreatorHelper { \
         static constexpr auto objectInfo = \
-            w_internal::makeObjectInfo<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>(W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))); \
-        static constexpr auto data = w_internal::generateDataArray<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>(objectInfo); \
+            w_internal::makeObjectInfo<__COUNTER__, W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>(W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))); \
+        static constexpr auto data = w_internal::generateDataArray<__COUNTER__, W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>(objectInfo); \
     }; \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) INLINE const QT_INIT_METAOBJECT QMetaObject W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::staticMetaObject = \
         w_internal::createMetaObject<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>();
