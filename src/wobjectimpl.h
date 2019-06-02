@@ -29,71 +29,93 @@ namespace w_internal {
 // Match MetaDataFlags constants form the MetaDataFlags in qmetaobject_p.h
 enum : uint { IsUnresolvedType = 0x80000000, IsUnresolvedNotifySignal = 0x70000000 };
 
-template<uint... Vs>
-struct Ints {
-    static constexpr size_t size = sizeof... (Vs);
+struct LayoutBuilder {
+    size_t stringSize{};
+    uint stringCount{};
+    uint intCount{};
 
-    template<uint... Ns>
-    static constexpr auto append(Ints<Ns...>) -> Ints<Vs..., Ns...> {
-        return {};
+    template<size_t L>
+    constexpr void addString(const StaticString<L>&) {
+        stringSize += L;
+        stringCount += 1;
+        intCount += 1;
     }
-
-    static constexpr uint array[sizeof...(Vs)] = {Vs...};
-
-    constexpr auto operator[](int i) const {
-        return array[i];
+    template<size_t L>
+    constexpr void addStringUntracked(const StaticString<L>&) {
+        stringSize += L;
+        stringCount += 1;
     }
-};
-template<uint... Vs>
-constexpr auto ints = Ints<Vs...>{};
-
-static_assert (ints<23>.append(ints<12>)[0] == 23, "");
-static_assert (ints<23>.append(ints<12, 13>).size == 3, "");
-
-/*
- * The QMetaObject is basically an array of int and an array of string.
- * Some of the int in the array are index in the string array.
- *
- * The IntermediateState class helps building the QMetaObject.
- * It contains the StaticStringList of strings within this meta object, and the array of int as
- * template parameter.
- *
- * It has helper method that helps extending the state
- */
-template<typename Strings, typename Is>
-struct IntermediateState {
-    const Strings strings;
-    static constexpr Is is = {};
-
-    /// add a string to the strings state and add its index to the end of the int array
-    template<std::size_t L>
-    constexpr auto addString(StaticString<L> s) const {
-        auto s2 = strings + s;
-        constexpr auto i2 = is.append(ints<Strings::size>);
-        return IntermediateState<decltype (s2), decltype(i2)>{s2};
-    }
-
-    /// same as before but add the IsUnresolvedType flag
     template<uint Flag = IsUnresolvedType, std::size_t L>
-    constexpr auto addTypeString(const StaticString<L> & s) const {
-        auto s2 = strings + s;
-        auto i2 = is.append(ints<Flag | Strings::size>);
-        return IntermediateState<decltype (s2), decltype(i2)>{s2};
+    constexpr void addTypeString(const StaticString<L>&) {
+        stringSize += L;
+        stringCount += 1;
+        intCount += 1;
     }
-
-    template<uint... Vs>
-    constexpr auto add(Ints<Vs...>) const
-        -> IntermediateState<Strings, decltype(is.append(ints<Vs...>))> {
-        return {strings};
+    template<class... Ts>
+    constexpr void addInts(Ts...) {
+        intCount += sizeof... (Ts);
     }
 };
+template<size_t StringSize, uint StringCount, uint IntCount>
+struct DataHolder {
+    static constexpr auto stringSize = StringSize;
+    static constexpr auto stringCount = StringCount;
+    static constexpr auto stringSequence = make_index_sequence<StringCount>{};
+    static constexpr auto intCount = IntCount;
+    RawArray<char, StringSize> stringChars{};
+    RawArray<size_t, StringCount> stringOffsets{};
+    RawArray<int, StringCount> stringSizes{};
+    RawArray<uint, IntCount> ints{};
+};
+struct DataBuilder {
+    char* scp{};
+    size_t* sop{};
+    int* ssp{};
+    uint* ip{};
+    uint stringCount{};
+    size_t so{};
 
-constexpr auto _test_tmp = IntermediateState<StaticStrings<>, Ints<23>>{{}}
-                               .addString(StaticString{"Hello"})
-                               .addTypeString(StaticString{"int"})
-                               .add(ints<42>)
-                               .add(ints<10,11,12>);
-static_assert (_test_tmp.is.size == 7, "");
+    constexpr DataBuilder() = default;
+    DataBuilder(const DataBuilder&) = delete;
+    template<size_t StringSize, uint StringCount, uint IntCount>
+    constexpr DataBuilder(DataHolder<StringSize, StringCount, IntCount>& r)
+        : scp(r.stringChars)
+        , sop(r.stringOffsets)
+        , ssp(r.stringSizes)
+        , ip(r.ints) {}
+
+    template<size_t L>
+    constexpr void addString(const StaticString<L>& s) {
+        for (auto c : s.data) *scp++ = c;
+        *sop++ = so;
+        *ssp++ = L;
+        *ip++ = stringCount;
+        so += L;
+        stringCount += 1;
+    }
+    template<size_t L>
+    constexpr void addStringUntracked(const StaticString<L>& s) {
+        for (auto c : s.data) *scp++ = c;
+        *sop++ = so;
+        *ssp++ = L;
+        so += L;
+        stringCount += 1;
+    }
+
+    template<uint Flag = IsUnresolvedType, std::size_t L>
+    constexpr void addTypeString(const StaticString<L>& s) {
+        for (auto c : s.data) *scp++ = c;
+        *sop++ = so;
+        *ssp++ = L;
+        *ip++ = Flag | stringCount;
+        so += L;
+        stringCount += 1;
+    }
+    template<class... Ts>
+    constexpr void addInts(Ts... vs) {
+        ((*ip++ = vs),...);
+    }
+};
 
 
 template<class F, size_t... Is>
@@ -151,12 +173,12 @@ constexpr auto w_InterfaceStateTree = toTree(make_index_sequence<w_InterfaceStat
  * the array for this element.
  */
 template<typename Generator, int Ofst, typename State>
-constexpr auto generate(const State& s, binary::tree<>)
-{ return s; }
+constexpr void generate(State&, binary::tree<>) {}
+
 template<typename Generator, int Ofst, typename State, typename Tree>
-constexpr auto generate(const State& s, Tree t) {
-    return generate<Generator, Ofst + Generator::template offset<binary::tree_element_t<0,Tree>>()>(
-        Generator::template generate<Ofst>(s, binary::tree_head(t)), binary::tree_tail(t));
+constexpr auto generate(State& s, Tree t) {
+    Generator::template generate<Ofst>(s, binary::tree_head(t));
+    generate<Generator, Ofst + Generator::template offset<binary::tree_element_t<0,Tree>>()>(s, binary::tree_tail(t));
 }
 
 
@@ -221,52 +243,33 @@ static constexpr bool hasNotifySignal(std::index_sequence<I...>)
 }
 
 /** Holds information about a class, including all the properties and methods */
-template<std::size_t NameLength, typename Methods, typename Constructors, typename Properties,
-            typename Enums, typename ClassInfos, typename Interfaces, int SignalCount>
+template<size_t L, class T, class Name>
 struct ObjectInfo {
-    StaticString<NameLength> name;
-    Methods methods;
-    Constructors constructors;
-    Properties properties;
-    Enums enums;
-    ClassInfos classInfos;
-    Interfaces interfaces;
+    static constexpr auto name = StaticString{Name::value};
+    static constexpr auto sigState = w_SignalStateTree<L,T**>;
+    static constexpr auto methods = binary::tree_cat(sigState, w_SlotStateTree<L,T**>, w_MethodStateTree<L,T**>);
+    static constexpr auto constructors = w_ConstructorStateTree<L, T**>;
+    static constexpr auto properties = w_PropertyStateTree<L, T**>;
+    static constexpr auto enums = w_EnumStateTree<L, T**>;
+    static constexpr auto classInfos = w_ClassInfoStateTree<L, T**>;
+    static constexpr auto interfaces = w_InterfaceStateTree<L, T**>;
 
-    static constexpr int methodCount = Methods::size;
-    static constexpr int constructorCount = Constructors::size;
-    static constexpr int propertyCount = Properties::size;
-    static constexpr int enumCount = Enums::size;
-    static constexpr int classInfoCount = ClassInfos::size;
-    static constexpr int interfaceCount = Interfaces::size;
-    static constexpr int signalCount = SignalCount;
+    static constexpr int methodCount = methods.size;
+    static constexpr int constructorCount = constructors.size;
+    static constexpr int propertyCount = properties.size;
+    static constexpr int enumCount = enums.size;
+    static constexpr int classInfoCount = classInfos.size;
+    static constexpr int interfaceCount = interfaces.size;
+    static constexpr int signalCount = sigState.size;
 };
-
-/**
- * Constructs a ObjectInfo for the object T.
- * Pass the (qualified) name as a static string.
- * Called from W_OBJECT_IMPL
- */
-template<size_t L, typename T, int N>
-static constexpr auto makeObjectInfo(StaticStringArray<N> &name) {
-    constexpr auto sigState = w_SignalStateTree<L,T**>;
-    constexpr auto methodInfo = binary::tree_cat(sigState, w_SlotStateTree<L,T**>, w_MethodStateTree<L,T**>);
-    constexpr auto constructorInfo = w_ConstructorStateTree<L, T**>;
-    constexpr auto propertyInfo = w_PropertyStateTree<L, T**>;
-    constexpr auto enumInfo = w_EnumStateTree<L, T**>;
-    constexpr auto classInfo = w_ClassInfoStateTree<L, T**>;
-    constexpr auto interfaceInfo = w_InterfaceStateTree<L, T**>;
-    constexpr int sigCount = sigState.size;
-    return ObjectInfo<N, decltype(methodInfo), decltype(constructorInfo), decltype(propertyInfo),
-                        decltype(enumInfo), decltype(classInfo), decltype(interfaceInfo), sigCount>
-        { StaticString{name}, methodInfo, constructorInfo, propertyInfo, enumInfo, classInfo, interfaceInfo };
-}
 
 // Generator for Q_CLASSINFO to be used in generate<>()
 struct ClassInfoGenerator {
     template<typename> static constexpr int offset() { return 0; }
     template<int, typename State, typename CI>
-    static constexpr auto generate(const State& s, CI ci) {
-        return s.addString(ci.first).addString(ci.second);
+    static constexpr auto generate(State& s, CI ci) {
+        s.addString(ci.first);
+        s.addString(ci.second);
     }
 };
 
@@ -286,13 +289,13 @@ template <typename T>
 struct MethodGenerator {
     template<typename Method> static constexpr int offset() { return 1 + Method::argCount * 2; }
     template<int ParamIndex, typename State, typename Method>
-    static constexpr auto generate(State s, const Method& method) {
+    static constexpr auto generate(State& s, const Method& method) {
         //auto x = debug_types<decltype(s)>{};
-        return s.addString(method.name) // name
-            .add(ints<Method::argCount,
-                      ParamIndex, //parameters
-                      1, //tag, always \0
-                      adjustFlags(Method::flags, typename Method::IntegralConstant())>);
+        s.addString(method.name); // name
+        s.addInts((uint)Method::argCount,
+                   ParamIndex, //parameters
+                   1, //tag, always \0
+                   adjustFlags(Method::flags, typename Method::IntegralConstant()));
     }
     template<typename M>
     static constexpr uint adjustFlags(uint f, M) {
@@ -316,19 +319,19 @@ template <typename T> struct MetaTypeIdIsBuiltIn<T, typename std::enable_if<QMet
 template<typename T, bool Builtin = MetaTypeIdIsBuiltIn<T>::value>
 struct HandleType {
     template<typename S, typename TypeStr = int>
-    static constexpr auto result(const S&s, TypeStr = {}) {
-        return s.add(ints<QMetaTypeId2<T>::MetaType>);
+    static constexpr auto result(S&s, TypeStr = {}) {
+        return s.addInts(QMetaTypeId2<T>::MetaType);
     }
 };
 template<typename T>
 struct HandleType<T, false> {
     template<typename Strings, typename TypeStr = int>
-    static constexpr auto result(const Strings &ss, TypeStr = {}) {
+    static constexpr void result(Strings &ss, TypeStr = {}) {
         return ss.addTypeString(W_TypeRegistery<T>::name);
         static_assert(W_TypeRegistery<T>::registered, "Please Register T with W_REGISTER_ARGTYPE");
     }
     template<typename Strings, std::size_t N>
-    static constexpr auto result(const Strings &ss, StaticString<N> typeStr,
+    static constexpr void result(Strings &ss, StaticString<N> typeStr,
                                     typename std::enable_if<(N>1),int>::type=0) {
         return ss.addTypeString(typeStr);
     }
@@ -339,15 +342,15 @@ template<typename T>
 struct PropertyGenerator {
     template<typename> static constexpr int offset() { return 0; }
     template<int, typename State, typename Prop>
-    static constexpr auto generate(State s, Prop prop) {
-        auto s2 = s.addString(prop.name);
-        auto s3 = HandleType<typename Prop::PropertyType>::result(s2, prop.typeStr);
+    static constexpr void generate(State& s, Prop prop) {
+        s.addString(prop.name);
+        HandleType<typename Prop::PropertyType>::result(s, prop.typeStr);
         constexpr uint moreFlags = (QtPrivate::IsQEnumHelper<typename Prop::PropertyType>::Value
             ? uint(PropertyFlags::EnumOrFlag) : 0);
         constexpr uint finalFlag = std::is_final<T>::value ? 0 | PropertyFlags::Final : 0;
         constexpr uint defaultFlags = 0 | PropertyFlags::Stored | PropertyFlags::Scriptable
             | PropertyFlags::Designable;
-        return s3.add(ints<Prop::flags | moreFlags | finalFlag | defaultFlags>);
+        s.addInts(Prop::flags | moreFlags | finalFlag | defaultFlags);
     }
 };
 
@@ -356,7 +359,7 @@ template<size_t L, typename T, bool hasNotify>
 struct NotifySignalGenerator {
     template<typename> static constexpr int offset() { return 1; }
         template<int Idx, typename State, typename Prop>
-    static constexpr auto generate(State s, Prop prop) {
+    static constexpr auto generate(State& s, Prop prop) {
         return process<Idx>(s, prop.notify);
     }
 private:
@@ -365,13 +368,13 @@ private:
 
     // No notify signal
     template<int, typename State>
-    static constexpr auto process(State s, Empty) {
-        return s.add(ints<0>);
+    static constexpr auto process(State& s, Empty) {
+        return s.addInts(0);
     }
 
     // Signal in the same class
     template<int Idx, typename State, typename Func>
-    static constexpr auto process(State s, Func, std::enable_if_t<
+    static constexpr auto process(State& s, Func, std::enable_if_t<
         std::is_same<T, typename QtPrivate::FunctionPointer<Func>::Object>::value, int> = 0)
     {
 #if defined Q_CC_GNU && !defined Q_CC_CLANG
@@ -380,12 +383,12 @@ private:
         constexpr int signalIndex = ResolveNotifySignal<L, T>::signalIndex(binary::get<Idx>(propertyInfo).notify);
 #endif
         static_assert(signalIndex >= 0, "NOTIFY signal not registered as a signal");
-        return s.add(ints<signalIndex>);
+        return s.addInts(signalIndex);
     }
 
     // Signal in a parent class
     template<int Idx, typename State, typename Func>
-    static constexpr auto process(State s, Func, std::enable_if_t<
+    static constexpr auto process(State& s, Func, std::enable_if_t<
         !std::is_same<T, typename QtPrivate::FunctionPointer<Func>::Object>::value, int> = 0)
     {
 #if defined Q_CC_GNU && !defined Q_CC_CLANG
@@ -405,37 +408,30 @@ private:
 template<size_t L, typename T> struct NotifySignalGenerator<L, T,false> {
     template<typename> static constexpr int offset() { return 0; }
     template<int, typename State, typename Prop>
-    static constexpr auto generate(State s, Prop) { return s; }
+    static constexpr auto generate(State& s, Prop) { return s; }
 };
 
 // Generator for enums to be used in generate<>()
 struct EnumGenerator {
     template<typename Enum> static constexpr int offset() { return Enum::count * 2; }
     template<int DataIndex, typename State, typename Enum>
-    static constexpr auto generate(State s, Enum e, std::enable_if_t<Enum::hasAlias> * = nullptr) {
-        return s.addString(e.name) // name
+    static constexpr auto generate(State& s, Enum e, std::enable_if_t<Enum::hasAlias> * = nullptr) {
+        s.addString(e.name); // name
 #if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
-            .addString(e.alias) // alias
+        s.addString(e.alias); // alias
 #endif
-            .add(ints<
-                Enum::flags,
-                Enum::count,
-                DataIndex
-                 >);
+        s.addInts(Enum::flags, (uint)Enum::count, DataIndex);
     }
 
     template<int DataIndex, typename State, typename Enum>
-    static constexpr auto generate(State s, Enum e, std::enable_if_t<!Enum::hasAlias> * = nullptr) {
-        constexpr auto index = s.strings.size; // required for MSVC-2019
-        return s.addString(e.name) // name
-            .add(ints<
+    static constexpr auto generate(State& s, Enum e, std::enable_if_t<!Enum::hasAlias> * = nullptr) {
+        auto index = s.stringCount; // required for MSVC-2019
+        s.addString(e.name); // name
+        s.addInts(
 #if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
                 index, // alias is the same as the name
 #endif
-                Enum::flags,
-                Enum::count,
-                DataIndex
-                 >);
+            Enum::flags, (uint)Enum::count, DataIndex);
     }
 
 };
@@ -443,18 +439,18 @@ struct EnumGenerator {
 // Generator for enum values
 struct EnumValuesGenerator {
     template<typename Strings, typename Names, size_t I = 0>
-    static constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<>, const Names&, Index<I> = {})
-    { return s; }
+    static constexpr auto generateSingleEnumValues(Strings &, std::index_sequence<>, const Names&, Index<I> = {}) {}
 
     template<typename Strings, std::size_t Value, std::size_t... Vs, typename Names, size_t I = 0>
-    static constexpr auto generateSingleEnumValues(const Strings &s, std::index_sequence<Value, Vs...>, const Names& names, Index<I> = {}) {
-        auto s2 = s.addString(names[index<I>]).add(ints<(uint)Value>);
-        return generateSingleEnumValues(s2, std::index_sequence<Vs...>{}, names, index<I+1>);
+    static constexpr auto generateSingleEnumValues(Strings &s, std::index_sequence<Value, Vs...>, const Names& names, Index<I> = {}) {
+        s.addString(names[index<I>]);
+        s.addInts((uint)Value);
+        generateSingleEnumValues(s, std::index_sequence<Vs...>{}, names, index<I+1>);
     }
 
     template<typename> static constexpr int offset() { return 0; }
     template<int, typename State, typename Enum>
-    static constexpr auto generate(State s, Enum e) {
+    static constexpr auto generate(State& s, Enum e) {
         return generateSingleEnumValues(s, typename Enum::Values{}, e.names);
     }
 };
@@ -465,38 +461,38 @@ struct EnumValuesGenerator {
  */
 template<typename ...Args> struct HandleArgsHelper {
     template<typename Strings, typename ParamTypes, size_t I = 0>
-    static constexpr auto result(const Strings &ss, const ParamTypes&, Index<I> = {})
-    { return ss; }
+    static constexpr auto result(Strings&, const ParamTypes&, Index<I> = {})
+    {}
 };
 template<typename A, typename... Args>
 struct HandleArgsHelper<A, Args...> {
     template<typename Strings, typename ParamTypes, size_t I = 0>
-    static constexpr auto result(const Strings &ss, const ParamTypes &paramTypes, Index<I> = {}) {
+    static constexpr auto result(Strings &ss, const ParamTypes &paramTypes, Index<I> = {}) {
         using Type = typename QtPrivate::RemoveConstRef<A>::Type;
         auto typeStr = stringFetch(paramTypes, index<I>);
         using ts_t = decltype(typeStr);
         // This way, the overload of result will not pick the StaticString one if it is a tuple (because registered types have the priority)
         auto typeStr2 = std::conditional_t<std::is_same<A, Type>::value, ts_t, std::tuple<ts_t>>{typeStr};
-        auto r1 = HandleType<Type>::result(ss, typeStr2);
-        return HandleArgsHelper<Args...>::result(r1, paramTypes, index<I+1>);
+        HandleType<Type>::result(ss, typeStr2);
+        return HandleArgsHelper<Args...>::result(ss, paramTypes, index<I+1>);
     }
 };
 template<std::size_t N> struct HandleArgNames {
     template<typename Strings, size_t... Ns, size_t I = 0>
-    static constexpr auto result(const Strings &ss, const StaticStrings<Ns...>& pn, Index<I> = {}, std::enable_if_t<(I < sizeof... (Ns))>* = {}) {
-        auto s2 = ss.addString(pn[index<I>]);
-        return HandleArgNames<N-1>::result(s2, pn, index<I+1>);
+    static constexpr auto result(Strings &ss, const StaticStrings<Ns...>& pn, Index<I> = {}, std::enable_if_t<(I < sizeof... (Ns))>* = {}) {
+        ss.addString(pn[index<I>]);
+        return HandleArgNames<N-1>::result(ss, pn, index<I+1>);
     }
     template<typename Strings, size_t... Ns, size_t I = 0>
-    static constexpr auto result(const Strings &ss, const StaticStrings<Ns...>& pn, Index<I> = {}, std::enable_if_t<(I >= sizeof... (Ns))>* = {}) {
-        auto s2 = ss.add(ints<1>);
-        return HandleArgNames<N-1>::result(s2, pn, index<I+1>);
+    static constexpr auto result(Strings &ss, const StaticStrings<Ns...>& pn, Index<I> = {}, std::enable_if_t<(I >= sizeof... (Ns))>* = {}) {
+        ss.addInts(1);
+        return HandleArgNames<N-1>::result(ss, pn, index<I+1>);
     }
 };
 template<> struct HandleArgNames<0> {
     template<typename Strings, typename PN, size_t I = 0>
-    static constexpr auto result(const Strings &ss, const PN&, Index<I> = {})
-    { return ss; }
+    static constexpr auto result(Strings &, const PN&, Index<I> = {})
+    {}
 };
 
 // Generator for method parameters to be used in generate<>()
@@ -504,33 +500,33 @@ struct MethodParametersGenerator {
 private:
     // non-const function
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
-    static constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...),
+    static constexpr auto generateSingleMethodParameter(Strings &ss, Ret (Obj::*)(Args...),
                                                         const ParamTypes &paramTypes, const ParamNames &paramNames ) {
-        auto s2 = HandleType<Ret>::result(ss, 0);
-        auto s3 = HandleArgsHelper<Args...>::result(s2, paramTypes);
-        return HandleArgNames<sizeof...(Args)>::result(s3, paramNames);
+        HandleType<Ret>::result(ss, 0);
+        HandleArgsHelper<Args...>::result(ss, paramTypes);
+        HandleArgNames<sizeof...(Args)>::result(ss, paramNames);
     }
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
     // const function
-    static constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (Obj::*)(Args...) const,
+    static constexpr auto generateSingleMethodParameter(Strings &ss, Ret (Obj::*)(Args...) const,
                                                  const ParamTypes &paramTypes, const ParamNames &paramNames ) {
-        auto s2 = HandleType<Ret>::result(ss, 0);
-        auto s3 = HandleArgsHelper<Args...>::result(s2, paramTypes);
-        return HandleArgNames<sizeof...(Args)>::result(s3, paramNames);
+        HandleType<Ret>::result(ss, 0);
+        HandleArgsHelper<Args...>::result(ss, paramTypes);
+        HandleArgNames<sizeof...(Args)>::result(ss, paramNames);
     }
     // static member functions
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Ret, typename... Args>
-    static constexpr auto generateSingleMethodParameter(const Strings &ss, Ret (*)(Args...),
+    static constexpr auto generateSingleMethodParameter(Strings &ss, Ret (*)(Args...),
                                                  const ParamTypes &paramTypes, const ParamNames &paramNames ) {
-        auto s2 = HandleType<Ret>::result(ss, 0);
-        auto s3 = HandleArgsHelper<Args...>::result(s2, paramTypes);
-        return HandleArgNames<sizeof...(Args)>::result(s3, paramNames);
+        HandleType<Ret>::result(ss, 0);
+        HandleArgsHelper<Args...>::result(ss, paramTypes);
+        HandleArgNames<sizeof...(Args)>::result(ss, paramNames);
     }
 public:
 
     template<typename> static constexpr int offset() { return 0; }
     template<int, typename State, typename Method>
-    static constexpr auto generate(State s, Method method) {
+    static constexpr auto generate(State& s, Method method) {
         // Dispatch either  non const function, const function or static function
         return generateSingleMethodParameter(s, method.func, method.paramTypes, method.paramNames);
     }
@@ -540,10 +536,10 @@ public:
 struct ConstructorParametersGenerator {
     template<typename> static constexpr int offset() { return 0; }
     template<int, typename State, std::size_t N, typename... Args>
-    static constexpr auto generate(State s, MetaConstructorInfo<N,Args...>) {
-        auto s2 = s.add(ints<IsUnresolvedType | 1>);
-        auto s3 = HandleArgsHelper<Args...>::result(s2, StaticStrings<>{});
-        return s3.add(ints<((void)sizeof(Args),1)...>); // all the names are 1 (for "\0")
+    static constexpr auto generate(State& s, MetaConstructorInfo<N,Args...>) {
+        s.addInts(IsUnresolvedType | 1);
+        HandleArgsHelper<Args...>::result(s, StaticStrings<>{});
+        s.addInts(((void)sizeof(Args),1)...); // all the names are 1 (for "\0")
     }
 };
 
@@ -556,9 +552,8 @@ constexpr int paramOffset(std::index_sequence<I...>)
 /**
  * Generate the integer array and the lists of string
  */
-template<size_t L, typename T, typename ObjI>
-constexpr auto generateDataArray(const ObjI &objectInfo) {
-
+template<size_t L, typename T, typename ObjI, typename State>
+constexpr auto generateDataPass(const ObjI &objectInfo, State& state) {
     constexpr bool hasNotify = hasNotifySignal<L, T>(make_index_sequence<ObjI::propertyCount>{});
     constexpr int classInfoOffset = 14;
     constexpr int methodOffset = classInfoOffset + ObjI::classInfoCount * 2;
@@ -571,28 +566,39 @@ constexpr auto generateDataArray(const ObjI &objectInfo) {
     constexpr int enumValueOffset = constructorParamIndex +
         paramOffset<decltype(objectInfo.constructors)>(make_index_sequence<ObjI::constructorCount>{});
 
-    auto stringData = StaticStrings(objectInfo.name, StaticString{""});
-    constexpr auto intData = ints<QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 8 : 7, // revision
-        0,       // classname
-        ObjI::classInfoCount,  classInfoOffset, // classinfo
-        ObjI::methodCount,   methodOffset, // methods
-        ObjI::propertyCount,    propertyOffset, // properties
-        ObjI::enumCount,    enumOffset, // enums/sets
+    state.addInts(QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 8 : 7); // revision
+    state.addString(objectInfo.name);
+    state.addStringUntracked(StaticString{""});
+    state.addInts(
+        ObjI::classInfoCount, classInfoOffset, // classinfo
+        ObjI::methodCount, methodOffset, // methods
+        ObjI::propertyCount, propertyOffset, // properties
+        ObjI::enumCount, enumOffset, // enums/sets
         ObjI::constructorCount, constructorOffset, // constructors
         0x4 /* PropertyAccessInStaticMetaCall */,   // flags
-        ObjI::signalCount>;
-    auto header = IntermediateState<decltype (stringData), decltype (intData)>{ stringData };
+        ObjI::signalCount);
 
-    auto classInfos = generate<ClassInfoGenerator, paramIndex>(header , objectInfo.classInfos);
-    auto methods = generate<MethodGenerator<T>, paramIndex>(classInfos , objectInfo.methods);
-    auto properties = generate<PropertyGenerator<T>, 0>(methods, objectInfo.properties);
-    auto notify = generate<NotifySignalGenerator<L, T, hasNotify>, 0>(properties, objectInfo.properties);
-    auto enums = generate<EnumGenerator, enumValueOffset>(notify, objectInfo.enums);
-    auto constructors = generate<MethodGenerator<T>, constructorParamIndex>(enums, objectInfo.constructors);
-    auto parametters = generate<MethodParametersGenerator, 0>(constructors, objectInfo.methods);
-    auto parametters2 = generate<ConstructorParametersGenerator, 0>(parametters, objectInfo.constructors);
-    auto enumValues = generate<EnumValuesGenerator, 0>(parametters2, objectInfo.enums);
-    return enumValues;
+    generate<ClassInfoGenerator, 0>(state , objectInfo.classInfos);
+    generate<MethodGenerator<T>, paramIndex>(state , objectInfo.methods);
+    generate<PropertyGenerator<T>, 0>(state, objectInfo.properties);
+    generate<NotifySignalGenerator<L, T, hasNotify>, 0>(state, objectInfo.properties);
+    generate<EnumGenerator, enumValueOffset>(state, objectInfo.enums);
+    generate<MethodGenerator<T>, constructorParamIndex>(state, objectInfo.constructors);
+    generate<MethodParametersGenerator, 0>(state, objectInfo.methods);
+    generate<ConstructorParametersGenerator, 0>(state, objectInfo.constructors);
+    generate<EnumValuesGenerator, 0>(state, objectInfo.enums);
+}
+template<size_t L, typename T, typename ObjI>
+constexpr auto generateDataArray(const ObjI &) {
+    constexpr LayoutBuilder layout = [] {
+        auto r = LayoutBuilder{};
+        generateDataPass<L,T>(ObjI{}, r);
+        return r;
+    }();
+    auto r = DataHolder<layout.stringSize, layout.stringCount, layout.intCount>{};
+    auto b = DataBuilder{r};
+    generateDataPass<L,T>(ObjI{}, b);
+    return r;
 }
 
 /**
@@ -604,26 +610,21 @@ template<std::size_t N, std::size_t L> struct qt_meta_stringdata_t {
 };
 
 /** Builds the string data
- * \tparam S an index_sequence that goes from 0 to the full size of the strings
- * \tparam I an index_sequence that goes from 0 to the number of string
- * \tparam O an index_sequence of the offsets
- * \tparam N an index_sequence of the size of each strings
  * \tparam T the W_MetaObjectCreatorHelper
+ * \tparam I an index_sequence that goes from 0 to the number of string
  */
-template<typename I, typename N, typename T> struct BuildStringDataHelper;
-template<std::size_t... I, std::size_t...N, typename T>
-struct BuildStringDataHelper<std::index_sequence<I...>, std::index_sequence<N...>, T> {
-    using meta_stringdata_t = const qt_meta_stringdata_t<sizeof...(I), sums(N...)>;
+template<typename T, std::size_t... I>
+struct BuildStringDataHelper {
+    using meta_stringdata_t = const qt_meta_stringdata_t<T::data.stringCount, T::data.stringSize>;
 #ifndef Q_CC_MSVC
     static constexpr qptrdiff stringdata_offset = offsetof(meta_stringdata_t, stringdata);
 #else // offsetof does not work with MSVC
     static constexpr qptrdiff stringdata_offset = sizeof(meta_stringdata_t::data);
 #endif
-    static constexpr auto o = toOffsetArray<N...>();
     inline static meta_stringdata_t qt_meta_stringdata = {
-        {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(N-1,
-                stringdata_offset + o[I] - I * sizeof(QByteArrayData))...},
-        StaticString{T::data.strings.data}
+        {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(T::data.stringSizes[I]-1,
+                stringdata_offset + T::data.stringOffsets[I] - I * sizeof(QByteArrayData))...},
+        StaticString{T::data.stringChars}
     };
 };
 
@@ -632,10 +633,9 @@ struct BuildStringDataHelper<std::index_sequence<I...>, std::index_sequence<N...
  * T is W_MetaObjectCreatorHelper<ObjectType>
  */
 // N... are all the sizes of the strings
-template<typename T, std::size_t... N>
-constexpr const QByteArrayData *build_string_data(std::index_sequence<N...>)  {
-    return BuildStringDataHelper<make_index_sequence<sizeof...(N)>, std::index_sequence<N...>, T>
-        ::qt_meta_stringdata.data;
+template<typename T, size_t... Is>
+constexpr const QByteArrayData *build_string_data(index_sequence<Is...>)  {
+    return BuildStringDataHelper<T, Is...>::qt_meta_stringdata.data;
 }
 
 /** Returns the QMetaObject* of the base type. Use SFINAE to only return it if it exists */
@@ -679,9 +679,9 @@ template<typename T>
 static constexpr QMetaObject createMetaObject()
 {
     using Creator = typename T::W_MetaObjectCreatorHelper;
-    auto string_data = build_string_data<Creator>(Creator::data.strings.size_sequence);
-    auto int_data = Creator::data.is;
-    return { { parentMetaObject<T>(0) , string_data , int_data.array,  T::qt_static_metacall, {}, {} }  };
+    auto string_data = build_string_data<Creator>(Creator::data.stringSequence);
+    auto int_data = Creator::data.ints;
+    return { { parentMetaObject<T>(0), string_data, int_data, T::qt_static_metacall, {}, {} } };
 }
 
 /** Implementation of qt_metacall */
@@ -906,8 +906,8 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
 
 #define W_OBJECT_IMPL_COMMON(INLINE, ...) \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) struct W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_MetaObjectCreatorHelper { \
-        static constexpr auto objectInfo = \
-            w_internal::makeObjectInfo<__COUNTER__, W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>(W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))); \
+        struct Name { static constexpr auto& value = W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)); }; \
+        static constexpr auto objectInfo = w_internal::ObjectInfo<__COUNTER__, W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType, Name>{}; \
         static constexpr auto data = w_internal::generateDataArray<__COUNTER__, W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>(objectInfo); \
     }; \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) INLINE const QT_INIT_METAOBJECT QMetaObject W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::staticMetaObject = \
