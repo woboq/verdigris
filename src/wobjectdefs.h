@@ -627,7 +627,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 
 } // w_internal
 
-#ifdef Q_CC_MSVC
+#if defined(Q_CC_MSVC) && !defined(Q_CC_CLANG)
 // Workaround for MSVC: expension rules are different so we need some extra macro.
 #define W_MACRO_MSVC_EXPAND(...) __VA_ARGS__
 #define W_MACRO_MSVC_DELAY(X,...) W_MACRO_MSVC_EXPAND(X(__VA_ARGS__))
