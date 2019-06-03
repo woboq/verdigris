@@ -122,6 +122,25 @@ struct DataBuilder {
 };
 
 
+
+template<class F, size_t... Is>
+constexpr auto fold(index_sequence<Is...>, F&& f) {
+    (void)f;
+    (f(index<Is>), ...);
+}
+
+template <size_t L, class State, class ThisType, class F>
+constexpr auto foldState(F&& f) {
+    fold(make_index_sequence<stateCount<L, State, ThisType>>{}, [&](auto i) { f(w_state(i, State{}, ThisType{}), i); });
+}
+
+template <size_t L, class T, class F>
+constexpr auto foldMethods(F&& f) {
+    foldState<L, SignalStateTag, T>(f);
+    foldState<L, SlotStateTag, T>(f);
+    foldState<L, MethodStateTag, T>(f);
+}
+
 template<class F, size_t... Is>
 constexpr auto toTree(index_sequence<Is...>, F f) {
     (void)f;
@@ -130,83 +149,9 @@ constexpr auto toTree(index_sequence<Is...>, F f) {
     else return binary::tree_cat(binary::tree_append(binary::tree<>{}, f(index<Is>)) ...);
 }
 
-template<class F, size_t... Is>
-constexpr auto fold(index_sequence<Is...>, F&& f) {
-    (void)f;
-    (f(index<Is>), ...);
-}
-
-template <size_t L, class ThisType, class F>
-constexpr auto foldSlotState(F&& f) {
-    fold(make_index_sequence<w_SlotStateCount<L, ThisType>>{}, [&](auto i) { f(w_SlotState(i, ThisType{}), i); });
-}
-template <size_t L, class ThisType, class F>
-constexpr auto foldSignalState(F&& f) {
-    fold(make_index_sequence<w_SignalStateCount<L, ThisType>>{}, [&](auto i) { f(w_SignalState(i, ThisType{}), i); });
-}
-template <size_t L, class ThisType, class F>
-constexpr auto foldMethodState(F&& f) {
-    fold(make_index_sequence<w_MethodStateCount<L, ThisType>>{}, [&](auto i) { f(w_MethodState(i, ThisType{}), i); });
-}
-template <size_t L, class ThisType, class F>
-constexpr auto foldConstructorState(F&& f) {
-    fold(make_index_sequence<w_ConstructorStateCount<L, ThisType>>{}, [&](auto i) { f(w_ConstructorState(i, ThisType{}), i); });
-}
-template <size_t L, class ThisType, class F>
-constexpr auto foldPropertyState(F&& f) {
-    fold(make_index_sequence<w_PropertyStateCount<L, ThisType>>{}, [&](auto i) { f(w_PropertyState(i, ThisType{}), i); });
-}
-template <size_t L, class ThisType, class F>
-constexpr auto foldEnumState(F&& f) {
-    fold(make_index_sequence<w_EnumStateCount<L, ThisType>>{}, [&](auto i) { f(w_EnumState(i, ThisType{}), i); });
-}
-template <size_t L, class ThisType, class F>
-constexpr auto foldClassInfoState(F&& f) {
-    fold(make_index_sequence<w_ClassInfoStateCount<L, ThisType>>{}, [&](auto i) { f(w_ClassInfoState(i, ThisType{}), i); });
-}
-template <size_t L, class ThisType, class F>
-constexpr auto foldInterfaceState(F&& f) {
-    fold(make_index_sequence<w_InterfaceStateCount<L, ThisType>>{}, [&](auto i) { f(w_InterfaceState(i, ThisType{}), i); });
-}
-
-template <size_t L, class T, class F>
-constexpr auto foldMethods(F&& f) {
-    foldSignalState<L, T>(f);
-    foldSlotState<L, T>(f);
-    foldMethodState<L, T>(f);
-}
-
-template<size_t L, class ThisType>
-constexpr auto w_SlotStateTree = toTree(make_index_sequence<w_SlotStateCount<L, ThisType>>{},
-                                        [](auto i) { return w_SlotState(i, ThisType{}); });
-
-template<size_t L, class ThisType>
-constexpr auto w_SignalStateTree = toTree(make_index_sequence<w_SignalStateCount<L, ThisType>>{},
-                                          [](auto i) { return w_SignalState(i, ThisType{}); });
-
-template<size_t L, class ThisType>
-constexpr auto w_MethodStateTree = toTree(make_index_sequence<w_MethodStateCount<L, ThisType>>{},
-                                          [](auto i) { return w_MethodState(i, ThisType{}); });
-
-template<size_t L, class ThisType>
-constexpr auto w_ConstructorStateTree = toTree(make_index_sequence<w_ConstructorStateCount<L, ThisType>>{},
-                                               [](auto i) { return w_ConstructorState(i, ThisType{}); });
-
-template<size_t L, class ThisType>
-constexpr auto w_PropertyStateTree = toTree(make_index_sequence<w_PropertyStateCount<L, ThisType>>{},
-                                            [](auto i) { return w_PropertyState(i, ThisType{}); });
-
-template<size_t L, class ThisType>
-constexpr auto w_EnumStateTree = toTree(make_index_sequence<w_EnumStateCount<L, ThisType>>{},
-                                        [](auto i) { return w_EnumState(i, ThisType{}); });
-
-template<size_t L, class ThisType>
-constexpr auto w_ClassInfoStateTree = toTree(make_index_sequence<w_ClassInfoStateCount<L, ThisType>>{},
-                                             [](auto i) { return w_ClassInfoState(i, ThisType{}); });
-
-template<size_t L, class ThisType>
-constexpr auto w_InterfaceStateTree = toTree(make_index_sequence<w_InterfaceStateCount<L, ThisType>>{},
-                                             [](auto i) { return w_InterfaceState(i, ThisType{}); });
+template<size_t L, class State, class ThisType>
+constexpr auto stateTree = toTree(make_index_sequence<stateCount<L, State, ThisType>>{},
+                                  [](auto i) { return w_state(i, State{}, ThisType{}); });
 
 /**
  * Iterate over all the items of a tree and call the Generator::generate function
@@ -237,9 +182,9 @@ struct ResolveNotifySignal {
 private:
     using TP = T**;
     using OP = O**;
-    static constexpr auto prop = w_PropertyState(index<PropIdx>, TP{});
+    static constexpr auto prop = w_state(index<PropIdx>, PropertyStateTag{}, TP{});
 
-    template<size_t SigIdx, bool Eq = w_SignalState(index<SigIdx>, OP{}).func == prop.notify>
+    template<size_t SigIdx, bool Eq = w_state(index<SigIdx>, SignalStateTag{}, OP{}).func == prop.notify>
     static constexpr auto match(int) { return Eq; }
     template<size_t SigIdx>
     static constexpr auto match(float) { return false; }
@@ -252,7 +197,7 @@ private:
     }
 public:
     static constexpr int signalIndex() {
-        return indexFold(make_index_sequence<w_SignalStateCount<L, O**>>{});
+        return indexFold(make_index_sequence<stateCount<L, SignalStateTag, O**>>{});
     }
 };
 
@@ -260,7 +205,7 @@ public:
 template <size_t L, typename T>
 static constexpr bool hasNotifySignal() {
     auto r = bool{};
-    foldPropertyState<L, T>([&](auto p, auto) {
+    foldState<L, PropertyStateTag, T>([&](auto p, auto) {
         r = r || !std::is_same<decltype(p.notify), std::nullptr_t>::value;
     });
     return r;
@@ -270,13 +215,13 @@ static constexpr bool hasNotifySignal() {
 template<size_t L, class T, class Name>
 struct ObjectInfo {
     static constexpr auto name = StaticString{Name::value};
-    static constexpr auto sigState = w_SignalStateTree<L,T**>;
-    static constexpr auto methods = binary::tree_cat(sigState, w_SlotStateTree<L,T**>, w_MethodStateTree<L,T**>);
-    static constexpr auto constructors = w_ConstructorStateTree<L, T**>;
-    static constexpr auto properties = w_PropertyStateTree<L, T**>;
-    static constexpr auto enums = w_EnumStateTree<L, T**>;
-    static constexpr auto classInfos = w_ClassInfoStateTree<L, T**>;
-    static constexpr auto interfaces = w_InterfaceStateTree<L, T**>;
+    static constexpr auto sigState = stateTree<L, SignalStateTag, T**>;
+    static constexpr auto methods = binary::tree_cat(sigState, stateTree<L, SlotStateTag, T**>, stateTree<L, MethodStateTag, T**>);
+    static constexpr auto constructors = stateTree<L, ConstructorStateTag, T**>;
+    static constexpr auto properties = stateTree<L, PropertyStateTag, T**>;
+    static constexpr auto enums = stateTree<L, EnumStateTag, T**>;
+    static constexpr auto classInfos = stateTree<L, ClassInfoStateTag, T**>;
+    static constexpr auto interfaces = stateTree<L, InterfaceStateTag, T**>;
 
     static constexpr int methodCount = methods.size;
     static constexpr int constructorCount = constructors.size;
@@ -419,7 +364,7 @@ struct NotifySignalGenerator {
         static_assert(signalIndex >= 0, "NOTIFY signal in parent class not registered as a W_SIGNAL");
         static_assert(signalIndex < 0 || QT_VERSION >= QT_VERSION_CHECK(5, 10, 0),
                       "NOTIFY signal in parent class requires Qt 5.10");
-        constexpr auto sig = w_SignalState(index<signalIndex>, OP{});
+        constexpr auto sig = w_state(index<signalIndex>, SignalStateTag{}, OP{});
         s.template addTypeString<IsUnresolvedNotifySignal>(sig.name);
     }
 };
@@ -562,7 +507,7 @@ constexpr int methodsParamOffset() {
 template<size_t L, class T>
 constexpr int constructorParamOffset() {
     auto sum = int{};
-    foldConstructorState<L, T>([&](auto m, auto) { sum += int(1 + m.argCount * 2); });
+    foldState<L, ConstructorStateTag, T>([&](auto m, auto) { sum += int(1 + m.argCount * 2); });
     return sum;
 }
 
@@ -594,29 +539,29 @@ constexpr auto generateDataPass(const ObjI &objectInfo, State& state) {
         ObjI::signalCount);
 
     //if (state.intCount != classInfoOffset) throw "offset mismatch!";
-    foldClassInfoState<L, T**>(ClassInfoGenerator<State>{state});
+    foldState<L, ClassInfoStateTag, T**>(ClassInfoGenerator<State>{state});
 
     //if (state.intCount != methodOffset) throw "offset mismatch!";
     foldMethods<L, T**>(MethodGenerator<State, T>{state, paramIndex});
 
     //if (state.intCount != propertyOffset) throw "offset mismatch!";
-    foldPropertyState<L, T**>(PropertyGenerator<State, T>{state});
-    foldPropertyState<L, T**>(NotifySignalGenerator<State, L, T, hasNotify>{state});
+    foldState<L, PropertyStateTag, T**>(PropertyGenerator<State, T>{state});
+    foldState<L, PropertyStateTag, T**>(NotifySignalGenerator<State, L, T, hasNotify>{state});
 
     //if (state.intCount != enumOffset) throw "offset mismatch!";
-    foldEnumState<L, T**>(EnumGenerator<State>{state, enumValueOffset});
+    foldState<L, EnumStateTag, T**>(EnumGenerator<State>{state, enumValueOffset});
 
     //if (state.intCount != constructorOffset) throw "offset mismatch!";
-    foldConstructorState<L, T**>(MethodGenerator<State, T>{state, constructorParamIndex});
+    foldState<L, ConstructorStateTag, T**>(MethodGenerator<State, T>{state, constructorParamIndex});
 
     //if (state.intCount != paramIndex) throw "offset mismatch!";
     foldMethods<L, T**>(MethodParametersGenerator<State>{state});
 
     //if (state.intCount != constructorParamIndex) throw "offset mismatch!";
-    foldConstructorState<L, T**>(ConstructorParametersGenerator<State>{state});
+    foldState<L, ConstructorStateTag, T**>(ConstructorParametersGenerator<State>{state});
 
     //if (state.intCount != enumValueOffset) throw "offset mismatch!";
-    foldEnumState<L, T**>(EnumValuesGenerator<State>{state});
+    foldState<L, EnumStateTag, T**>(EnumValuesGenerator<State>{state});
 }
 template<size_t L, typename T, typename ObjI>
 constexpr auto generateDataArray(const ObjI &) {

@@ -916,45 +916,20 @@ constexpr auto count(F f, As... as) {
     }
 }
 
-template<class T>
-constexpr void w_SlotState(IndexBase, T**);
-template<size_t L, class ThisType>
-constexpr auto w_SlotStateCount = count<L>([](auto... a) -> decltype(w_SlotState(a...)) {}, ThisType{});
+template<class State, class T>
+constexpr void w_state(IndexBase, State, T**);
 
-template<class T>
-constexpr void w_SignalState(IndexBase, T**);
-template<size_t L, class ThisType>
-constexpr auto w_SignalStateCount = count<L>([](auto... a) -> decltype(w_SignalState(a...)) {}, ThisType{});
+template<size_t L, class State, class TPP>
+constexpr auto stateCount = count<L>([](auto... a) -> decltype(w_state(a...)) {}, State{}, TPP{});
 
-template<class T>
-constexpr void w_MethodState(IndexBase, T**);
-template<size_t L, class ThisType>
-constexpr auto w_MethodStateCount = count<L>([](auto... a) -> decltype(w_MethodState(a...)) {}, ThisType{});
-
-template<class T>
-constexpr void w_ConstructorState(IndexBase, T**);
-template<size_t L, class ThisType>
-constexpr auto w_ConstructorStateCount = count<L>([](auto... a) -> decltype(w_ConstructorState(a...)) {}, ThisType{});
-
-template<class T>
-constexpr void w_PropertyState(IndexBase, T**);
-template<size_t L, class ThisType>
-constexpr auto w_PropertyStateCount = count<L>([](auto... a) -> decltype(w_PropertyState(a...)) {}, ThisType{});
-
-template<class T>
-constexpr void w_EnumState(IndexBase, T**);
-template<size_t L, class ThisType>
-constexpr auto w_EnumStateCount = count<L>([](auto... a) -> decltype(w_EnumState(a...)) {}, ThisType{});
-
-template<class T>
-constexpr void w_ClassInfoState(IndexBase, T**);
-template<size_t L, class ThisType>
-constexpr auto w_ClassInfoStateCount = count<L>([](auto... a) -> decltype(w_ClassInfoState(a...)) {}, ThisType{});
-
-template<class T>
-constexpr void w_InterfaceState(IndexBase, T**);
-template<size_t L, class ThisType>
-constexpr auto w_InterfaceStateCount = count<L>([](auto... a) -> decltype(w_InterfaceState(a...)) {}, ThisType{});
+struct SlotStateTag {};
+struct SignalStateTag {};
+struct MethodStateTag {};
+struct ConstructorStateTag {};
+struct PropertyStateTag {};
+struct EnumStateTag {};
+struct ClassInfoStateTag {};
+struct InterfaceStateTag {};
 
 }
 
@@ -967,11 +942,11 @@ constexpr auto w_InterfaceStateCount = count<L>([](auto... a) -> decltype(w_Inte
         struct W_MetaObjectCreatorHelper;
 
 #define W_STATE_APPEND(STATE, ...) \
-    friend constexpr auto STATE(w_internal::Index<w_internal::STATE##Count<__COUNTER__, W_ThisType**>>, \
-            W_ThisType**) W_RETURN((__VA_ARGS__))
+    friend constexpr auto w_state(w_internal::Index<w_internal::stateCount<__COUNTER__, w_internal::STATE##Tag, W_ThisType**>>, \
+            w_internal::STATE##Tag, W_ThisType**) W_RETURN((__VA_ARGS__))
 #define W_STATE_APPEND_NS(STATE, ...) \
-    static constexpr auto STATE(w_internal::Index<w_internal::STATE##Count<__COUNTER__, W_ThisType**>>, \
-            W_ThisType**) W_RETURN((__VA_ARGS__))
+    static constexpr auto w_state(w_internal::Index<w_internal::stateCount<__COUNTER__, w_internal::STATE##Tag, W_ThisType**>>, \
+            w_internal::STATE##Tag, W_ThisType**) W_RETURN((__VA_ARGS__))
 
 //
 // public macros
@@ -1028,7 +1003,7 @@ constexpr auto w_InterfaceStateCount = count<L>([](auto... a) -> decltype(w_Inte
  */
 #define W_SLOT(...) W_MACRO_MSVC_EXPAND(W_SLOT2(__VA_ARGS__, w_internal::W_EmptyFlag))
 #define W_SLOT2(NAME, ...) \
-    W_STATE_APPEND(w_SlotState, w_internal::makeMetaSlotInfo( \
+    W_STATE_APPEND(SlotState, w_internal::makeMetaSlotInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::StaticString{#NAME},  \
             W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
@@ -1041,7 +1016,7 @@ constexpr auto w_InterfaceStateCount = count<L>([](auto... a) -> decltype(w_Inte
  */
 #define W_INVOKABLE(...) W_MACRO_MSVC_EXPAND(W_INVOKABLE2(__VA_ARGS__, w_internal::W_EmptyFlag))
 #define W_INVOKABLE2(NAME, ...) \
-    W_STATE_APPEND(w_MethodState, w_internal::makeMetaMethodInfo( \
+    W_STATE_APPEND(MethodState, w_internal::makeMetaMethodInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::StaticString{#NAME},  \
             W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
@@ -1070,8 +1045,8 @@ constexpr auto w_InterfaceStateCount = count<L>([](auto... a) -> decltype(w_Inte
         return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
     } \
     static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = \
-        w_internal::w_SignalStateCount<__COUNTER__, W_ThisType**>; \
-    friend constexpr auto w_SignalState(w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>, W_ThisType**) \
+        w_internal::stateCount<__COUNTER__, w_internal::SignalStateTag, W_ThisType**>; \
+    friend constexpr auto w_state(w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>, w_internal::SignalStateTag, W_ThisType**) \
         W_RETURN(w_internal::makeMetaSignalInfo( \
                 W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::StaticString{#NAME}, \
                 W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
@@ -1088,8 +1063,8 @@ constexpr auto w_InterfaceStateCount = count<L>([](auto... a) -> decltype(w_Inte
         return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
     } \
     static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = \
-        w_internal::w_SignalStateCount<__COUNTER__, W_ThisType**>; \
-    friend constexpr auto w_SignalState(w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>, W_ThisType**) \
+        w_internal::stateCount<__COUNTER__, w_internal::SignalStateTag, W_ThisType**>; \
+    friend constexpr auto w_state(w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>, w_internal::SignalStateTag, W_ThisType**) \
         W_RETURN(w_internal::makeMetaSignalInfo( \
                 W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::StaticString{#NAME}, \
                 W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
@@ -1102,7 +1077,7 @@ constexpr auto w_InterfaceStateCount = count<L>([](auto... a) -> decltype(w_Inte
  * One can have W_CONSTRUCTOR() for the default constructor even if it is implicit.
  */
 #define W_CONSTRUCTOR(...) \
-    W_STATE_APPEND(w_ConstructorState, \
+    W_STATE_APPEND(ConstructorState, \
                    w_internal::makeMetaConstructorInfo<__VA_ARGS__>().setName(W_UnscopedName))
 
 
@@ -1119,7 +1094,7 @@ constexpr auto w_InterfaceStateCount = count<L>([](auto... a) -> decltype(w_Inte
  */
 #define W_PROPERTY(...) W_MACRO_MSVC_EXPAND(W_PROPERTY2(__VA_ARGS__)) // expands the READ, WRITE, and other sub marcos
 #define W_PROPERTY2(TYPE, NAME, ...) \
-    W_STATE_APPEND(w_PropertyState, \
+    W_STATE_APPEND(PropertyState, \
         w_internal::makeMetaPropertyInfo<W_MACRO_REMOVEPAREN(TYPE)>(\
                             w_internal::StaticString{#NAME}, w_internal::StaticString{W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE))}, __VA_ARGS__))
 
@@ -1138,7 +1113,7 @@ constexpr auto w_InterfaceStateCount = count<L>([](auto... a) -> decltype(w_Inte
  * Similar to Q_ENUM, but one must also manually write all the values.
  */
 #define W_ENUM(NAME, ...) \
-    W_STATE_APPEND(w_EnumState, w_internal::makeMetaEnumInfo<NAME,false>( \
+    W_STATE_APPEND(EnumState, w_internal::makeMetaEnumInfo<NAME,false>( \
             #NAME, w_flagAlias(NAME{}), \
             w_internal::enum_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__))) \
     Q_ENUM(NAME)
@@ -1148,7 +1123,7 @@ constexpr auto w_InterfaceStateCount = count<L>([](auto... a) -> decltype(w_Inte
  * Similar to Q_ENUM_NS, like W_ENUM
  */
 #define W_ENUM_NS(NAME, ...) \
-    W_STATE_APPEND_NS(w_EnumState, w_internal::makeMetaEnumInfo<NAME,false>( \
+    W_STATE_APPEND_NS(EnumState, w_internal::makeMetaEnumInfo<NAME,false>( \
             #NAME, w_flagAlias(NAME{}), \
             w_internal::enum_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__))) \
     Q_ENUM_NS(NAME)
@@ -1161,7 +1136,7 @@ template<typename T> struct QEnumOrQFlags { using Type = T; };
 template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 }
 #define W_FLAG(NAME, ...) \
-    W_STATE_APPEND(w_EnumState, w_internal::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type,true>( \
+    W_STATE_APPEND(EnumState, w_internal::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type,true>( \
             #NAME, w_flagAlias(NAME{}), \
             w_internal::enum_sequence<w_internal::QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, \
             W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__))) \
@@ -1171,7 +1146,7 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
  * Similar to Q_FLAG_NS, like W_FLAG.
  */
 #define W_FLAG_NS(NAME, ...) \
-    W_STATE_APPEND_NS(w_EnumState, w_internal::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type,true>( \
+    W_STATE_APPEND_NS(EnumState, w_internal::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type,true>( \
             #NAME, w_flagAlias(NAME{}), \
             w_internal::enum_sequence<w_internal::QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, \
             W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__))) \
@@ -1179,18 +1154,18 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 
 /** Same as Q_CLASSINFO.  Note, Q_CLASSINFO_NS is required for namespace */
 #define W_CLASSINFO(A, B) \
-    W_STATE_APPEND(w_ClassInfoState, \
+    W_STATE_APPEND(ClassInfoState, \
         std::pair<w_internal::StaticString<sizeof(A)>, w_internal::StaticString<sizeof(B)>>{ w_internal::StaticString{A}, w_internal::StaticString{B} })
 
 /** Same as Q_CLASSINFO, but within a namespace */
 #define W_CLASSINFO_NS(A, B) \
-    W_STATE_APPEND_NS(w_ClassInfoState, \
+    W_STATE_APPEND_NS(ClassInfoState, \
         std::pair<w_internal::StaticString<sizeof(A)>, w_internal::StaticString<sizeof(B)>>{ w_internal::StaticString{A}, w_internal::StaticString{B} })
 
 
 /** Same as Q_INTERFACE */
 #define W_INTERFACE(A) \
-    W_STATE_APPEND(w_InterfaceState, static_cast<A*>(nullptr))
+    W_STATE_APPEND(InterfaceState, static_cast<A*>(nullptr))
 
 /** Same as Q_DECLARE_FLAGS */
 #define W_DECLARE_FLAGS(Flags, Enum) \
