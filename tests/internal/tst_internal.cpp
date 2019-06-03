@@ -26,6 +26,38 @@
 #include <wobjectimpl.h>
 #include <QtTest/QtTest>
 
+namespace w_internal {
+
+static_assert(StaticStrings(StaticString{"Hello"}, StaticString{"World"}).data[4] == 'o');
+static_assert(
+    (StaticStrings{StaticString{"Hello"}, StaticString{"World"}}[index<1>])
+        .data[0] == 'W');
+
+static_assert(
+    (StaticStrings{StaticString{"Hello"}} + StaticString{"Worlds"})
+        .data[4] == 'o');
+static_assert(
+    (StaticStrings{StaticString{"Hello"}} + StaticString{"Worlds"})
+        .data[5] == '\0');
+static_assert(
+    (StaticStrings{StaticString{"Hello"}} + StaticString{"World"})
+        .data[6] == 'W');
+static_assert(
+    (StaticStrings{} + StaticString{"Hey"})
+        .data[3] == '\0');
+
+static_assert(std::is_same<decltype(makeStaticLiterals()), StaticStrings<>>::value, "");
+static_assert(std::is_same<decltype(makeStaticLiterals("H", "el")), StaticStrings<2, 3>>::value, "");
+static_assert(makeStaticLiterals("H", "el").data[1] == '\0');
+static_assert(std::is_same<decltype(makeStaticLiterals("H", "", "el")), StaticStrings<2>>::value, "");
+static_assert(makeStaticLiterals("H", "", "el").data[1] == '\0');
+
+static_assert(std::is_same<decltype(makeStaticStrings()), StaticStrings<>>::value, "");
+static_assert(makeStaticStrings(StaticString{"H"}, StaticString{""}, StaticString{"el"}).data[1] == '\0');
+
+
+}
+
 namespace testEnum {
     enum ME1 {};
     enum class ME2 {};

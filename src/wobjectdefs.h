@@ -52,21 +52,12 @@ template<std::size_t N> using make_index_sequence = typename make_index_sequence
 using std::make_index_sequence;
 #endif
 
-/* workaround for MSVC bug that can't do decltype(xxx)::foo when xxx is dependent of a template */
-template<typename T> using identity_t = T;
-
-template<typename T> constexpr void ordered(std::initializer_list<T>) {}
-
-template <class...> struct TypePack {};
 struct IndexBase {};
 template <size_t> struct Index : IndexBase {};
 template <size_t I> constexpr auto index = Index<I>{};
 
 template <size_t I> constexpr auto indexValue(Index<I> = {}) { return I; }
 template <class IV> constexpr auto index_value = indexValue(IV{});
-
-template<class... Ts>
-constexpr auto typeCount(TypePack<Ts...>) -> size_t { return sizeof... (Ts); }
 
 /** Compute the sum of many integers */
 template<typename... Args>
@@ -81,6 +72,7 @@ constexpr int summed = sums(args...);
 
 /** A compile time character array of size N  */
 template<std::size_t N> using StaticStringArray = const char [N];
+template<class T, size_t N> using RawArray = T[N];
 
 /** Represents a string of size N  (N includes the '\0' at the end) */
 template<std::size_t N> struct StaticString {
@@ -98,9 +90,6 @@ template<std::size_t N> struct StaticString {
 template<size_t N> StaticString(const char (&)[N]) -> StaticString<N>;
 
 template<size_t... Vs> struct IndexPack {};
-template<size_t... Vs> constexpr auto index_pack = IndexPack<Vs...>{};
-
-template<class T, size_t N> using RawArray = T[N];
 
 template<size_t N>
 struct IndexArray {
@@ -117,13 +106,6 @@ struct IndexArray {
 template<size_t... Vs> IndexArray(IndexPack<Vs...>) -> IndexArray<sizeof...(Vs)>;
 
 
-template<size_t... Sizes> constexpr auto toOffsetArray() {
-    auto offsets = IndexArray<sizeof...(Sizes)>{};
-    auto o = size_t{};
-    auto p = offsets.data;
-    ((*p++ = o, o += Sizes),...);
-    return offsets;
-}
 template<size_t I, size_t... Sizes> constexpr auto getOffset() -> size_t {
     auto i = 0u;
     auto o = size_t{};
@@ -161,11 +143,6 @@ struct StaticStrings {
 template<size_t N, size_t... Ns>
 StaticStrings(StaticString<N>, StaticString<Ns>...) -> StaticStrings<N, Ns...>;
 
-static_assert(StaticStrings(StaticString{"Hello"}, StaticString{"World"}).data[4] == 'o');
-static_assert(
-    (StaticStrings{StaticString{"Hello"}, StaticString{"World"}}[index<1>])
-        .data[0] == 'W');
-
 template<size_t I, size_t...Ns>
 constexpr auto stringFetch(const StaticStrings<Ns...>& s, Index<I>) {
     if constexpr (I < sizeof... (Ns)) {
@@ -194,19 +171,6 @@ constexpr auto operator+ (const StaticStrings<Ns...>& s, const StaticString<On>&
         return r;
     }
 }
-
-static_assert(
-    (StaticStrings{StaticString{"Hello"}} + StaticString{"Worlds"})
-        .data[4] == 'o');
-static_assert(
-    (StaticStrings{StaticString{"Hello"}} + StaticString{"Worlds"})
-        .data[5] == '\0');
-static_assert(
-    (StaticStrings{StaticString{"Hello"}} + StaticString{"World"})
-        .data[6] == 'W');
-static_assert(
-    (StaticStrings{} + StaticString{"Hey"})
-        .data[3] == '\0');
 
 template<size_t... Ns>
 constexpr size_t countValidStringLiterals() {
@@ -282,15 +246,6 @@ constexpr auto makeStaticStrings(const StaticString<Ns>& ... ns) {
     }
 }
 
-static_assert(std::is_same<decltype(makeStaticLiterals()), StaticStrings<>>::value, "");
-static_assert(std::is_same<decltype(makeStaticLiterals("H", "el")), StaticStrings<2, 3>>::value, "");
-static_assert(makeStaticLiterals("H", "el").data[1] == '\0');
-static_assert(std::is_same<decltype(makeStaticLiterals("H", "", "el")), StaticStrings<2>>::value, "");
-static_assert(makeStaticLiterals("H", "", "el").data[1] == '\0');
-
-static_assert(std::is_same<decltype(makeStaticStrings()), StaticStrings<>>::value, "");
-static_assert(makeStaticStrings(StaticString{"H"}, StaticString{""}, StaticString{"el"}).data[1] == '\0');
-
 /*-----------*/
 
     // From qmetaobject_p.h
@@ -318,13 +273,6 @@ enum class PropertyFlags  {
     Revisioned = 0x00800000
 };
 constexpr uint operator|(uint a, PropertyFlags b) { return a | uint(b); }
-
-/** w_number<I> is a helper to implement state */
-template<int N = 255> struct w_number : public w_number<N - 1> {
-    static constexpr int value = N;
-    static constexpr w_number<N-1> prev() { return {}; }
-};
-template<> struct w_number<0> { static constexpr int value = 0; };
 
 template <int N> struct W_MethodFlags { static constexpr int value = N; };
 constexpr W_MethodFlags<0> W_EmptyFlag{};
@@ -682,7 +630,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 
 } // w_internal
 
-#ifdef Q_CC_MSVC
+#if defined(Q_CC_MSVC) && !defined(Q_CC_CLANG)
 // Workaround for MSVC: expension rules are different so we need some extra macro.
 #define W_MACRO_MSVC_EXPAND(...) __VA_ARGS__
 #define W_MACRO_MSVC_DELAY(X,...) W_MACRO_MSVC_EXPAND(X(__VA_ARGS__))
