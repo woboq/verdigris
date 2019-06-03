@@ -141,41 +141,6 @@ constexpr auto foldMethods(F&& f) {
     foldState<L, MethodStateTag, T>(f);
 }
 
-template<class F, size_t... Is>
-constexpr auto toTree(index_sequence<Is...>, F f) {
-    (void)f;
-    if constexpr (0 == sizeof... (Is)) return binary::tree<>{};
-    else if constexpr (1 == sizeof... (Is)) return (binary::tree_append(binary::tree<>{}, f(index<Is>)), ...);
-    else return binary::tree_cat(binary::tree_append(binary::tree<>{}, f(index<Is>)) ...);
-}
-
-template<size_t L, class State, class ThisType>
-constexpr auto stateTree = toTree(make_index_sequence<stateCount<L, State, ThisType>>{},
-                                  [](auto i) { return w_state(i, State{}, ThisType{}); });
-
-/**
- * Iterate over all the items of a tree and call the Generator::generate function
- *
- * The first parameter of the function is the IntermediateState, and it returns a new
- * InterMediateState with all the information from the tree added to it.
- *
- * The 'Ofst' template parameter is the offset in the integer array to which new data can be added.
- *
- * The Generator template type has a method generate which will be called for every element of the
- * tree with the IntermediateState. It is called with the offset as a template parameter.
- *
- * The Generator also has an offset() method that returns how much things will be added later in
- * the array for this element.
- */
-template<typename Generator, int Ofst, typename State>
-constexpr void generate(State&, binary::tree<>) {}
-
-template<typename Generator, int Ofst, typename State, typename Tree>
-constexpr auto generate(State& s, Tree t) {
-    Generator::template generate<Ofst>(s, binary::tree_head(t));
-    generate<Generator, Ofst + Generator::template offset<binary::tree_element_t<0,Tree>>()>(s, binary::tree_tail(t));
-}
-
 /** Helper to get information about the notify signal of the property within object T */
 template<size_t L, size_t PropIdx, typename T, typename O>
 struct ResolveNotifySignal {
@@ -214,22 +179,24 @@ static constexpr bool hasNotifySignal() {
 /** Holds information about a class, including all the properties and methods */
 template<size_t L, class T, class Name>
 struct ObjectInfo {
+    using TPP = T**;
     static constexpr auto name = StaticString{Name::value};
-    static constexpr auto sigState = stateTree<L, SignalStateTag, T**>;
-    static constexpr auto methods = binary::tree_cat(sigState, stateTree<L, SlotStateTag, T**>, stateTree<L, MethodStateTag, T**>);
-    static constexpr auto constructors = stateTree<L, ConstructorStateTag, T**>;
-    static constexpr auto properties = stateTree<L, PropertyStateTag, T**>;
-    static constexpr auto enums = stateTree<L, EnumStateTag, T**>;
-    static constexpr auto classInfos = stateTree<L, ClassInfoStateTag, T**>;
-    static constexpr auto interfaces = stateTree<L, InterfaceStateTag, T**>;
 
-    static constexpr int methodCount = methods.size;
-    static constexpr int constructorCount = constructors.size;
-    static constexpr int propertyCount = properties.size;
-    static constexpr int enumCount = enums.size;
-    static constexpr int classInfoCount = classInfos.size;
-    static constexpr int interfaceCount = interfaces.size;
-    static constexpr int signalCount = sigState.size;
+    static constexpr int signalCount = stateCount<L, SignalStateTag, T**>;
+    static constexpr int slotCount = stateCount<L, SlotStateTag, T**>;
+    static constexpr int methodCount = signalCount + slotCount + stateCount<L, MethodStateTag, T**>;
+    static constexpr int constructorCount = stateCount<L, ConstructorStateTag, T**>;
+    static constexpr int propertyCount = stateCount<L, PropertyStateTag, T**>;
+    static constexpr int enumCount = stateCount<L, EnumStateTag, T**>;
+    static constexpr int classInfoCount = stateCount<L, ClassInfoStateTag, T**>;
+    static constexpr int interfaceCount = stateCount<L, InterfaceStateTag, T**>;
+
+    template<size_t Idx>
+    static constexpr auto method(Index<Idx>) {
+        if constexpr (Idx < signalCount) return w_state(index<Idx>, SignalStateTag{}, TPP{});
+        else if constexpr (Idx - signalCount < slotCount) return w_state(index<Idx - signalCount>, SlotStateTag{}, TPP{});
+        else return w_state(index<Idx - signalCount - slotCount>, MethodStateTag{}, TPP{});
+    }
 };
 
 // Generator for Q_CLASSINFO to be used in foldClassInfoState
@@ -687,10 +654,9 @@ template<typename T> static int qt_metacall_impl(T *_o, QMetaObject::Call _c, in
  */
 template<typename T, int I>
 static int indexOfMethod(void **func) {
-    constexpr auto f = binary::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.methods).func;
-    using Ms = decltype(T::W_MetaObjectCreatorHelper::objectInfo.methods);
-    if ((binary::tree_element_t<I,Ms>::flags & 0xc) == W_MethodType::Signal.value
-        && f == *reinterpret_cast<decltype(f)*>(func))
+    constexpr auto m = T::W_MetaObjectCreatorHelper::objectInfo.method(index<I>);
+    if ((m.flags & 0xc) == W_MethodType::Signal.value
+        && m.func == *reinterpret_cast<decltype(m.func)*>(func))
         return I;
     return -1;
 }
@@ -703,7 +669,7 @@ static int indexOfMethod(void **func) {
 template <typename T, int I>
 static void invokeMethod(T *_o, int _id, void **_a) {
     if (_id == I) {
-        constexpr auto f = binary::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.methods).func;
+        constexpr auto f = T::W_MetaObjectCreatorHelper::objectInfo.method(index<I>).func;
         using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
         P::template call<typename P::Arguments, typename P::ReturnType>(f, _o, _a);
     }
@@ -716,7 +682,7 @@ static void invokeMethod(T *_o, int _id, void **_a) {
 template <typename T, int I>
 static void registerMethodArgumentType(int _id, void **_a) {
     if (_id == I) {
-        constexpr auto f = binary::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.methods).func;
+        constexpr auto f = T::W_MetaObjectCreatorHelper::objectInfo.method(index<I>).func;
         using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
         auto _t = QtPrivate::ConnectionTypes<typename P::Arguments>::types();
         uint arg = *reinterpret_cast<uint*>(_a[1]);
@@ -733,7 +699,8 @@ template<typename T, int I>
 static void propertyOperation(T *_o, QMetaObject::Call _c, int _id, void **_a) {
     if (_id != I)
         return;
-    constexpr auto p = binary::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.properties);
+    using TPP = T**;
+    constexpr auto p = w_state(index<I>, PropertyStateTag{}, TPP{});
     using Type = typename decltype(p)::PropertyType;
     switch(+_c) {
     case QMetaObject::ReadProperty:
@@ -768,7 +735,8 @@ static void propertyOperation(T *_o, QMetaObject::Call _c, int _id, void **_a) {
 template<typename T, int I>
 static void createInstance(int _id, void** _a) {
     if (_id == I) {
-        constexpr auto m = binary::get<I>(T::W_MetaObjectCreatorHelper::objectInfo.constructors);
+        using TPP = T**;
+        constexpr auto m = w_state(index<I>, ConstructorStateTag{}, TPP{});
         m.template createInstance<T>(_a, make_index_sequence<decltype(m)::argCount>{});
     }
 }
@@ -837,7 +805,8 @@ static void *qt_metacast_impl(T *o, const char *_clname, std::index_sequence<Int
     if (_clname == QByteArray(sd))
         return o;
     void *result = nullptr;
-    nop((interfaceMetaCast<decltype(binary::get<InterfaceI>(T::W_MetaObjectCreatorHelper::objectInfo.interfaces))>(result, o, _clname),0)...);
+    using TPP = T**;
+    nop((interfaceMetaCast<decltype(w_state(index<InterfaceI>, InterfaceStateTag{}, TPP{}))>(result, o, _clname),0)...);
     return result ? result : o->T::W_BaseType::qt_metacast(_clname);
 }
 
