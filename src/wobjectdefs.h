@@ -69,9 +69,6 @@ constexpr int summed = sums(args...);
 /*
  * Helpers to play with static strings
  */
-
-/** A compile time character array of size N  */
-template<std::size_t N> using StaticStringArray = const char [N];
 template<class T, size_t N> using RawArray = T[N];
 
 /** Represents a string of size N  (N includes the '\0' at the end) */
@@ -361,9 +358,6 @@ template<std::size_t NameLength, typename... Args> struct MetaConstructorInfo {
     static constexpr int flags = W_MethodType::Constructor.value | W_Access::Public.value;
     using IntegralConstant = void*; // Used to detect the access specifier, but it is always public, so no need for this
     StaticString<NameLength> name;
-    template<std::size_t N>
-    constexpr MetaConstructorInfo<N, Args...> setName(StaticStringArray<N> &n)
-        { return { StaticString{n} }; }
     template<typename T, std::size_t... I>
     void createInstance(void **_a, index_sequence<I...>) const {
         *reinterpret_cast<T**>(_a[0]) =
@@ -371,8 +365,8 @@ template<std::size_t NameLength, typename... Args> struct MetaConstructorInfo {
     }
 };
 // called from the W_CONSTRUCTOR macro
-template<typename...  Args> constexpr MetaConstructorInfo<1,Args...> makeMetaConstructorInfo()
-{ return { {""} }; }
+template<typename...  Args, size_t N> constexpr MetaConstructorInfo<N,Args...> makeMetaConstructorInfo(StaticString<N> name)
+{ return { name }; }
 
 struct Empty{
     constexpr operator bool() const { return false; }
@@ -501,13 +495,13 @@ template<typename Enum, Enum... Value> struct enum_sequence {};
 template<typename Enum, int Flag, std::size_t NameLength, std::size_t AliasLength, Enum... Values, typename Names>
 constexpr MetaEnumInfo<NameLength, AliasLength, index_sequence<size_t(Values)...> , Names,
                        Flag | EnumIsScoped<Enum>::Value> makeMetaEnumInfo(
-                StaticStringArray<NameLength> &name, StaticString<AliasLength> alias,
+                StaticString<NameLength> name, StaticString<AliasLength> alias,
                 enum_sequence<Enum, Values...>, Names names) {
-    return { StaticString{name}, alias, names };
+    return { name, alias, names };
 }
 
 // Helper function to remove the scope in a scoped enum name. (so "Foo::Bar" -> Bar)
-template<int N> constexpr int removedScopeSize(StaticStringArray<N> &name) {
+template<int N> constexpr int removedScopeSize(const RawArray<char, N> &name) {
     // Find the position of the last colon (or 0 if it is not there)
     int p = N - 1;
     while (p > 0 && name[p] != ':')
@@ -517,7 +511,7 @@ template<int N> constexpr int removedScopeSize(StaticStringArray<N> &name) {
     return N - p;
 }
 
-template<int R, int N> constexpr StaticString<R> removeScope(StaticStringArray<N> &name) {
+template<int R, int N> constexpr StaticString<R> removeScope(const RawArray<char, N> &name) {
     StaticString<R> r;
     for (int i = 0; i < R; ++i) {
         r.data[i] = name[N - R + i];
@@ -626,9 +620,9 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 #ifndef QT_ANNOTATE_CLASS // Was added in Qt 5.6.1
 #define QT_ANNOTATE_CLASS(...)
 #endif
-}
+} // namespace w_ShouldBeInQt
 
-} // w_internal
+} // namespace w_internal
 
 #if defined(Q_CC_MSVC) && !defined(Q_CC_CLANG)
 // Workaround for MSVC: expension rules are different so we need some extra macro.
@@ -747,11 +741,11 @@ struct EnumStateTag {};
 struct ClassInfoStateTag {};
 struct InterfaceStateTag {};
 
-}
+} // namespace w_internal
 
 #define W_OBJECT_COMMON(TYPE) \
         using W_ThisType = TYPE; \
-        static constexpr auto &W_UnscopedName = #TYPE; /* so we don't repeat it in W_CONSTRUCTOR */ \
+        static constexpr auto W_UnscopedName = w_internal::StaticString{#TYPE}; /* so we don't repeat it in W_CONSTRUCTOR */ \
         friend struct w_internal::FriendHelper; \
         template<typename W_Flag> static inline constexpr w_internal::StaticString<1> w_flagAlias(W_Flag) { return {""}; } \
     public: \
@@ -799,7 +793,7 @@ struct InterfaceStateTag {};
         using W_MetaObjectCreatorHelper = NAMESPACE::W_MetaObjectCreatorHelper; \
         static constexpr auto qt_static_metacall = nullptr; \
     }; \
-    static constexpr auto &W_UnscopedName = #NAMESPACE; \
+    static constexpr auto W_UnscopedName = w_internal::StaticString{#NAMESPACE}; \
     template<typename W_Flag> static inline constexpr w_internal::StaticString<1> w_flagAlias(W_Flag) { Q_UNUSED(W_UnscopedName) return {""}; } \
     QT_ANNOTATE_CLASS(qt_fake, "")
 
@@ -894,7 +888,7 @@ struct InterfaceStateTag {};
  */
 #define W_CONSTRUCTOR(...) \
     W_STATE_APPEND(ConstructorState, \
-                   w_internal::makeMetaConstructorInfo<__VA_ARGS__>().setName(W_UnscopedName))
+                   w_internal::makeMetaConstructorInfo<__VA_ARGS__>(W_UnscopedName))
 
 
 /** W_PROPERTY(<type>, <name> [, <flags>]*)
@@ -930,7 +924,7 @@ struct InterfaceStateTag {};
  */
 #define W_ENUM(NAME, ...) \
     W_STATE_APPEND(EnumState, w_internal::makeMetaEnumInfo<NAME,false>( \
-            #NAME, w_flagAlias(NAME{}), \
+            w_internal::StaticString{#NAME}, w_flagAlias(NAME{}), \
             w_internal::enum_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__))) \
     Q_ENUM(NAME)
 
@@ -940,7 +934,7 @@ struct InterfaceStateTag {};
  */
 #define W_ENUM_NS(NAME, ...) \
     W_STATE_APPEND_NS(EnumState, w_internal::makeMetaEnumInfo<NAME,false>( \
-            #NAME, w_flagAlias(NAME{}), \
+            w_internal::StaticString{#NAME}, w_flagAlias(NAME{}), \
             w_internal::enum_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__))) \
     Q_ENUM_NS(NAME)
 
@@ -953,7 +947,7 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 }
 #define W_FLAG(NAME, ...) \
     W_STATE_APPEND(EnumState, w_internal::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type,true>( \
-            #NAME, w_flagAlias(NAME{}), \
+            w_internal::StaticString{#NAME}, w_flagAlias(NAME{}), \
             w_internal::enum_sequence<w_internal::QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, \
             W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__))) \
     Q_FLAG(NAME)
@@ -963,7 +957,7 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
  */
 #define W_FLAG_NS(NAME, ...) \
     W_STATE_APPEND_NS(EnumState, w_internal::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type,true>( \
-            #NAME, w_flagAlias(NAME{}), \
+            w_internal::StaticString{#NAME}, w_flagAlias(NAME{}), \
             w_internal::enum_sequence<w_internal::QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, \
             W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__))) \
     Q_FLAG_NS(NAME)
