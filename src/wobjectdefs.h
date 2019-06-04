@@ -710,8 +710,8 @@ constexpr auto simple_hash(char const *p) {
 
 namespace w_internal {
 
-template<size_t L, size_t N = 0, size_t M = 1024, size_t X = (N+M)/2, class F, class... As>
-constexpr auto count(F f, As... as) {
+template<size_t L, size_t N , size_t M, size_t X = (N+M)/2, class F, class... As>
+constexpr auto countBetween(F f, As... as) {
     using R = decltype(std::declval<F>()(index<X>, As{}...));
     if constexpr (N==X) {
         (void)f;
@@ -719,10 +719,20 @@ constexpr auto count(F f, As... as) {
         return std::is_same_v<void, R> ? N : M;
     }
     else if constexpr (std::is_same_v<void, R>) {
-        return count<L, N, X>(f, as...);
+        return countBetween<L, N, X>(f, as...);
     }
     else {
-        return count<L, X, M>(f, as...);
+        return countBetween<L, X, M>(f, as...);
+    }
+}
+template<size_t L, size_t N = 1, class F, class... As>
+constexpr auto count(F f, As... as) {
+    using R = decltype(std::declval<F>()(index<N>, As{}...));
+    if constexpr (std::is_same_v<void, R>) {
+        return countBetween<L, N/2, N>(f, as...);
+    }
+    else {
+        return count<L, N*2>(f, as...);
     }
 }
 
