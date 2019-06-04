@@ -150,75 +150,42 @@ constexpr auto stringFetch(const StaticStrings<Ns...>& s, Index<I>) {
 
 template<size_t... Ns>
 constexpr size_t countValidStringLiterals() {
-    //constexpr auto na = IndexArray{index_pack<Ns...>};
-    constexpr size_t na[sizeof... (Ns)] = {Ns...}; // Workaround for internal compiler error VS2017 & VS2019
-    auto i = size_t{};
-    for (auto n : na) { if (n <= 1) break; i++; }
-    return i;
+    auto c = size_t{};
+    (true && ... && (Ns > 1 ? ++c : false));
+    return c;
 }
-template<size_t... Ns, size_t... Rs, size_t... Is>
-constexpr auto makeStaticLiterals(index_sequence<Rs...>, index_sequence<Is...>, const char (& ...ns)[Ns]) {
-    //constexpr auto na = IndexArray{index_pack<Ns...>};
+template<class... Args, size_t... Ns, size_t... Rs, size_t... Is>
+constexpr auto makeStaticStrings(index_sequence<Rs...>, index_sequence<Is...>, index_sequence<Ns...>, const Args& ... ns) {
     constexpr size_t na[sizeof... (Ns)] = {Ns...}; // Workaround for internal compiler error VS2017 & VS2019
     auto r = StaticStrings<na[Rs]...>{};
     auto p = r.data;
-    auto l = [&p](auto& s, auto i) {
-        constexpr auto si = index_value<decltype(i)>;
-        if constexpr (si < sizeof... (Rs)) {
-            *p++ = s;
-        }
-        else (void)s;
-    };
-    (l(ns, index<Is>),...);
-    return r;
-}
-template<size_t... Ns>
-constexpr auto makeStaticLiterals(const char (& ...ns)[Ns]) {
-    if constexpr (sizeof... (Ns) == 0) return StaticStrings<>{};
-    else {
-        constexpr auto r = countValidStringLiterals<Ns...>();
-        if constexpr (r == 0) {
-            ((void)ns,...);
-            return StaticStrings<>{};
-        }
-        else {
-            constexpr auto rs = make_index_sequence<r>{};
-            constexpr auto is = make_index_sequence<sizeof... (Ns)>{};
-            return makeStaticLiterals(rs, is, ns...);
-        }
-    }
-}
-
-template<size_t... Ns, size_t... Rs, size_t... Is>
-constexpr auto makeStaticStrings(index_sequence<Rs...>, index_sequence<Is...>, const StaticString<Ns>& ... ns) {
-    //constexpr auto na = IndexArray{index_pack<Ns...>};
-    constexpr size_t na[sizeof... (Ns)] = {Ns...}; // Workaround for internal compiler error VS2017 & VS2019
-    auto r = StaticStrings<na[Rs]...>{};
-    auto p = r.data;
-    auto l = [&p](const auto& s, auto i) mutable {
-        constexpr auto si = indexValue(decltype(i){});
-        if constexpr (si < sizeof... (Rs)) {
-            *p++ = s.data;
-        }
-        else (void)s;
-    };
-    (l(ns, index<Is>),...);
+    ((Is < sizeof... (Rs) ? (*p++ = ns) : ns), ...);
     return r;
 }
 template<size_t... Ns>
 constexpr auto makeStaticStrings(const StaticString<Ns>& ... ns) {
-    if constexpr (sizeof... (Ns) == 0) return StaticStrings<>{};
+    constexpr auto r = countValidStringLiterals<Ns...>();
+    if constexpr (r == 0) {
+        ((void)ns,...);
+        return StaticStrings<>{};
+    }
     else {
-        constexpr auto r = countValidStringLiterals<Ns...>();
-        if constexpr (r == 0) {
-            ((void)ns,...);
-            return StaticStrings<>{};
-        }
-        else {
-            constexpr auto rs = make_index_sequence<r>{};
-            constexpr auto is = make_index_sequence<sizeof... (Ns)>{};
-            return makeStaticStrings(rs, is, ns...);
-        }
+        constexpr auto rs = make_index_sequence<r>{};
+        constexpr auto is = make_index_sequence<sizeof... (Ns)>{};
+        return makeStaticStrings(rs, is, index_sequence<Ns...>{}, ns.data...);
+    }
+}
+template<size_t... Ns>
+constexpr auto makeStaticLiterals(const char (& ...ns)[Ns]) {
+    constexpr auto r = countValidStringLiterals<Ns...>();
+    if constexpr (r == 0) {
+        ((void)ns,...);
+        return StaticStrings<>{};
+    }
+    else {
+        constexpr auto rs = make_index_sequence<r>{};
+        constexpr auto is = make_index_sequence<sizeof... (Ns)>{};
+        return makeStaticStrings(rs, is, index_sequence<Ns...>{}, ns...);
     }
 }
 
