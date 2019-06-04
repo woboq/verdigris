@@ -87,7 +87,7 @@ struct DataBuilder {
 
     template<size_t L>
     constexpr void addString(const StaticString<L>& s) {
-        for (auto c : s.data) *scp++ = c;
+        for (auto c : s) *scp++ = c;
         *sop++ = so;
         *ssp++ = L;
         *ip++ = stringCount;
@@ -97,7 +97,7 @@ struct DataBuilder {
     }
     template<size_t L>
     constexpr void addStringUntracked(const StaticString<L>& s) {
-        for (auto c : s.data) *scp++ = c;
+        for (auto c : s) *scp++ = c;
         *sop++ = so;
         *ssp++ = L;
         so += L;
@@ -106,7 +106,7 @@ struct DataBuilder {
 
     template<uint Flag = IsUnresolvedType, std::size_t L>
     constexpr void addTypeString(const StaticString<L>& s) {
-        for (auto c : s.data) *scp++ = c;
+        for (auto c : s) *scp++ = c;
         *sop++ = so;
         *ssp++ = L;
         *ip++ = Flag | stringCount;
@@ -543,12 +543,22 @@ constexpr auto generateDataArray(const ObjI &) {
     return r;
 }
 
+template<size_t N>
+struct OwnString {
+    RawArray<char, N> data;
+
+    OwnString(const RawArray<char, N>& s) {
+        auto p = data;
+        for (auto c : s) *p++ = c;
+    }
+};
+
 /**
  * Holder for the string data.  Just like in the moc generated code.
  */
 template<std::size_t N, std::size_t L> struct qt_meta_stringdata_t {
      QByteArrayData data[N];
-     StaticString<L> stringdata;
+     OwnString<L> stringdata;
 };
 
 /** Builds the string data
@@ -566,7 +576,7 @@ struct BuildStringDataHelper {
     inline static meta_stringdata_t qt_meta_stringdata = {
         {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(T::data.stringSizes[I]-1,
                 stringdata_offset + T::data.stringOffsets[I] - I * sizeof(QByteArrayData))...},
-        StaticString{T::data.stringChars}
+        {T::data.stringChars}
     };
 };
 
@@ -850,7 +860,7 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
 
 #define W_OBJECT_IMPL_COMMON(INLINE, ...) \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) struct W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_MetaObjectCreatorHelper { \
-        struct Name { static constexpr auto& value = W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)); }; \
+        struct Name { static constexpr auto value = w_internal::StaticString{W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))}; }; \
         static constexpr auto L = __COUNTER__; \
         static constexpr auto objectInfo = w_internal::ObjectInfo<L, W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType, Name>{}; \
         static constexpr auto data = w_internal::generateDataArray<L, W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>(objectInfo); \

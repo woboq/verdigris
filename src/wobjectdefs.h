@@ -70,19 +70,21 @@ constexpr int summed = sums(args...);
  * Helpers to play with static strings
  */
 template<class T, size_t N> using RawArray = T[N];
+struct FromPointer {};
 
 /** Represents a string of size N  (N includes the '\0' at the end) */
 template<std::size_t N> struct StaticString {
-    char data[N] = {};
+    const char* data;
     static constexpr std::size_t size = N;
 
-    constexpr StaticString() = default;
     template<size_t L>
-    constexpr StaticString(const char (&d)[L]) {
+    constexpr StaticString(const char (&d)[L]) : data(d) {
         static_assert (L == N);
-        auto p = data;
-        for (auto c : d) *p++ = c;
     }
+    constexpr StaticString(FromPointer, const char* p) : data(p) {}
+
+    constexpr auto begin() const { return data; }
+    constexpr auto end() const { return data + N; }
 };
 template<size_t N> StaticString(const char (&)[N]) -> StaticString<N>;
 
@@ -116,25 +118,19 @@ struct StaticStrings {
     static constexpr auto size = sizeof...(Ns);
     static constexpr auto N = summed<Ns ...>;
 
-    char data[(N > 0 ? N : 1)] = {0};
+    RawArray<const char*, (N > 0 ? N : 1)> data;
 
     constexpr StaticStrings() = default;
     template<size_t... Ls, class = std::enable_if_t<(sizeof... (Ls) > 0)>>
-    constexpr StaticStrings(StaticString<Ls> ... os) {
+    constexpr StaticStrings(StaticString<Ls> ... os) : data{os.data ...} {
         static_assert (summed<Ls...> == N);
-        auto p = data;
-        auto l = [&](const auto& s) { for (auto c : s.data) *p++ = c; };
-        (l(os), ...);
     }
 
     static constexpr auto size_sequence = index_sequence<Ns...>{};
 
     template<size_t I> constexpr auto operator[] (Index<I>) const {
-        constexpr auto o = getOffset<I, Ns...>();
         constexpr auto n = (RawArray<size_t, sizeof... (Ns)>{Ns...})[I];
-        auto r = StaticString<n>{};
-        for (auto i = size_t{}; i < n; i++) r.data[i] = data[o + i];
-        return r;
+        return StaticString<n>{FromPointer{}, data[I]};
     }
 };
 template<size_t N, size_t... Ns>
@@ -149,23 +145,6 @@ constexpr auto stringFetch(const StaticStrings<Ns...>& s, Index<I>) {
         (void)s;
         struct _{};
         return _{};
-    }
-}
-
-template<size_t... Ns, size_t On>
-constexpr auto operator+ (const StaticStrings<Ns...>& s, const StaticString<On>& o)
-        -> StaticStrings<Ns..., On> {
-    if constexpr (0 == sizeof... (Ns)) {
-        (void)s;
-        return {o};
-    }
-    else {
-        // return {StaticString{s.data}, o}; // msvc2017/2019 does not like this
-        auto r = StaticStrings<Ns..., On>{};
-        auto p = r.data;
-        for (auto c : s.data) *p++ = c;
-        for (auto c : o.data) *p++ = c;
-        return r;
     }
 }
 
@@ -186,7 +165,7 @@ constexpr auto makeStaticLiterals(index_sequence<Rs...>, index_sequence<Is...>, 
     auto l = [&p](auto& s, auto i) {
         constexpr auto si = index_value<decltype(i)>;
         if constexpr (si < sizeof... (Rs)) {
-            for (auto c : s) *p++ = c;
+            *p++ = s;
         }
         else (void)s;
     };
@@ -216,10 +195,10 @@ constexpr auto makeStaticStrings(index_sequence<Rs...>, index_sequence<Is...>, c
     constexpr size_t na[sizeof... (Ns)] = {Ns...}; // Workaround for internal compiler error VS2017 & VS2019
     auto r = StaticStrings<na[Rs]...>{};
     auto p = r.data;
-    auto l = [&](const auto& s, auto i) mutable {
+    auto l = [&p](const auto& s, auto i) mutable {
         constexpr auto si = indexValue(decltype(i){});
         if constexpr (si < sizeof... (Rs)) {
-            for (auto c : s.data) *p++ = c;
+            *p++ = s.data;
         }
         else (void)s;
     };
@@ -512,11 +491,7 @@ template<int N> constexpr int removedScopeSize(const RawArray<char, N> &name) {
 }
 
 template<int R, int N> constexpr StaticString<R> removeScope(const RawArray<char, N> &name) {
-    StaticString<R> r;
-    for (int i = 0; i < R; ++i) {
-        r.data[i] = name[N - R + i];
-    }
-    return r;
+    return {FromPointer{}, name + (N-R)};
 }
 
 // STRing REMove SCOPE:  strignify while removing the scope
