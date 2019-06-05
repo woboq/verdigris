@@ -6,7 +6,7 @@ Project {
     references: [
         "tutorial",
         "tests",
-        //"benchmarks",
+        "benchmarks",
     ]
 
     AutotestRunner {}
