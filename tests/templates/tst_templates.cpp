@@ -101,7 +101,7 @@ public: // signals:
     void hello(Reducer*r) W_SIGNAL(hello,(Reducer*),r)
 };
 
-Q_DECLARE_METATYPE(const QMetaObject*);
+Q_DECLARE_METATYPE(const QMetaObject*)
 
 void tst_Templates::templatesMethod_data()
 {

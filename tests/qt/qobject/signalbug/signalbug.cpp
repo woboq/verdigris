@@ -109,7 +109,7 @@ Sender::Sender (Receiver *r, Disconnector *d)
         connect (this, SIGNAL(fired()), r, SLOT(received()));
     if (d)
         connect (this, SIGNAL(fired()), d, SLOT(received()));
-};
+}
 
 void Sender::fire ()
 {
