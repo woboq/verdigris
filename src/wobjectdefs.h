@@ -74,14 +74,16 @@ struct FromPointer {};
 
 /** Represents a string of size N  (N includes the '\0' at the end) */
 template<std::size_t N> struct StaticString {
-    const char* data;
+    const char* b{};
+    const char* e{};
     static constexpr std::size_t size = N;
 
-    constexpr StaticString(const char (&d)[N]) : data(d) {}
-    constexpr StaticString(FromPointer, const char* p) : data(p) {}
+    constexpr StaticString() = default;
+    constexpr StaticString(const char (&d)[N]) : b(d), e(&d[N]) {}
+    constexpr StaticString(FromPointer, const char* b, const char* e) : b(b), e(e) {}
 
-    constexpr auto begin() const { return data; }
-    constexpr auto end() const { return data + N; }
+    constexpr auto begin() const { return b; }
+    constexpr auto end() const { return e; }
 };
 template<size_t N> StaticString(const char (&)[N]) -> StaticString<N>;
 
@@ -91,15 +93,16 @@ struct StaticStrings {
     static constexpr auto size = sizeof...(Ns);
     static constexpr auto N = summed<Ns ...>;
 
-    RawArray<const char*, (N > 0 ? N : 1)> data;
+    RawArray<const char*, (N > 0 ? N : 1)> b;
+    RawArray<const char*, (N > 0 ? N : 1)> e;
 
     constexpr StaticStrings() = default;
     template<size_t... Ls, class = std::enable_if_t<(sizeof... (Ls) > 0) && ((Ls == Ns) && ...)>>
-    constexpr StaticStrings(StaticString<Ls> ... os) : data{os.data ...} {}
+    constexpr StaticStrings(StaticString<Ls> ... os) : b{os.b...}, e{os.e...} {}
 
     template<size_t I> constexpr auto operator[] (Index<I>) const {
         constexpr auto n = (RawArray<size_t, sizeof... (Ns)>{Ns...})[I];
-        return StaticString<n>{FromPointer{}, data[I]};
+        return StaticString<n>{FromPointer{}, b[I], e[I]};
     }
 };
 template<size_t N, size_t... Ns>
@@ -127,8 +130,9 @@ template<class... Args, size_t... Ns, size_t... Rs, size_t... Is>
 constexpr auto makeStaticStrings(index_sequence<Rs...>, index_sequence<Is...>, index_sequence<Ns...>, const Args& ... ns) {
     constexpr size_t na[sizeof... (Ns)] = {Ns...}; // Workaround for internal compiler error VS2017 & VS2019
     auto r = StaticStrings<na[Rs]...>{};
-    auto p = r.data;
-    ((Is < sizeof... (Rs) ? (*p++ = ns) : ns), ...);
+    auto bp = r.b;
+    auto ep = r.e;
+    ((Is < sizeof... (Rs) ? (*bp++ = ns.b, *ep++ = ns.e, 0) : 0), ...);
     return r;
 }
 template<size_t... Ns>
@@ -141,8 +145,17 @@ constexpr auto makeStaticStrings(const StaticString<Ns>& ... ns) {
     else {
         constexpr auto rs = make_index_sequence<r>{};
         constexpr auto is = make_index_sequence<sizeof... (Ns)>{};
-        return makeStaticStrings(rs, is, index_sequence<Ns...>{}, ns.data...);
+        return makeStaticStrings(rs, is, index_sequence<Ns...>{}, ns...);
     }
+}
+template<class... Args, size_t... Ns, size_t... Rs, size_t... Is>
+constexpr auto makeStaticLiterals(index_sequence<Rs...>, index_sequence<Is...>, index_sequence<Ns...>, const Args& ... ns) {
+    constexpr size_t na[sizeof... (Ns)] = {Ns...}; // Workaround for internal compiler error VS2017 & VS2019
+    auto r = StaticStrings<na[Rs]...>{};
+    auto bp = r.b;
+    auto ep = r.e;
+    ((Is < sizeof... (Rs) ? (*bp++ = ns, *ep++ = &ns[Ns]) : ns), ...);
+    return r;
 }
 template<size_t... Ns>
 constexpr auto makeStaticLiterals(const char (& ...ns)[Ns]) {
@@ -154,7 +167,7 @@ constexpr auto makeStaticLiterals(const char (& ...ns)[Ns]) {
     else {
         constexpr auto rs = make_index_sequence<r>{};
         constexpr auto is = make_index_sequence<sizeof... (Ns)>{};
-        return makeStaticStrings(rs, is, index_sequence<Ns...>{}, ns...);
+        return makeStaticLiterals(rs, is, index_sequence<Ns...>{}, ns...);
     }
 }
 
@@ -427,7 +440,7 @@ template<int N> constexpr int removedScopeSize(const RawArray<char, N> &name) {
 }
 
 template<int R, int N> constexpr StaticString<R> removeScope(const RawArray<char, N> &name) {
-    return {FromPointer{}, name + (N-R)};
+    return {FromPointer{}, &name[N-R], &name[N]};
 }
 
 // STRing REMove SCOPE:  strignify while removing the scope

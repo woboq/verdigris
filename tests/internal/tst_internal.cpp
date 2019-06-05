@@ -28,19 +28,19 @@
 
 namespace w_internal {
 
-static_assert(StaticStrings(StaticString{"Hello"}, StaticString{"World"}).data[0][4] == 'o');
+static_assert(StaticStrings(StaticString{"Hello"}, StaticString{"World"}).b[0][4] == 'o');
 static_assert(
     (StaticStrings{StaticString{"Hello"}, StaticString{"World"}}[index<1>])
-        .data[0] == 'W');
+        .b[0] == 'W');
 
 static_assert(std::is_same<decltype(makeStaticLiterals()), StaticStrings<>>::value, "");
 static_assert(std::is_same<decltype(makeStaticLiterals("H", "el")), StaticStrings<2, 3>>::value, "");
-static_assert(makeStaticLiterals("H", "el").data[0][1] == '\0');
+static_assert(makeStaticLiterals("H", "el").b[0][1] == '\0');
 static_assert(std::is_same<decltype(makeStaticLiterals("H", "", "el")), StaticStrings<2>>::value, "");
-static_assert(makeStaticLiterals("H", "", "el").data[0][1] == '\0');
+static_assert(makeStaticLiterals("H", "", "el").b[0][1] == '\0');
 
 static_assert(std::is_same<decltype(makeStaticStrings()), StaticStrings<>>::value, "");
-static_assert(makeStaticStrings(StaticString{"H"}, StaticString{""}, StaticString{"el"}).data[0][1] == '\0');
+static_assert(makeStaticStrings(StaticString{"H"}, StaticString{""}, StaticString{"el"}).b[0][1] == '\0');
 
 
 }
@@ -63,10 +63,10 @@ private:
         QCOMPARE(w_internal::removedScopeSize("hallo::fo"), int(sizeof("fo")));
         QCOMPARE(w_internal::removedScopeSize("x::hallo::fo"), int(sizeof("fo")));
 
-        QCOMPARE(QByteArray(W_MACRO_STRREMSCOPE(foo).data),  QByteArray("foo"));
-        QCOMPARE(QByteArray(W_MACRO_STRREMSCOPE(::foo).data),  QByteArray("foo"));
-        QCOMPARE(QByteArray(W_MACRO_STRREMSCOPE(hallo::fo).data),  QByteArray("fo"));
-        QCOMPARE(QByteArray(W_MACRO_STRREMSCOPE(x::hallo::fo).data),  QByteArray("fo"));
+        QCOMPARE(QByteArray(W_MACRO_STRREMSCOPE(foo).b),  QByteArray("foo"));
+        QCOMPARE(QByteArray(W_MACRO_STRREMSCOPE(::foo).b),  QByteArray("foo"));
+        QCOMPARE(QByteArray(W_MACRO_STRREMSCOPE(hallo::fo).b),  QByteArray("fo"));
+        QCOMPARE(QByteArray(W_MACRO_STRREMSCOPE(x::hallo::fo).b),  QByteArray("fo"));
     }
     W_SLOT(removedScope)
 
