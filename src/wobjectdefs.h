@@ -120,7 +120,7 @@ constexpr auto stringFetch(const StaticStrings<Ns...>& s, Index<I>) {
 template<size_t... Ns>
 constexpr size_t countValidStringLiterals() {
     auto c = size_t{};
-    (true && ... && (Ns > 1 ? ++c : false));
+    (void)(true && ... && (Ns > 1 ? ++c : false));
     return c;
 }
 template<class... Args, size_t... Ns, size_t... Rs, size_t... Is>
