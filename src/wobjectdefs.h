@@ -77,40 +77,13 @@ template<std::size_t N> struct StaticString {
     const char* data;
     static constexpr std::size_t size = N;
 
-    template<size_t L>
-    constexpr StaticString(const char (&d)[L]) : data(d) {
-        static_assert (L == N);
-    }
+    constexpr StaticString(const char (&d)[N]) : data(d) {}
     constexpr StaticString(FromPointer, const char* p) : data(p) {}
 
     constexpr auto begin() const { return data; }
     constexpr auto end() const { return data + N; }
 };
 template<size_t N> StaticString(const char (&)[N]) -> StaticString<N>;
-
-template<size_t... Vs> struct IndexPack {};
-
-template<size_t N>
-struct IndexArray {
-    size_t data[N] = {};
-    static constexpr size_t size = N;
-
-    constexpr IndexArray() = default;
-    template<size_t... Vs> constexpr IndexArray(IndexPack<Vs...>) : data{Vs...} {
-        static_assert (N == sizeof... (Vs));
-    }
-
-    constexpr auto operator[](size_t i) const noexcept -> size_t { return data[i]; }
-};
-template<size_t... Vs> IndexArray(IndexPack<Vs...>) -> IndexArray<sizeof...(Vs)>;
-
-
-template<size_t I, size_t... Sizes> constexpr auto getOffset() -> size_t {
-    auto i = 0u;
-    auto o = size_t{};
-    ((i++ < I ? o += Sizes : 0u), ...);
-    return o;
-}
 
 template<size_t... Ns>
 struct StaticStrings {
@@ -121,12 +94,8 @@ struct StaticStrings {
     RawArray<const char*, (N > 0 ? N : 1)> data;
 
     constexpr StaticStrings() = default;
-    template<size_t... Ls, class = std::enable_if_t<(sizeof... (Ls) > 0)>>
-    constexpr StaticStrings(StaticString<Ls> ... os) : data{os.data ...} {
-        static_assert (summed<Ls...> == N);
-    }
-
-    static constexpr auto size_sequence = index_sequence<Ns...>{};
+    template<size_t... Ls, class = std::enable_if_t<(sizeof... (Ls) > 0) && ((Ls == Ns) && ...)>>
+    constexpr StaticStrings(StaticString<Ls> ... os) : data{os.data ...} {}
 
     template<size_t I> constexpr auto operator[] (Index<I>) const {
         constexpr auto n = (RawArray<size_t, sizeof... (Ns)>{Ns...})[I];
