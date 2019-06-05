@@ -684,7 +684,7 @@ QtTestObject::QtTestObject(QObject *parent)
 {
 }
 
-void QtTestObject::sl0() { slotResult = "sl0"; };
+void QtTestObject::sl0() { slotResult = "sl0"; }
 QString QtTestObject::sl1(QString s1) { slotResult = "sl1:" + s1; return "yessir"; }
 void QtTestObject::sl2(QString s1, QString s2) { slotResult = "sl2:" + s1 + s2; }
 void QtTestObject::sl3(QString s1, QString s2, QString s3)
