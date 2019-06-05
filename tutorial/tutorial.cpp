@@ -276,7 +276,7 @@ struct CustomType3 {};
 /** W_REGISTER_ARGTYPE(TYPE)
    register  TYPE so it can be used as a parameter of a signal/slot or return value
    One must use the normalized signature.
-   Note: This does not imply Q_DECLARE_METATYPE, and Q_DECLARE_METATYPE does not emply this.
+   Note: This does not imply Q_DECLARE_METATYPE, and Q_DECLARE_METATYPE does not imply this.
   */
 W_REGISTER_ARGTYPE(CustomType1)
 W_REGISTER_ARGTYPE(CustomType1*)
