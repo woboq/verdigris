@@ -1,67 +1,98 @@
-sudo: required
-dist: trusty
-
 language: cpp
 
-addons:
-    apt:
-        sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-trusty-3.8
-            - llvm-toolchain-trusty-3.9
-            - llvm-toolchain-trusty-4.0
-            - llvm-toolchain-trusty-5.0
-
-os: linux
-
 matrix:
-    exclude:
-        - os: linux  # Workaround to put OS X first.
-    include:
-        - os: osx
-          compiler: clang
-          env: QMAKESPEC=macx-clang
-          before_install: true
-          install: brew install qt5
-          before_script: brew link qt5 --force
+  include:
+    - os: linux
+      dist: xenial
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-xenial-7
+            - sourceline: ppa:beineri/opt-qt-5.12.3-xenial
+          packages:
+            - clang-7
+            - libc++abi-7-dev
+            - libc++-7-dev
+            - qt512base
+      env:
+        - QT_VERSION=512
+        - CLANG_VERSION=7
 
-        # We enumerate the matrix explicitly anyway, so order it after osx.
-        - env: QT_VERSION=55 QT_SOURCE=551 GCC_VERSION=5
-        - env: QT_VERSION=56 QT_SOURCE=563 GCC_VERSION=6
-        - env: QT_VERSION=58 QT_SOURCE=58 GCC_VERSION=6
-        - env: QT_VERSION=59 QT_SOURCE=593 GCC_VERSION=7
-        - env: QT_VERSION=510 QT_SOURCE=-5.10.1 GCC_VERSION=7
+    - os: linux
+      dist: xenial
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-xenial-8
+            - sourceline: ppa:beineri/opt-qt-5.12.3-xenial
+          packages:
+            - clang-8
+            - libc++abi-8-dev
+            - libc++-8-dev
+            - qt512base
+      env:
+        - QT_VERSION=512
+        - CLANG_VERSION=8
 
-        # Clang builds.
-        - env: QT_VERSION=56 QT_SOURCE=563 CLANG_VERSION=3.8
-        - env: QT_VERSION=57 QT_SOURCE=571 CLANG_VERSION=3.9
-        - env: QT_VERSION=58 QT_SOURCE=58 CLANG_VERSION=4.0
-        - env: QT_VERSION=59 QT_SOURCE=591 CLANG_VERSION=5.0
-        - env: QT_VERSION=510 QT_SOURCE=-5.10.1 CLANG_VERSION=5.0
+    - os: linux
+      dist: xenial
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - sourceline: ppa:beineri/opt-qt-5.12.3-xenial
+          packages:
+            - g++-7
+            - qt512base
+      env:
+        - QT_VERSION=512
+        - GCC_VERSION=7
 
-before_install:
-    - sudo add-apt-repository -y ppa:beineri/opt-qt${QT_SOURCE}-trusty;
-    - sudo apt-get update
+    - os: linux
+      dist: xenial
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - sourceline: ppa:beineri/opt-qt-5.12.3-xenial
+          packages:
+            - g++-8
+            - qt512base
+      env:
+        - QT_VERSION=512
+        - GCC_VERSION=8
 
-install:
-    - sudo apt-get install -y -qq qt${QT_VERSION}base
-    - if [[ $GCC_VERSION ]]; then
-        sudo apt-get install -y -qq g++-${GCC_VERSION};
-        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} 90;
-        g++ --version;
-      elif [[ $CLANG_VERSION ]]; then
-        sudo apt-get install -y -qq libstdc++-5-dev clang-${CLANG_VERSION};
-        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${CLANG_VERSION} 90;
-        clang++ --version;
-        export QMAKESPEC=linux-clang;
-      fi
+    - os: linux
+      services:
+        - docker
+      before_script: []
+      script:
+        - docker run -v${PWD}:/build
+            arbmind/qbs-clang8-qt512:1
+            build --file /build/verdigris.qbs --build-directory /tmp/build
+            -p autotest-runner
+      env:
+        - QBS=1.13.1
+        - QT_VERSION=512
+        - CLANG_VERSION=8
 
 before_script:
-    - source /opt/qt$QT_VERSION/bin/qt${QT_VERSION}-env.sh
+  - if [[ $GCC_VERSION ]]; then
+      sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} 90;
+      g++ --version;
+    fi
+  - if [[ $CLANG_VERSION ]]; then
+      sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${CLANG_VERSION} 90;
+      clang++ --version;
+      export QMAKESPEC=linux-clang-libc++;
+    fi
+  - source /opt/qt$QT_VERSION/bin/qt${QT_VERSION}-env.sh
+  - which qmake
+  - qmake --version
 
 script:
-    - which qmake
-    - qmake --version
-    - qmake -r
-    - make -j 2
-    - make check
+  - qmake -r
+  - make -j 2
+  - make check

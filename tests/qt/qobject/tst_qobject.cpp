@@ -3137,7 +3137,11 @@ void tst_QObject::recursiveSignalEmission()
 #if !defined(Q_OS_MAC) && !defined(Q_OS_WIN) // because it does not find the executable
     QProcess proc;
     // signalbug helper app should always be next to this test binary
+#ifdef W_SIGNALBUG
+    const QString path = QStringLiteral(W_SIGNALBUG);
+#else
     const QString path = QStringLiteral("signalbug/signalbug");
+#endif
     proc.start(path);
     QVERIFY2(proc.waitForStarted(), qPrintable(QString::fromLatin1("Cannot start '%1': %2").arg(path, proc.errorString())));
     QVERIFY(proc.waitForFinished());

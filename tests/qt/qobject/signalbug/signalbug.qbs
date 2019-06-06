@@ -2,15 +2,19 @@ import qbs
 
 
 Application {
+    id: root
     name: "signalbug"
     consoleApplication: true
-    type: ["application", "autotest"]
 
     Depends { name: "Verdigris" }
-    Depends { name: "Qt.test" }
 
     files: [
         "signalbug.cpp",
         "signalbug.h",
     ]
+
+    Export {
+        Depends { name: "cpp" }
+        cpp.defines: base.concat("W_SIGNALBUG=\""+root.buildDirectory+"/"+root.targetName+"\"")
+    }
 }
