@@ -1,7 +1,7 @@
 import qbs
 
 Project {
-    name: "tests"
+    name: "qt"
 
     references: [
         "qmetaenum",

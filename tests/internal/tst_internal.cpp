@@ -37,7 +37,7 @@ class tst_Internal : public QObject
 {
     W_OBJECT(tst_Internal)
 
-private:
+private slots:
     void removedScope() {
         QCOMPARE(w_internal::removedScopeSize("foo"), int(sizeof("foo")));
         QCOMPARE(w_internal::removedScopeSize("::foo"), int(sizeof("foo")));

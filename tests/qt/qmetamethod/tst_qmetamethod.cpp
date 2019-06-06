@@ -39,16 +39,22 @@ class tst_QMetaMethod : public QObject
     W_OBJECT(tst_QMetaMethod)
 
 private slots:
-    void method_data(); W_SLOT(method_data, W_Access::Private)
-    void method(); W_SLOT(method, W_Access::Private)
+    void method_data();
+    void method();
 
-    void invalidMethod(); W_SLOT(invalidMethod, W_Access::Private)
+    void invalidMethod();
+    void comparisonOperators();
 
-    void comparisonOperators(); W_SLOT(comparisonOperators, W_Access::Private)
+    void fromSignal();
 
-    void fromSignal(); W_SLOT(fromSignal, W_Access::Private)
+    void gadget();
 
-    void gadget(); W_SLOT(gadget, W_Access::Private)
+    W_SLOT(method_data, W_Access::Private)
+    W_SLOT(method, W_Access::Private)
+    W_SLOT(invalidMethod, W_Access::Private)
+    W_SLOT(comparisonOperators, W_Access::Private)
+    W_SLOT(fromSignal, W_Access::Private)
+    W_SLOT(gadget, W_Access::Private)
 };
 
 struct CustomType { };

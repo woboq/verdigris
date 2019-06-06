@@ -24,7 +24,7 @@ class tst_ManyProperties : public QObject
 {
     W_OBJECT(tst_ManyProperties)
 
-private:
+private slots:
     void manyProperties();
     W_SLOT(manyProperties)
 };
