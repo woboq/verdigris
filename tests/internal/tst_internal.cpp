@@ -28,20 +28,15 @@
 
 namespace w_internal {
 
-static_assert(StaticStrings(StaticString{"Hello"}, StaticString{"World"}).b[0][4] == 'o');
-static_assert(
-    (StaticStrings{StaticString{"Hello"}, StaticString{"World"}}[index<1>])
-        .b[0] == 'W');
+static_assert(std::is_same<decltype(viewValidLiterals()), StringViewArray<>>::value, "");
+static_assert(std::is_same<decltype(viewValidLiterals("H", "el")), StringViewArray<2>>::value, "");
+static_assert(viewValidLiterals("H", "el")[0].b[1] == '\0');
+static_assert(std::is_same<decltype(viewValidLiterals("H", "", "el")), StringViewArray<1>>::value, "");
+static_assert(viewValidLiterals("H", "", "el")[0].b[0] == 'H');
+static_assert(viewValidLiterals("H", "", "el")[0].b[1] == '\0');
 
-static_assert(std::is_same<decltype(makeStaticLiterals()), StaticStrings<>>::value, "");
-static_assert(std::is_same<decltype(makeStaticLiterals("H", "el")), StaticStrings<2>>::value, "");
-static_assert(makeStaticLiterals("H", "el").b[0][1] == '\0');
-static_assert(std::is_same<decltype(makeStaticLiterals("H", "", "el")), StaticStrings<1>>::value, "");
-static_assert(makeStaticLiterals("H", "", "el").b[0][0] == 'H');
-static_assert(makeStaticLiterals("H", "", "el").b[0][1] == '\0');
-
-static_assert(std::is_same<decltype(makeTailStrings()), StaticStrings<>>::value, "");
-static_assert(makeTailStrings<2,1,3>("H", "", "el").b[0][1] == '\0');
+static_assert(std::is_same<decltype(viewValidTails()), StringViewArray<>>::value, "");
+static_assert(viewValidTails<2,1,3>("H", "", "el")[0].b[1] == '\0');
 
 }
 
@@ -64,10 +59,10 @@ private slots:
         QCOMPARE(w_internal::removedScopeSize("x::hallo::fo"), int(sizeof("fo")));
 
         using namespace w_internal;
-        QCOMPARE(QByteArray(w_internal::makeTailStrings<w_internal::removedScopeSize("foo")>("foo")[index<0>].b),  QByteArray("foo"));
-        QCOMPARE(W_PARAM_TOSTRING_REMOVE_SCOPE(::foo)[index<0>].b, QByteArray("foo"));
-        QCOMPARE(W_PARAM_TOSTRING_REMOVE_SCOPE(::foo, hallo::fo)[index<1>].b, QByteArray("fo"));
-        QCOMPARE(W_PARAM_TOSTRING_REMOVE_SCOPE(::foo, hallo::fo, x::hallo::fo)[index<2>].b, QByteArray("fo"));
+        QCOMPARE(QByteArray(w_internal::viewValidTails<w_internal::removedScopeSize("foo")>("foo")[0].b),  QByteArray("foo"));
+        QCOMPARE(W_PARAM_TOSTRING_REMOVE_SCOPE(::foo)[0].b, QByteArray("foo"));
+        QCOMPARE(W_PARAM_TOSTRING_REMOVE_SCOPE(::foo, hallo::fo)[1].b, QByteArray("fo"));
+        QCOMPARE(W_PARAM_TOSTRING_REMOVE_SCOPE(::foo, hallo::fo, x::hallo::fo)[2].b, QByteArray("fo"));
     }
     W_SLOT(removedScope)
 

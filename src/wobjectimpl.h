@@ -34,17 +34,17 @@ struct LayoutBuilder {
     uint stringCount{};
     uint intCount{};
 
-    constexpr void addString(const StaticString& s) {
+    constexpr void addString(const StringView& s) {
         stringSize += s.size();
         stringCount += 1;
         intCount += 1;
     }
-    constexpr void addStringUntracked(const StaticString& s) {
+    constexpr void addStringUntracked(const StringView& s) {
         stringSize += s.size();
         stringCount += 1;
     }
     template<uint Flag = IsUnresolvedType>
-    constexpr void addTypeString(const StaticString& s) {
+    constexpr void addTypeString(const StringView& s) {
         stringSize += s.size();
         stringCount += 1;
         intCount += 1;
@@ -83,7 +83,7 @@ struct DataBuilder {
         , ssp(r.stringSizes)
         , ip(r.ints) {}
 
-    constexpr void addString(const StaticString& s) {
+    constexpr void addString(const StringView& s) {
         for (auto c : s) *scp++ = c;
         *sop++ = so;
         *ssp++ = s.size();
@@ -92,7 +92,7 @@ struct DataBuilder {
         stringCount += 1;
         intCount += 1;
     }
-    constexpr void addStringUntracked(const StaticString& s) {
+    constexpr void addStringUntracked(const StringView& s) {
         for (auto c : s) *scp++ = c;
         *sop++ = so;
         *ssp++ = s.size();
@@ -101,7 +101,7 @@ struct DataBuilder {
     }
 
     template<uint Flag = IsUnresolvedType>
-    constexpr void addTypeString(const StaticString& s) {
+    constexpr void addTypeString(const StringView& s) {
         for (auto c : s) *scp++ = c;
         *sop++ = so;
         *ssp++ = s.size();
@@ -176,7 +176,7 @@ static constexpr bool hasNotifySignal() {
 template<size_t L, class T, class Name>
 struct ObjectInfo {
     using TPP = T**;
-    static constexpr auto name = StaticString{Name::value};
+    static constexpr auto name = StringView{Name::value};
 
     static constexpr int signalCount = stateCount<L, SignalStateTag, T**>;
     static constexpr int slotCount = stateCount<L, SlotStateTag, T**>;
@@ -265,7 +265,7 @@ struct HandleType<T, false> {
         static_assert(W_TypeRegistery<T>::registered, "Please Register T with W_REGISTER_ARGTYPE");
     }
     template<typename Strings>
-    static constexpr void result(Strings &ss, StaticString typeStr) {
+    static constexpr void result(Strings &ss, StringView typeStr) {
         if (typeStr.size() < 1) throw "Type has empty name!";
         return ss.addTypeString(typeStr);
     }
@@ -365,7 +365,7 @@ struct EnumValuesGenerator {
 private:
     template<size_t... Values, typename Names, size_t... Is>
     constexpr auto generateAll(index_sequence<Values...>, const Names& names, index_sequence<Is...>) {
-        ((s.addString(names[index<Is>]), s.addInts((uint)Values)), ...);
+        ((s.addString(names[Is]), s.addInts((uint)Values)), ...);
     }
 };
 
@@ -385,7 +385,7 @@ struct HandleArgsHelper<A, Args...> {
         using Type = typename QtPrivate::RemoveConstRef<A>::Type;
         auto typeStr = stringFetch(paramTypes, index<I>);
         using ts_t = decltype(typeStr);
-        // This way, the overload of result will not pick the StaticString one if it is a tuple (because registered types have the priority)
+        // This way, the overload of result will not pick the StringView one if it is a tuple (because registered types have the priority)
         auto typeStr2 = std::conditional_t<std::is_same<A, Type>::value, ts_t, std::tuple<ts_t>>{typeStr};
         HandleType<Type>::result(ss, typeStr2);
         HandleArgsHelper<Args...>::result(ss, paramTypes, index<I+1>);
@@ -393,12 +393,12 @@ struct HandleArgsHelper<A, Args...> {
 };
 template<std::size_t N> struct HandleArgNames {
     template<typename Strings, size_t Ns, size_t I = 0>
-    static constexpr void result(Strings &ss, const StaticStrings<Ns>& pn, Index<I> = {}, std::enable_if_t<(I < Ns)>* = {}) {
-        ss.addString(pn[index<I>]);
+    static constexpr void result(Strings &ss, const StringViewArray<Ns>& pn, Index<I> = {}, std::enable_if_t<(I < Ns)>* = {}) {
+        ss.addString(pn[I]);
         HandleArgNames<N-1>::result(ss, pn, index<I+1>);
     }
     template<typename Strings, size_t Ns, size_t I = 0>
-    static constexpr void result(Strings &ss, const StaticStrings<Ns>& pn, Index<I> = {}, std::enable_if_t<(I >= Ns)>* = {}) {
+    static constexpr void result(Strings &ss, const StringViewArray<Ns>& pn, Index<I> = {}, std::enable_if_t<(I >= Ns)>* = {}) {
         ss.addInts(1);
         HandleArgNames<N-1>::result(ss, pn, index<I+1>);
     }
@@ -454,7 +454,7 @@ struct ConstructorParametersGenerator {
     template<typename... Args, class Index>
     constexpr auto operator() (MetaConstructorInfo<Args...>, Index) {
         s.addInts(IsUnresolvedType | 1);
-        HandleArgsHelper<Args...>::result(s, StaticStrings<>{});
+        HandleArgsHelper<Args...>::result(s, StringViewArray<>{});
         s.addInts(((void)sizeof(Args),1)...); // all the names are 1 (for "\0")
     }
 };
@@ -491,7 +491,7 @@ constexpr auto generateDataPass(const ObjI &objectInfo, State& state) {
 
     state.addInts(QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 8 : 7); // revision
     state.addString(objectInfo.name);
-    state.addStringUntracked(StaticString{""});
+    state.addStringUntracked(StringView{""});
     state.addInts(
         ObjI::classInfoCount, classInfoOffset, // classinfo
         ObjI::methodCount, methodOffset, // methods
@@ -856,7 +856,7 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
 
 #define W_OBJECT_IMPL_COMMON(INLINE, ...) \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) struct W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_MetaObjectCreatorHelper { \
-        struct Name { static constexpr auto value = w_internal::StaticString{W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))}; }; \
+        struct Name { static constexpr auto value = w_internal::StringView{W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))}; }; \
         static constexpr auto L = __COUNTER__; \
         static constexpr auto objectInfo = w_internal::ObjectInfo<L, W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType, Name>{}; \
         static constexpr auto data = w_internal::generateDataArray<L, W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>(objectInfo); \

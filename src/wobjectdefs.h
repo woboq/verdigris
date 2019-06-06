@@ -71,45 +71,33 @@ constexpr int summed = sums(args...);
  */
 template<class T, size_t N> using RawArray = T[N];
 
-struct FromPointer {};
-
 /** Represents a string of size N  (N includes the '\0' at the end) */
-struct StaticString {
+struct StringView {
     const char* b{};
     const char* e{};
 
-    constexpr StaticString() = default;
+    constexpr StringView() = default;
     template<size_t N>
-    constexpr StaticString(const char (&d)[N]) : b(d), e(&d[N]) {}
-    constexpr StaticString(FromPointer, const char* b, const char* e) : b(b), e(e) {}
+    constexpr StringView(const char (&d)[N]) : b(d), e(&d[N]) {}
+    constexpr StringView(const char* b, const char* e) : b(b), e(e) {}
 
     constexpr auto size() const -> size_t { return static_cast<size_t>(e-b); }
     constexpr auto begin() const { return b; }
     constexpr auto end() const { return e; }
 };
 
-template<size_t rN = 0>
-struct StaticStrings {
-    static constexpr auto N = rN;
+template<size_t N = 0>
+struct StringViewArray {
+    StringView data[(N > 0 ? N : 1)];
 
-    RawArray<const char*, (N > 0 ? N : 1)> b;
-    RawArray<const char*, (N > 0 ? N : 1)> e;
-
-    constexpr StaticStrings() = default;
-    template<class... Ls, class = std::enable_if_t<(sizeof... (Ls) == rN) && (N > 0)>>
-    constexpr StaticStrings(Ls ... os) : b{os.b...}, e{os.e...} {}
-
-    template<size_t I> constexpr auto operator[] (Index<I>) const {
-        return StaticString{FromPointer{}, b[I], e[I]};
-    }
+    constexpr StringViewArray() = default;
+    constexpr auto operator[] (size_t i) const { return data[i]; }
 };
-template<class... Args>
-StaticStrings(StaticString, Args...) -> StaticStrings<1 + sizeof... (Args)>;
 
 template<size_t I, size_t N>
-constexpr auto stringFetch(const StaticStrings<N>& s, Index<I>) {
+constexpr auto stringFetch(const StringViewArray<N>& s, Index<I>) {
     if constexpr (I < N) {
-        return s[index<I>];
+        return s[I];
     }
     else {
         (void)s;
@@ -119,49 +107,47 @@ constexpr auto stringFetch(const StaticStrings<N>& s, Index<I>) {
 }
 
 template<size_t... Ns>
-constexpr size_t countValidStringLiterals() {
+constexpr size_t countValidSizes() {
     auto c = size_t{};
     (void)(true && ... && (Ns > 1 ? ++c : false));
     return c;
 }
 template<size_t R, size_t... Ns, size_t... Ts, size_t... Is, class... Args>
-constexpr auto makeTailStrings2(index_sequence<Is...>, index_sequence<Ts...>, const Args& ... ns) {
-    auto r = StaticStrings<R>{};
-    auto bp = r.b;
-    auto ep = r.e;
-    ((Is < R ? (*bp++ = &ns[Ns - Ts], *ep++ = &ns[Ns], 0) : 0), ...);
+constexpr auto viewValidTailsImpl(index_sequence<Is...>, index_sequence<Ts...>, const Args& ... ns) {
+    auto r = StringViewArray<R>{};
+    auto p = r.data;
+    ((Is < R ? (*p++ = StringView{&ns[Ns - Ts], &ns[Ns]}) : ns), ...);
     return r;
 }
 template<size_t... Ts, size_t... Ns>
-constexpr auto makeTailStrings(const char (& ...ns)[Ns]) {
-    constexpr auto r = countValidStringLiterals<Ts...>();
+constexpr auto viewValidTails(const char (& ...ns)[Ns]) {
+    constexpr auto r = countValidSizes<Ts...>();
     if constexpr (r == 0) {
         ((void)ns,...);
-        return StaticStrings<>{};
+        return StringViewArray<>{};
     }
     else {
         constexpr auto is = make_index_sequence<sizeof... (Ns)>{};
-        return makeTailStrings2<r, Ns...>(is, index_sequence<Ts...>{}, ns...);
+        return viewValidTailsImpl<r, Ns...>(is, index_sequence<Ts...>{}, ns...);
     }
 }
 template<size_t R, size_t... Ns, size_t... Is, class... Args>
-constexpr auto makeStaticLiterals2(index_sequence<Is...>, const Args& ... ns) {
-    auto r = StaticStrings<R>{};
-    auto bp = r.b;
-    auto ep = r.e;
-    ((Is < R ? (*bp++ = ns, *ep++ = &ns[Ns]) : ns), ...);
+constexpr auto viewValidLiteralsImpl(index_sequence<Is...>, const Args& ... ns) {
+    auto r = StringViewArray<R>{};
+    auto p = r.data;
+    ((Is < R ? (*p++ = StringView{ns, &ns[Ns]}) : ns), ...);
     return r;
 }
 template<size_t... Ns>
-constexpr auto makeStaticLiterals(const char (& ...ns)[Ns]) {
-    constexpr auto r = countValidStringLiterals<Ns...>();
+constexpr auto viewValidLiterals(const char (& ...ns)[Ns]) {
+    constexpr auto r = countValidSizes<Ns...>();
     if constexpr (r == 0) {
         ((void)ns,...);
-        return StaticStrings<>{};
+        return StringViewArray<>{};
     }
     else {
         constexpr auto is = make_index_sequence<sizeof... (Ns)>{};
-        return makeStaticLiterals2<r, Ns...>(is, ns...);
+        return viewValidLiteralsImpl<r, Ns...>(is, ns...);
     }
 }
 
@@ -243,10 +229,10 @@ constexpr std::integral_constant<int, int(w_internal::PropertyFlags::Final)> W_F
 namespace w_internal {
 
 /** Holds information about a method */
-template<typename F, int Flags, typename IC, typename ParamTypes, typename ParamNames = StaticStrings<>>
+template<typename F, int Flags, typename IC, typename ParamTypes, typename ParamNames = StringViewArray<>>
 struct MetaMethodInfo {
     F func;
-    StaticString name;
+    StringView name;
     ParamTypes paramTypes;
     ParamNames paramNames;
     static constexpr int argCount = QtPrivate::FunctionPointer<F>::ArgumentCount;
@@ -257,20 +243,20 @@ struct MetaMethodInfo {
 // Called from the W_SLOT macro
 template<typename F, typename ParamTypes, int... Flags, typename IntegralConstant>
 constexpr MetaMethodInfo<F, summed<Flags...> | W_MethodType::Slot.value, IntegralConstant, ParamTypes>
-makeMetaSlotInfo(F f, StaticString name, IntegralConstant, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
+makeMetaSlotInfo(F f, StringView name, IntegralConstant, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
 { return { f, name, paramTypes, {} }; }
 
 // Called from the W_METHOD macro
 template<typename F, typename ParamTypes, int... Flags, typename IntegralConstant>
 constexpr MetaMethodInfo<F,  summed<Flags...> | W_MethodType::Method.value, IntegralConstant, ParamTypes>
-makeMetaMethodInfo(F f, StaticString name, IntegralConstant, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
+makeMetaMethodInfo(F f, StringView name, IntegralConstant, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
 { return { f, name, paramTypes, {} }; }
 
 // Called from the W_SIGNAL macro
 template<typename F, typename ParamTypes, typename ParamNames, int... Flags, typename IntegralConstant>
 constexpr MetaMethodInfo<F, summed<Flags...> | W_MethodType::Signal.value, IntegralConstant,
                             ParamTypes, ParamNames>
-makeMetaSignalInfo(F f, StaticString name, IntegralConstant, const ParamTypes &paramTypes,
+makeMetaSignalInfo(F f, StringView name, IntegralConstant, const ParamTypes &paramTypes,
                     const ParamNames &paramNames, W_MethodFlags<Flags>...)
 { return { f, name, paramTypes, paramNames }; }
 
@@ -279,7 +265,7 @@ template<typename... Args> struct MetaConstructorInfo {
     static constexpr std::size_t argCount = sizeof...(Args);
     static constexpr int flags = W_MethodType::Constructor.value | W_Access::Public.value;
     using IntegralConstant = void*; // Used to detect the access specifier, but it is always public, so no need for this
-    StaticString name;
+    StringView name;
     template<typename T, std::size_t... I>
     void createInstance(void **_a, index_sequence<I...>) const {
         *reinterpret_cast<T**>(_a[0]) =
@@ -287,7 +273,7 @@ template<typename... Args> struct MetaConstructorInfo {
     }
 };
 // called from the W_CONSTRUCTOR macro
-template<typename...  Args> constexpr MetaConstructorInfo<Args...> makeMetaConstructorInfo(StaticString name)
+template<typename...  Args> constexpr MetaConstructorInfo<Args...> makeMetaConstructorInfo(StringView name)
 { return { name }; }
 
 struct Empty{
@@ -300,8 +286,8 @@ template<typename Type, typename Getter = Empty,
             typename Notify = Empty, typename Reset = Empty, int Flags = 0>
 struct MetaPropertyInfo {
     using PropertyType = Type;
-    StaticString name;
-    StaticString typeStr;
+    StringView name;
+    StringView typeStr;
     Getter getter;
     Setter setter;
     Member member;
@@ -391,7 +377,7 @@ constexpr auto parseProperty(const PropInfo &p, std::integral_constant<int, Flag
 { return parseProperty(p.template addFlag<Flag>() ,t...); }
 
 template<typename T, typename ... Args>
-constexpr auto makeMetaPropertyInfo(StaticString name, StaticString type, Args... args) {
+constexpr auto makeMetaPropertyInfo(StringView name, StringView type, Args... args) {
     auto meta = MetaPropertyInfo<T>{ name, type, {}, {}, {}, {}, {} };
     return parseProperty(meta, args...);
 }
@@ -406,8 +392,8 @@ template<class...>struct debug_types;
 /** Holds information about an enum */
 template<bool HasAlias, typename Values_, typename Names, int Flags>
 struct MetaEnumInfo {
-    StaticString name;
-    StaticString alias;
+    StringView name;
+    StringView alias;
     Names names;
     using Values = Values_;
     static constexpr uint flags = Flags;
@@ -417,12 +403,12 @@ struct MetaEnumInfo {
 template<typename Enum, Enum... Value> struct enum_sequence {};
 // called from W_ENUM and W_FLAG
 template<typename Enum, int Flag, Enum... Values, typename Names>
-constexpr auto makeMetaEnumInfo(StaticString name, int, enum_sequence<Enum, Values...>, Names names)
+constexpr auto makeMetaEnumInfo(StringView name, int, enum_sequence<Enum, Values...>, Names names)
         -> MetaEnumInfo<false, index_sequence<size_t(Values)...>, Names, Flag | EnumIsScoped<Enum>::Value> {
     return { name, {""}, names };
 }
 template<typename Enum, int Flag, Enum... Values, typename Names>
-constexpr auto makeMetaEnumInfo(StaticString name, StaticString alias, enum_sequence<Enum, Values...>, Names names)
+constexpr auto makeMetaEnumInfo(StringView name, StringView alias, enum_sequence<Enum, Values...>, Names names)
         -> MetaEnumInfo<true, index_sequence<size_t(Values)...>, Names, Flag | EnumIsScoped<Enum>::Value> {
     return { name, alias, names };
 }
@@ -437,14 +423,6 @@ template<int N> constexpr int removedScopeSize(const RawArray<char, N> &name) {
         p++;
     return N - p;
 }
-
-template<int R, int N> constexpr StaticString removeScope(const RawArray<char, N> &name) {
-    return {FromPointer{}, &name[N-R], &name[N]};
-}
-
-// STRing REMove SCOPE:  strignify while removing the scope
-#define W_MACRO_STRREMSCOPE(...) w_internal::removeScope<w_internal::removedScopeSize("" #__VA_ARGS__)>("" #__VA_ARGS__)
-
 
 /**
  * Helper for the implementation of a signal.
@@ -574,16 +552,17 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 // strignify and make a StaticStringList out of an array of arguments
 #define W_PARAM_TOSTRING(...) W_MACRO_MSVC_EMPTY W_MACRO_MSVC_DELAY(W_PARAM_TOSTRING2,__VA_ARGS__ ,,,,,,,,,,,,,,,,)
 #define W_PARAM_TOSTRING2(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
-    w_internal::makeStaticLiterals(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
+    w_internal::viewValidLiterals(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
 
 #define W_PARAM_TOSTRING_REMOVE_SCOPE(...) W_MACRO_MSVC_EMPTY W_MACRO_MSVC_DELAY(W_PARAM_TOSTRING2_REMOVE_SCOPE,__VA_ARGS__ ,,,,,,,,,,,,,,,,)
 #define W_PARAM_TOSTRING2_REMOVE_SCOPE(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
-    w_internal::makeTailStrings<w_internal::removedScopeSize(#A1), w_internal::removedScopeSize(#A2), w_internal::removedScopeSize(#A3), \
-                                     w_internal::removedScopeSize(#A4), w_internal::removedScopeSize(#A5), w_internal::removedScopeSize(#A6), \
-                                     w_internal::removedScopeSize(#A7), w_internal::removedScopeSize(#A8), w_internal::removedScopeSize(#A9), \
-                                     w_internal::removedScopeSize(#A10), w_internal::removedScopeSize(#A11), w_internal::removedScopeSize(#A12), \
-                                     w_internal::removedScopeSize(#A13), w_internal::removedScopeSize(#A14), w_internal::removedScopeSize(#A15), \
-                                     w_internal::removedScopeSize(#A16)>(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
+    w_internal::viewValidTails< \
+        w_internal::removedScopeSize(#A1), w_internal::removedScopeSize(#A2), w_internal::removedScopeSize(#A3), \
+        w_internal::removedScopeSize(#A4), w_internal::removedScopeSize(#A5), w_internal::removedScopeSize(#A6), \
+        w_internal::removedScopeSize(#A7), w_internal::removedScopeSize(#A8), w_internal::removedScopeSize(#A9), \
+        w_internal::removedScopeSize(#A10), w_internal::removedScopeSize(#A11), w_internal::removedScopeSize(#A12), \
+        w_internal::removedScopeSize(#A13), w_internal::removedScopeSize(#A14), w_internal::removedScopeSize(#A15), \
+        w_internal::removedScopeSize(#A16)>(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
 
 
 // remove the surrounding parentheses
@@ -678,7 +657,7 @@ struct InterfaceStateTag {};
 
 #define W_OBJECT_COMMON(TYPE) \
         using W_ThisType = TYPE; \
-        static constexpr auto W_UnscopedName = w_internal::StaticString{#TYPE}; /* so we don't repeat it in W_CONSTRUCTOR */ \
+        static constexpr auto W_UnscopedName = w_internal::StringView{#TYPE}; /* so we don't repeat it in W_CONSTRUCTOR */ \
         friend struct w_internal::FriendHelper; \
         template<typename W_Flag> static inline constexpr int w_flagAlias(W_Flag) { return 0; } \
     public: \
@@ -726,7 +705,7 @@ struct InterfaceStateTag {};
         using W_MetaObjectCreatorHelper = NAMESPACE::W_MetaObjectCreatorHelper; \
         static constexpr auto qt_static_metacall = nullptr; \
     }; \
-    static constexpr auto W_UnscopedName = w_internal::StaticString{#NAMESPACE}; \
+    static constexpr auto W_UnscopedName = w_internal::StringView{#NAMESPACE}; \
     template<typename W_Flag> static inline constexpr int w_flagAlias(W_Flag) { Q_UNUSED(W_UnscopedName) return 0; } \
     QT_ANNOTATE_CLASS(qt_fake, "")
 
@@ -747,7 +726,7 @@ struct InterfaceStateTag {};
 #define W_SLOT(...) W_MACRO_MSVC_EXPAND(W_SLOT2(__VA_ARGS__, w_internal::W_EmptyFlag))
 #define W_SLOT2(NAME, ...) \
     W_STATE_APPEND(SlotState, w_internal::makeMetaSlotInfo( \
-            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::StaticString{#NAME},  \
+            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::StringView{#NAME},  \
             W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__))) \
@@ -760,7 +739,7 @@ struct InterfaceStateTag {};
 #define W_INVOKABLE(...) W_MACRO_MSVC_EXPAND(W_INVOKABLE2(__VA_ARGS__, w_internal::W_EmptyFlag))
 #define W_INVOKABLE2(NAME, ...) \
     W_STATE_APPEND(MethodState, w_internal::makeMetaMethodInfo( \
-            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::StaticString{#NAME},  \
+            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::StringView{#NAME},  \
             W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__))) \
@@ -791,7 +770,7 @@ struct InterfaceStateTag {};
         w_internal::stateCount<__COUNTER__, w_internal::SignalStateTag, W_ThisType**>; \
     friend constexpr auto w_state(w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>, w_internal::SignalStateTag, W_ThisType**) \
         W_RETURN(w_internal::makeMetaSignalInfo( \
-                W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::StaticString{#NAME}, \
+                W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::StringView{#NAME}, \
                 W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
                 W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))) \
     static inline void w_GetAccessSpecifierHelper(W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)) {}
@@ -809,7 +788,7 @@ struct InterfaceStateTag {};
         w_internal::stateCount<__COUNTER__, w_internal::SignalStateTag, W_ThisType**>; \
     friend constexpr auto w_state(w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>, w_internal::SignalStateTag, W_ThisType**) \
         W_RETURN(w_internal::makeMetaSignalInfo( \
-                W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::StaticString{#NAME}, \
+                W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::StringView{#NAME}, \
                 W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
                 W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat)) \
     static inline void w_GetAccessSpecifierHelper(W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)) {}
@@ -839,7 +818,7 @@ struct InterfaceStateTag {};
 #define W_PROPERTY2(TYPE, NAME, ...) \
     W_STATE_APPEND(PropertyState, \
         w_internal::makeMetaPropertyInfo<W_MACRO_REMOVEPAREN(TYPE)>(\
-                            w_internal::StaticString{#NAME}, w_internal::StaticString{W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE))}, __VA_ARGS__))
+                            w_internal::StringView{#NAME}, w_internal::StringView{W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE))}, __VA_ARGS__))
 
 #define WRITE , &W_ThisType::
 #define READ , &W_ThisType::
@@ -857,7 +836,7 @@ struct InterfaceStateTag {};
  */
 #define W_ENUM(NAME, ...) \
     W_STATE_APPEND(EnumState, w_internal::makeMetaEnumInfo<NAME,false>( \
-            w_internal::StaticString{#NAME}, w_flagAlias(NAME{}), \
+            w_internal::StringView{#NAME}, w_flagAlias(NAME{}), \
             w_internal::enum_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__))) \
     Q_ENUM(NAME)
 
@@ -867,7 +846,7 @@ struct InterfaceStateTag {};
  */
 #define W_ENUM_NS(NAME, ...) \
     W_STATE_APPEND_NS(EnumState, w_internal::makeMetaEnumInfo<NAME,false>( \
-            w_internal::StaticString{#NAME}, w_flagAlias(NAME{}), \
+            w_internal::StringView{#NAME}, w_flagAlias(NAME{}), \
             w_internal::enum_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__))) \
     Q_ENUM_NS(NAME)
 
@@ -880,7 +859,7 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 }
 #define W_FLAG(NAME, ...) \
     W_STATE_APPEND(EnumState, w_internal::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type,true>( \
-            w_internal::StaticString{#NAME}, w_flagAlias(NAME{}), \
+            w_internal::StringView{#NAME}, w_flagAlias(NAME{}), \
             w_internal::enum_sequence<w_internal::QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, \
             W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__))) \
     Q_FLAG(NAME)
@@ -890,7 +869,7 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
  */
 #define W_FLAG_NS(NAME, ...) \
     W_STATE_APPEND_NS(EnumState, w_internal::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type,true>( \
-            w_internal::StaticString{#NAME}, w_flagAlias(NAME{}), \
+            w_internal::StringView{#NAME}, w_flagAlias(NAME{}), \
             w_internal::enum_sequence<w_internal::QEnumOrQFlags<NAME>::Type,__VA_ARGS__>{}, \
             W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__))) \
     Q_FLAG_NS(NAME)
@@ -898,12 +877,12 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 /** Same as Q_CLASSINFO.  Note, Q_CLASSINFO_NS is required for namespace */
 #define W_CLASSINFO(A, B) \
     W_STATE_APPEND(ClassInfoState, \
-        std::pair<w_internal::StaticString, w_internal::StaticString>{ w_internal::StaticString{A}, w_internal::StaticString{B} })
+        std::pair<w_internal::StringView, w_internal::StringView>{ w_internal::StringView{A}, w_internal::StringView{B} })
 
 /** Same as Q_CLASSINFO, but within a namespace */
 #define W_CLASSINFO_NS(A, B) \
     W_STATE_APPEND_NS(ClassInfoState, \
-        std::pair<w_internal::StaticString, w_internal::StaticString>{ w_internal::StaticString{A}, w_internal::StaticString{B} })
+        std::pair<w_internal::StringView, w_internal::StringView>{ w_internal::StringView{A}, w_internal::StringView{B} })
 
 
 /** Same as Q_INTERFACE */
@@ -913,7 +892,7 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 /** Same as Q_DECLARE_FLAGS */
 #define W_DECLARE_FLAGS(Flags, Enum) \
     Q_DECLARE_FLAGS(Flags, Enum) \
-    static inline constexpr w_internal::StaticString w_flagAlias(Flags) { return w_internal::StaticString{#Enum}; }
+    static inline constexpr w_internal::StringView w_flagAlias(Flags) { return w_internal::StringView{#Enum}; }
 
 /** \macro W_REGISTER_ARGTYPE(TYPE)
  Registers TYPE so it can be used as a parameter of a signal/slot or return value.
@@ -924,7 +903,7 @@ namespace w_internal { template<typename T> struct W_TypeRegistery { enum { regi
 #define W_REGISTER_ARGTYPE(...) namespace w_internal { \
     template<> struct W_TypeRegistery<__VA_ARGS__> { \
     enum { registered = true }; \
-    static constexpr auto name = StaticString{#__VA_ARGS__}; \
+    static constexpr auto name = StringView{#__VA_ARGS__}; \
   };}
 W_REGISTER_ARGTYPE(char*)
 W_REGISTER_ARGTYPE(const char*)
