@@ -22,7 +22,7 @@ Project {
         Export {
             Depends { name: "cpp" }
             Depends { name: "Qt.core" }
-            cpp.cxxLanguageVersion: "c++14"
+            cpp.cxxLanguageVersion: "c++17"
             cpp.includePaths: ['src']
 
             Properties {
