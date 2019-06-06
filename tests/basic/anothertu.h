@@ -57,7 +57,7 @@ W_ENUM_NS(ATTestEnum, Key1, Key2, Key3)
 #endif
 }
 
-#ifdef __cpp_inline_variables
+#if defined (__cpp_inline_variables) && Q_CC_MSVC > 192000000
 W_GADGET_IMPL_INLINE(AnotherTU::InlineGadget)
 W_OBJECT_IMPL_INLINE(AnotherTU::InlineObject)
 

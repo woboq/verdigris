@@ -330,7 +330,7 @@ void tst_Basic::testQNamespace()
     QCOMPARE(AnotherTU::staticMetaObject.enumerator(0).name(), "ATTestEnum");
     QCOMPARE(QMetaEnum::fromType<AnotherTU::ATTestEnum>().name(), "ATTestEnum");
 
-#ifdef __cpp_inline_variables
+#if defined (__cpp_inline_variables) && Q_CC_MSVC > 192000000
     QCOMPARE(Inline_NS::staticMetaObject.className(), "Inline_NS");
     QCOMPARE(Inline_NS::staticMetaObject.enumeratorCount(), 1);
     QCOMPARE(Inline_NS::staticMetaObject.enumerator(0).name(), "InlineEnum");
@@ -394,7 +394,7 @@ void tst_Basic::testAnotherTU()
     auto mo = &AnotherTU::Gaga::staticMetaObject;
     QCOMPARE(mo->className(), "AnotherTU::Gaga");
 
-#ifdef __cpp_inline_variables
+#if defined (__cpp_inline_variables) && Q_CC_MSVC > 192000000
     auto mo2 = &AnotherTU::InlineGadget::staticMetaObject;
     QCOMPARE(mo2->className(), "AnotherTU::InlineGadget");
     auto mo3 = &AnotherTU::InlineObject::staticMetaObject;

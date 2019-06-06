@@ -61,18 +61,18 @@ struct DataHolder {
     static constexpr auto stringSequence = make_index_sequence<StringCount>{};
     static constexpr auto intCount = IntCount;
     RawArray<char, StringSize> stringChars{};
-    RawArray<size_t, StringCount> stringOffsets{};
+    RawArray<qptrdiff, StringCount> stringOffsets{};
     RawArray<int, StringCount> stringSizes{};
     RawArray<uint, IntCount> ints{};
 };
 struct DataBuilder {
     char* scp{};
-    size_t* sop{};
+    qptrdiff* sop{};
     int* ssp{};
     uint* ip{};
     uint stringCount{};
     uint intCount{};
-    size_t so{};
+    qptrdiff so{};
 
     constexpr DataBuilder() = default;
     DataBuilder(const DataBuilder&) = delete;
@@ -250,24 +250,21 @@ template <typename T> struct MetaTypeIdIsBuiltIn<T, typename std::enable_if<QMet
  * If T is a builtin QMetaType, its meta type id need to be added in the state.
  * If it's not builtin, then it would be an reference to T's name in the string array.
  */
-template<typename T, bool Builtin = MetaTypeIdIsBuiltIn<T>::value>
+template<typename T>
 struct HandleType {
     template<typename S, typename TypeStr = int>
-    static constexpr auto result(S&s, TypeStr = {}) {
-        return s.addInts(QMetaTypeId2<T>::MetaType);
-    }
-};
-template<typename T>
-struct HandleType<T, false> {
-    template<typename Strings, typename TypeStr = int>
-    static constexpr void result(Strings &ss, TypeStr = {}) {
-        return ss.addTypeString(W_TypeRegistery<T>::name);
-        static_assert(W_TypeRegistery<T>::registered, "Please Register T with W_REGISTER_ARGTYPE");
-    }
-    template<typename Strings>
-    static constexpr void result(Strings &ss, StringView typeStr) {
-        if (typeStr.size() < 1) throw "Type has empty name!";
-        return ss.addTypeString(typeStr);
+    static constexpr auto result(S& s, TypeStr v = {}) {
+        (void)v;
+        if constexpr (MetaTypeIdIsBuiltIn<T>::value) {
+            return s.addInts(QMetaTypeId2<T>::MetaType);
+        }
+        else if constexpr (std::is_same_v<std::decay_t<TypeStr>, StringView>) {
+            return s.addTypeString(v);
+        }
+        else {
+            return s.addTypeString(W_TypeRegistery<T>::name);
+            static_assert(W_TypeRegistery<T>::registered, "Please Register T with W_REGISTER_ARGTYPE");
+        }
     }
 };
 
@@ -491,7 +488,7 @@ constexpr auto generateDataPass(const ObjI &objectInfo, State& state) {
 
     state.addInts(QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 8 : 7); // revision
     state.addString(objectInfo.name);
-    state.addStringUntracked(StringView{""});
+    state.addStringUntracked(viewLiteral(""));
     state.addInts(
         ObjI::classInfoCount, classInfoOffset, // classinfo
         ObjI::methodCount, methodOffset, // methods
@@ -541,9 +538,9 @@ constexpr auto generateDataArray(const ObjI &) {
 
 template<size_t N>
 struct OwnString {
-    RawArray<char, N> data;
+    char data[N];
 
-    OwnString(const RawArray<char, N>& s) {
+    constexpr OwnString(const char (&s)[N]) {
         auto p = data;
         for (auto c : s) *p++ = c;
     }
@@ -570,9 +567,10 @@ struct BuildStringDataHelper {
     static constexpr qptrdiff stringdata_offset = sizeof(meta_stringdata_t::data);
 #endif
     inline static meta_stringdata_t qt_meta_stringdata = {
-        {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(T::data.stringSizes[I]-1,
-                stringdata_offset + T::data.stringOffsets[I] - I * sizeof(QByteArrayData))...},
-        {T::data.stringChars}
+        {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(
+            T::data.stringSizes[I]-1,
+            static_cast<qptrdiff>(stringdata_offset + T::data.stringOffsets[I] - I * sizeof(QByteArrayData)))
+        ...}, {T::data.stringChars}
     };
 };
 
@@ -856,7 +854,7 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
 
 #define W_OBJECT_IMPL_COMMON(INLINE, ...) \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) struct W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_MetaObjectCreatorHelper { \
-        struct Name { static constexpr auto value = w_internal::StringView{W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))}; }; \
+        struct Name { static constexpr auto value = w_internal::viewLiteral(W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))); }; \
         static constexpr auto L = __COUNTER__; \
         static constexpr auto objectInfo = w_internal::ObjectInfo<L, W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType, Name>{}; \
         static constexpr auto data = w_internal::generateDataArray<L, W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>(objectInfo); \
