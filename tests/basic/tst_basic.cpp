@@ -31,7 +31,7 @@ class tst_Basic : public QObject
 
     struct SubObject;
 
-private /*slots*/:
+private slots:
     void firstTest();
     W_SLOT(firstTest, W_Access::Private)
 
