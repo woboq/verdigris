@@ -276,32 +276,32 @@ struct CustomType3 {};
 /** W_REGISTER_ARGTYPE(TYPE)
    register  TYPE so it can be used as a parameter of a signal/slot or return value
    One must use the normalized signature.
-   Note: This does not imply Q_DECLARE_METATYPE, and Q_DECLARE_METATYPE does not emply this.
+   Note: This does not imply Q_DECLARE_METATYPE, and Q_DECLARE_METATYPE does not imply this.
   */
 W_REGISTER_ARGTYPE(CustomType1)
 W_REGISTER_ARGTYPE(CustomType1*)
 W_REGISTER_ARGTYPE(CustomType2)
 
-class FooBar : public QObject {
-    W_OBJECT(FooBar)
+class ArgTypes : public QObject {
+    W_OBJECT(ArgTypes)
 public:
-    void slot1(CustomType1 a, CustomType2 b) {}
+    void slot1(CustomType1, CustomType2) {}
     W_SLOT(slot1) // OK, all arguments register with W_REGISTER_ARGTYPE
 
-    void slot2(CustomType1 *a, CustomType2 *b) {}
+    void slot2(CustomType1 *, CustomType2 *) {}
     W_SLOT(slot2, (CustomType1*,CustomType2*)) // Need to use the overload syntax because
                                                // CustomType2* is not registered
 
     typedef int MyInt;
     typedef CustomType1 MyCustomType1;
 
-    void slot3(FooBar::MyInt a, FooBar::MyCustomType1 b) {}
-    W_SLOT(slot3, (FooBar::MyInt,FooBar::MyCustomType1)) // Need to use the overload syntax to use
+    void slot3(ArgTypes::MyInt, ArgTypes::MyCustomType1) {}
+    W_SLOT(slot3, (ArgTypes::MyInt,ArgTypes::MyCustomType1)) // Need to use the overload syntax to use
                                                          // different type name (typedefs)
 
 };
 
-W_OBJECT_IMPL(FooBar)
+W_OBJECT_IMPL(ArgTypes)
 
 /** ******************************************************************************************** **/
 /** TEMPLATES **/

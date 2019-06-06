@@ -5553,7 +5553,7 @@ struct MoveOnly
 #if QT_VERSION >= QT_VERSION_CHECK(5, 9, 0)  // MoveOnly is not supported by Qt before that
     MoveOnly(MoveOnly &&o) : value(o.value) { o.value = -1; }
     MoveOnly &operator=(MoveOnly &&o) { value = o.value; o.value = -1; return *this;  }
-    Q_DISABLE_COPY(MoveOnly);
+    Q_DISABLE_COPY(MoveOnly)
 #endif
 };
 

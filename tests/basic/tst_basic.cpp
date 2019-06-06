@@ -225,7 +225,7 @@ void tst_Basic::enumBase()
 struct tst_Basic::SubObject : QObject {
     W_OBJECT(SubObject)
 public:
-    void mySignal() W_SIGNAL(mySignal);
+    void mySignal() W_SIGNAL(mySignal)
 };
 
 W_OBJECT_IMPL(tst_Basic::SubObject)
@@ -241,7 +241,7 @@ class AbstractClass : public QObject {
     W_PROPERTY(int, prop MEMBER prop)
 
 public:
-    void mySignal() W_SIGNAL(mySignal);
+    void mySignal() W_SIGNAL(mySignal)
     virtual void pureSlot() = 0; W_SLOT(pureSlot)
 };
 W_OBJECT_IMPL(AbstractClass)
@@ -252,8 +252,8 @@ class ConcreateClass : public AbstractClass {
     W_PROPERTY(int, prop2 MEMBER prop2)
 
 public:
-    void mySignal2() W_SIGNAL(mySignal2);
-    void pureSlot() override {};
+    void mySignal2() W_SIGNAL(mySignal2)
+    void pureSlot() override {}
 };
 W_OBJECT_IMPL(ConcreateClass)
 
@@ -407,7 +407,7 @@ struct TestFinalObject final : public QObject {
 public:
     int foo() { return 0;}
     void setFoo(int) { }
-    void fooChanged(int v) W_SIGNAL(fooChanged, v);
+    void fooChanged(int v) W_SIGNAL(fooChanged, v)
     W_PROPERTY(int, foo READ foo WRITE setFoo NOTIFY fooChanged)
 };
 W_OBJECT_IMPL(TestFinalObject)
@@ -456,7 +456,7 @@ public:
     bool testResult = false;
 };
 
-W_REGISTER_ARGTYPE(OverloadedAddressOperator&);
+W_REGISTER_ARGTYPE(OverloadedAddressOperator&)
 
 W_OBJECT_IMPL(OverloadedAddressOperator)
 
