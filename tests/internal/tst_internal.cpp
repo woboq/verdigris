@@ -34,14 +34,14 @@ static_assert(
         .b[0] == 'W');
 
 static_assert(std::is_same<decltype(makeStaticLiterals()), StaticStrings<>>::value, "");
-static_assert(std::is_same<decltype(makeStaticLiterals("H", "el")), StaticStrings<2, 3>>::value, "");
+static_assert(std::is_same<decltype(makeStaticLiterals("H", "el")), StaticStrings<2>>::value, "");
 static_assert(makeStaticLiterals("H", "el").b[0][1] == '\0');
-static_assert(std::is_same<decltype(makeStaticLiterals("H", "", "el")), StaticStrings<2>>::value, "");
+static_assert(std::is_same<decltype(makeStaticLiterals("H", "", "el")), StaticStrings<1>>::value, "");
+static_assert(makeStaticLiterals("H", "", "el").b[0][0] == 'H');
 static_assert(makeStaticLiterals("H", "", "el").b[0][1] == '\0');
 
-static_assert(std::is_same<decltype(makeStaticStrings()), StaticStrings<>>::value, "");
-static_assert(makeStaticStrings(StaticString{"H"}, StaticString{""}, StaticString{"el"}).b[0][1] == '\0');
-
+static_assert(std::is_same<decltype(makeTailStrings()), StaticStrings<>>::value, "");
+static_assert(makeTailStrings<2,1,3>("H", "", "el").b[0][1] == '\0');
 
 }
 
@@ -63,10 +63,11 @@ private slots:
         QCOMPARE(w_internal::removedScopeSize("hallo::fo"), int(sizeof("fo")));
         QCOMPARE(w_internal::removedScopeSize("x::hallo::fo"), int(sizeof("fo")));
 
-        QCOMPARE(QByteArray(W_MACRO_STRREMSCOPE(foo).b),  QByteArray("foo"));
-        QCOMPARE(QByteArray(W_MACRO_STRREMSCOPE(::foo).b),  QByteArray("foo"));
-        QCOMPARE(QByteArray(W_MACRO_STRREMSCOPE(hallo::fo).b),  QByteArray("fo"));
-        QCOMPARE(QByteArray(W_MACRO_STRREMSCOPE(x::hallo::fo).b),  QByteArray("fo"));
+        using namespace w_internal;
+        QCOMPARE(QByteArray(w_internal::makeTailStrings<w_internal::removedScopeSize("foo")>("foo")[index<0>].b),  QByteArray("foo"));
+        QCOMPARE(W_PARAM_TOSTRING_REMOVE_SCOPE(::foo)[index<0>].b, QByteArray("foo"));
+        QCOMPARE(W_PARAM_TOSTRING_REMOVE_SCOPE(::foo, hallo::fo)[index<1>].b, QByteArray("fo"));
+        QCOMPARE(W_PARAM_TOSTRING_REMOVE_SCOPE(::foo, hallo::fo, x::hallo::fo)[index<2>].b, QByteArray("fo"));
     }
     W_SLOT(removedScope)
 

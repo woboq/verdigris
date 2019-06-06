@@ -34,20 +34,18 @@ struct LayoutBuilder {
     uint stringCount{};
     uint intCount{};
 
-    template<size_t L>
-    constexpr void addString(const StaticString<L>&) {
-        stringSize += L;
+    constexpr void addString(const StaticString& s) {
+        stringSize += s.size();
         stringCount += 1;
         intCount += 1;
     }
-    template<size_t L>
-    constexpr void addStringUntracked(const StaticString<L>&) {
-        stringSize += L;
+    constexpr void addStringUntracked(const StaticString& s) {
+        stringSize += s.size();
         stringCount += 1;
     }
-    template<uint Flag = IsUnresolvedType, std::size_t L>
-    constexpr void addTypeString(const StaticString<L>&) {
-        stringSize += L;
+    template<uint Flag = IsUnresolvedType>
+    constexpr void addTypeString(const StaticString& s) {
+        stringSize += s.size();
         stringCount += 1;
         intCount += 1;
     }
@@ -85,32 +83,30 @@ struct DataBuilder {
         , ssp(r.stringSizes)
         , ip(r.ints) {}
 
-    template<size_t L>
-    constexpr void addString(const StaticString<L>& s) {
+    constexpr void addString(const StaticString& s) {
         for (auto c : s) *scp++ = c;
         *sop++ = so;
-        *ssp++ = L;
+        *ssp++ = s.size();
         *ip++ = stringCount;
-        so += L;
+        so += s.size();
         stringCount += 1;
         intCount += 1;
     }
-    template<size_t L>
-    constexpr void addStringUntracked(const StaticString<L>& s) {
+    constexpr void addStringUntracked(const StaticString& s) {
         for (auto c : s) *scp++ = c;
         *sop++ = so;
-        *ssp++ = L;
-        so += L;
+        *ssp++ = s.size();
+        so += s.size();
         stringCount += 1;
     }
 
-    template<uint Flag = IsUnresolvedType, std::size_t L>
-    constexpr void addTypeString(const StaticString<L>& s) {
+    template<uint Flag = IsUnresolvedType>
+    constexpr void addTypeString(const StaticString& s) {
         for (auto c : s) *scp++ = c;
         *sop++ = so;
-        *ssp++ = L;
+        *ssp++ = s.size();
         *ip++ = Flag | stringCount;
-        so += L;
+        so += s.size();
         stringCount += 1;
         intCount += 1;
     }
@@ -268,9 +264,9 @@ struct HandleType<T, false> {
         return ss.addTypeString(W_TypeRegistery<T>::name);
         static_assert(W_TypeRegistery<T>::registered, "Please Register T with W_REGISTER_ARGTYPE");
     }
-    template<typename Strings, std::size_t N>
-    static constexpr void result(Strings &ss, StaticString<N> typeStr,
-                                    typename std::enable_if<(N>1),int>::type=0) {
+    template<typename Strings>
+    static constexpr void result(Strings &ss, StaticString typeStr) {
+        if (typeStr.size() < 1) throw "Type has empty name!";
         return ss.addTypeString(typeStr);
     }
 };
@@ -379,37 +375,37 @@ private:
  */
 template<typename ...Args> struct HandleArgsHelper {
     template<typename Strings, typename ParamTypes, size_t I = 0>
-    static constexpr auto result(Strings&, const ParamTypes&, Index<I> = {})
+    static constexpr void result(Strings&, const ParamTypes&, Index<I> = {})
     {}
 };
 template<typename A, typename... Args>
 struct HandleArgsHelper<A, Args...> {
     template<typename Strings, typename ParamTypes, size_t I = 0>
-    static constexpr auto result(Strings &ss, const ParamTypes &paramTypes, Index<I> = {}) {
+    static constexpr void result(Strings &ss, const ParamTypes &paramTypes, Index<I> = {}) {
         using Type = typename QtPrivate::RemoveConstRef<A>::Type;
         auto typeStr = stringFetch(paramTypes, index<I>);
         using ts_t = decltype(typeStr);
         // This way, the overload of result will not pick the StaticString one if it is a tuple (because registered types have the priority)
         auto typeStr2 = std::conditional_t<std::is_same<A, Type>::value, ts_t, std::tuple<ts_t>>{typeStr};
         HandleType<Type>::result(ss, typeStr2);
-        return HandleArgsHelper<Args...>::result(ss, paramTypes, index<I+1>);
+        HandleArgsHelper<Args...>::result(ss, paramTypes, index<I+1>);
     }
 };
 template<std::size_t N> struct HandleArgNames {
-    template<typename Strings, size_t... Ns, size_t I = 0>
-    static constexpr auto result(Strings &ss, const StaticStrings<Ns...>& pn, Index<I> = {}, std::enable_if_t<(I < sizeof... (Ns))>* = {}) {
+    template<typename Strings, size_t Ns, size_t I = 0>
+    static constexpr void result(Strings &ss, const StaticStrings<Ns>& pn, Index<I> = {}, std::enable_if_t<(I < Ns)>* = {}) {
         ss.addString(pn[index<I>]);
-        return HandleArgNames<N-1>::result(ss, pn, index<I+1>);
+        HandleArgNames<N-1>::result(ss, pn, index<I+1>);
     }
-    template<typename Strings, size_t... Ns, size_t I = 0>
-    static constexpr auto result(Strings &ss, const StaticStrings<Ns...>& pn, Index<I> = {}, std::enable_if_t<(I >= sizeof... (Ns))>* = {}) {
+    template<typename Strings, size_t Ns, size_t I = 0>
+    static constexpr void result(Strings &ss, const StaticStrings<Ns>& pn, Index<I> = {}, std::enable_if_t<(I >= Ns)>* = {}) {
         ss.addInts(1);
-        return HandleArgNames<N-1>::result(ss, pn, index<I+1>);
+        HandleArgNames<N-1>::result(ss, pn, index<I+1>);
     }
 };
 template<> struct HandleArgNames<0> {
     template<typename Strings, typename PN, size_t I = 0>
-    static constexpr auto result(Strings &, const PN&, Index<I> = {})
+    static constexpr void result(Strings &, const PN&, Index<I> = {})
     {}
 };
 
@@ -455,8 +451,8 @@ template<class State>
 struct ConstructorParametersGenerator {
     State& s;
     constexpr ConstructorParametersGenerator(State& s) : s(s) {}
-    template<std::size_t N, typename... Args, class Index>
-    constexpr auto operator() (MetaConstructorInfo<N,Args...>, Index) {
+    template<typename... Args, class Index>
+    constexpr auto operator() (MetaConstructorInfo<Args...>, Index) {
         s.addInts(IsUnresolvedType | 1);
         HandleArgsHelper<Args...>::result(s, StaticStrings<>{});
         s.addInts(((void)sizeof(Args),1)...); // all the names are 1 (for "\0")
