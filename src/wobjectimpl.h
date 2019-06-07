@@ -494,8 +494,10 @@ constexpr int constructorParamOffset() {
 /**
  * Generate the integer array and the lists of string
  */
-template<size_t L, typename T, typename ObjI, typename State>
-constexpr auto generateDataPass(const ObjI &objectInfo, State& state) {
+template<typename ObjI, typename State>
+constexpr void generateDataPass(State& state) {
+    using T = typename ObjI::Type;
+    constexpr size_t L = ObjI::counter;
     constexpr bool hasNotify = hasNotifySignal<L, T**>();
     constexpr int classInfoOffset = 14;
     constexpr int methodOffset = classInfoOffset + ObjI::classInfoCount * 2;
@@ -543,18 +545,20 @@ constexpr auto generateDataPass(const ObjI &objectInfo, State& state) {
     //if (state.intCount != enumValueOffset) throw "offset mismatch!";
     foldState<L, EnumStateTag, T**>(EnumValuesGenerator<State>{state});
 }
-template<size_t L, typename T, typename ObjI>
-constexpr auto generateDataArray(const ObjI &) {
+template<typename ObjI>
+constexpr auto generateDataArray() {
     constexpr LayoutBuilder layout = [] {
         auto r = LayoutBuilder{};
-        generateDataPass<L,T>(ObjI{}, r);
+        generateDataPass<ObjI>(r);
         return r;
     }();
     auto r = DataHolder<layout.stringSize, layout.stringCount, layout.intCount>{};
     auto b = DataBuilder{r};
-    generateDataPass<L,T>(ObjI{}, b);
+    generateDataPass<ObjI>(b);
     return r;
 }
+template<typename ObjI>
+constexpr auto dataArray = generateDataArray<ObjI>();
 
 template<size_t N>
 struct OwnString {
@@ -578,9 +582,10 @@ template<std::size_t N, std::size_t L> struct qt_meta_stringdata_t {
  * \tparam T the W_MetaObjectCreatorHelper
  * \tparam I an index_sequence that goes from 0 to the number of string
  */
-template<typename T, std::size_t... I>
+template<typename ObjI, std::size_t... I>
 struct BuildStringDataHelper {
-    using meta_stringdata_t = const qt_meta_stringdata_t<T::data.stringCount, T::data.stringSize>;
+    static constexpr auto& data = dataArray<ObjI>;
+    using meta_stringdata_t = const qt_meta_stringdata_t<data.stringCount, data.stringSize>;
 #ifndef Q_CC_MSVC
     static constexpr qptrdiff stringdata_offset = offsetof(meta_stringdata_t, stringdata);
 #else // offsetof does not work with MSVC
@@ -588,9 +593,9 @@ struct BuildStringDataHelper {
 #endif
     inline static meta_stringdata_t qt_meta_stringdata = {
         {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(
-            T::data.stringSizes[I]-1,
-            static_cast<qptrdiff>(stringdata_offset + T::data.stringOffsets[I] - I * sizeof(QByteArrayData)))
-        ...}, {T::data.stringChars}
+            data.stringSizes[I]-1,
+            static_cast<qptrdiff>(stringdata_offset + data.stringOffsets[I] - I * sizeof(QByteArrayData)))
+        ...}, {data.stringChars}
     };
 };
 
@@ -599,9 +604,9 @@ struct BuildStringDataHelper {
  * T is W_MetaObjectCreatorHelper<ObjectType>
  */
 // N... are all the sizes of the strings
-template<typename T, size_t... Is>
+template<typename ObjI, size_t... Is>
 constexpr const QByteArrayData *build_string_data(index_sequence<Is...>)  {
-    return BuildStringDataHelper<T, Is...>::qt_meta_stringdata.data;
+    return BuildStringDataHelper<ObjI, Is...>::qt_meta_stringdata.data;
 }
 
 /** Returns the QMetaObject* of the base type. Use SFINAE to only return it if it exists */
@@ -645,9 +650,10 @@ template<typename T>
 static constexpr QMetaObject createMetaObject()
 {
     using Creator = typename T::W_MetaObjectCreatorHelper;
-    auto string_data = build_string_data<Creator>(Creator::data.stringSequence);
-    auto int_data = Creator::data.ints;
-    return { { parentMetaObject<T>(0), string_data, int_data, T::qt_static_metacall, {}, {} } };
+    using ObjI = decltype(Creator::objectInfo);
+    constexpr auto& data = dataArray<ObjI>;
+    auto string_data = build_string_data<ObjI>(data.stringSequence);
+    return { { parentMetaObject<T>(0), string_data, data.ints, T::qt_static_metacall, {}, {} } };
 }
 
 /** Implementation of qt_metacall */
@@ -875,9 +881,7 @@ template<typename T, typename... Ts> auto qt_static_metacall_impl(Ts &&... args)
 #define W_OBJECT_IMPL_COMMON(INLINE, ...) \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) struct W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_MetaObjectCreatorHelper { \
         struct Name { static constexpr auto value = w_internal::viewLiteral(W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))); }; \
-        static constexpr auto L = __COUNTER__; \
-        static constexpr auto objectInfo = w_internal::ObjectInfo<L, W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType, Name>{}; \
-        static constexpr auto data = w_internal::generateDataArray<L, W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>(objectInfo); \
+        static constexpr auto objectInfo = w_internal::ObjectInfo<1024*1024*1024, W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType, Name>{}; \
     }; \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) INLINE const QT_INIT_METAOBJECT QMetaObject W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::staticMetaObject = \
         w_internal::createMetaObject<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>();
