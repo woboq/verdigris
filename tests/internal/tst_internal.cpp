@@ -64,9 +64,9 @@ private slots:
 
         using namespace w_internal;
         QCOMPARE(QByteArray(w_internal::viewValidTails<w_internal::removedScopeSize("foo")>("foo")[0].b),  QByteArray("foo"));
-        QCOMPARE(W_PARAM_TOSTRING_REMOVE_SCOPE(::foo)[0].b, QByteArray("foo"));
-        QCOMPARE(W_PARAM_TOSTRING_REMOVE_SCOPE(::foo, hallo::fo)[1].b, QByteArray("fo"));
-        QCOMPARE(W_PARAM_TOSTRING_REMOVE_SCOPE(::foo, hallo::fo, x::hallo::fo)[2].b, QByteArray("fo"));
+        QCOMPARE(QByteArray(W_PARAM_TOSTRING_REMOVE_SCOPE(::foo)[0].b), QByteArray("foo"));
+        QCOMPARE(QByteArray(W_PARAM_TOSTRING_REMOVE_SCOPE(::foo, hallo::fo)[1].b), QByteArray("fo"));
+        QCOMPARE(QByteArray(W_PARAM_TOSTRING_REMOVE_SCOPE(::foo, hallo::fo, x::hallo::fo)[2].b), QByteArray("fo"));
     }
     W_SLOT(removedScope)
 
