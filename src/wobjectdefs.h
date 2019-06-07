@@ -92,18 +92,6 @@ struct StringViewArray {
     constexpr auto operator[] (size_t i) const { return data[i]; }
 };
 
-template<size_t I, size_t N>
-constexpr auto stringFetch(const StringViewArray<N>& s, Index<I>) {
-    if constexpr (I < N) {
-        return s[I];
-    }
-    else {
-        (void)s;
-        struct _{};
-        return _{};
-    }
-}
-
 template<size_t... Ns>
 constexpr size_t countValidSizes() {
     auto c = size_t{};

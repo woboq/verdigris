@@ -175,7 +175,8 @@ static constexpr bool hasNotifySignal() {
 /** Holds information about a class, including all the properties and methods */
 template<size_t L, class T, class Name>
 struct ObjectInfo {
-    using TPP = T**;
+    using Type = T;
+    static constexpr auto counter = L;
     static constexpr auto name = StringView{Name::value};
 
     static constexpr int signalCount = stateCount<L, SignalStateTag, T**>;
@@ -189,19 +190,20 @@ struct ObjectInfo {
 
     template<size_t Idx>
     static constexpr auto method(Index<Idx>) {
+        using TPP = T**;
         if constexpr (Idx < signalCount) return w_state(index<Idx>, SignalStateTag{}, TPP{});
         else if constexpr (Idx - signalCount < slotCount) return w_state(index<Idx - signalCount>, SlotStateTag{}, TPP{});
         else return w_state(index<Idx - signalCount - slotCount>, MethodStateTag{}, TPP{});
     }
 };
 
-// Generator for Q_CLASSINFO to be used in foldClassInfoState
 template<class State>
 struct ClassInfoGenerator {
     State& s;
     constexpr ClassInfoGenerator(State& s) : s(s) {}
+
     template<class ClassInfo, class Index>
-    constexpr auto operator() (const ClassInfo& ci, Index) {
+    constexpr void operator() (const ClassInfo& ci, Index) {
         s.addString(ci.first);
         s.addString(ci.second);
     }
@@ -215,15 +217,15 @@ template <typename T, typename = std::enable_if_t<!std::is_final<T>::value>>
 struct Derived : T { template<typename M, typename X = T> static decltype(X::w_GetAccessSpecifierHelper(std::declval<M>())) test(M); };
 template <typename T, typename M> struct isProtected<T, M, decltype(Derived<T>::test(std::declval<M>()))> : std::true_type {};
 
-// Generator for methods to be used in fold*
 template<class State, class T>
 struct MethodGenerator {
     State& s;
     int parameterIndex;
     MethodGenerator(const MethodGenerator&) = delete;
     constexpr MethodGenerator(State& s, int pi) : s(s), parameterIndex(pi) {}
+
     template<class Method, class Index>
-    constexpr auto operator() (const Method& method, Index) {
+    constexpr void operator() (const Method& method, Index) {
         s.addString(method.name); // name
         s.addInts((uint)Method::argCount,
                    parameterIndex, //parameters
@@ -231,6 +233,8 @@ struct MethodGenerator {
                    adjustFlags(Method::flags, typename Method::IntegralConstant()));
         parameterIndex += 1 + Method::argCount * 2;
     }
+
+private:
     template<typename M>
     static constexpr uint adjustFlags(uint f, M) {
         if (!(f & (W_Access::Protected.value | W_Access::Private.value | W_Access::Public.value))) {
@@ -268,13 +272,13 @@ struct HandleType {
     }
 };
 
-// Generator for properties to be used in generate<>()
 template<class State, class T>
 struct PropertyGenerator {
     State& s;
     constexpr PropertyGenerator(State& s) : s(s) {}
+
     template<class Prop, class Index>
-    constexpr auto operator() (const Prop& prop, Index) {
+    constexpr void operator() (const Prop& prop, Index) {
         s.addString(prop.name);
         HandleType<typename Prop::PropertyType>::result(s, prop.typeStr);
         constexpr uint moreFlags = (QtPrivate::IsQEnumHelper<typename Prop::PropertyType>::Value
@@ -293,22 +297,23 @@ struct NotifySignalGenerator {
     using TP = T**;
     State& s;
     constexpr NotifySignalGenerator(State& s) : s(s) {}
+
     template<class Prop, size_t Idx>
-    constexpr auto operator() (const Prop& prop, Index<Idx>) {
+    constexpr void operator() (const Prop& prop, Index<Idx>) {
         if constexpr (hasNotify) {
             process(prop.notify, index<Idx>);
         }
     }
 
+private:
     template<size_t Idx>
-    constexpr auto process(Empty, Index<Idx>) {
-        return s.addInts(0);
+    constexpr void process(Empty, Index<Idx>) {
+        s.addInts(0);
     }
 
     // Signal in the same class
     template<size_t Idx, typename Func>
-    constexpr auto process(Func, Index<Idx>, std::enable_if_t<std::is_same<T, typename QtPrivate::FunctionPointer<Func>::Object>::value, int> = 0)
-    {
+    constexpr void process(Func, Index<Idx>, std::enable_if_t<std::is_same<T, typename QtPrivate::FunctionPointer<Func>::Object>::value, int> = 0) {
         constexpr int signalIndex = ResolveNotifySignal<L, Idx, T, T>::signalIndex();
         static_assert(signalIndex >= 0, "NOTIFY signal in parent class not registered as a W_SIGNAL");
         s.addInts(signalIndex);
@@ -316,8 +321,7 @@ struct NotifySignalGenerator {
 
     // Signal in a parent class
     template<size_t Idx, typename Func>
-    constexpr auto process(Func, Index<Idx>, std::enable_if_t<!std::is_same<T, typename QtPrivate::FunctionPointer<Func>::Object>::value, int> = 0)
-    {
+    constexpr void process(Func, Index<Idx>, std::enable_if_t<!std::is_same<T, typename QtPrivate::FunctionPointer<Func>::Object>::value, int> = 0) {
         using O = typename QtPrivate::FunctionPointer<Func>::Object;
         using OP = O**;
         constexpr int signalIndex = ResolveNotifySignal<L, Idx, T, O>::signalIndex();
@@ -336,8 +340,9 @@ struct EnumGenerator {
     int dataIndex{};
     EnumGenerator(const EnumGenerator&) = delete;
     constexpr EnumGenerator(State& s, int di) : s(s), dataIndex(di) {}
+
     template<class Enum, class Index>
-    constexpr auto operator() (const Enum& e, Index) {
+    constexpr void operator() (const Enum& e, Index) {
         auto nameIndex = s.stringCount; // required for MSVC-2019
         (void)nameIndex;
         s.addString(e.name); // name
@@ -355,13 +360,15 @@ template<class State>
 struct EnumValuesGenerator {
     State& s;
     constexpr EnumValuesGenerator(State& s) : s(s) {}
+
     template<class Enum, class Index>
-    constexpr auto operator() (const Enum& e, Index) {
+    constexpr void operator() (const Enum& e, Index) {
         generateAll(typename Enum::Values{}, e.names, make_index_sequence<Enum::count>{});
     }
+
 private:
     template<size_t... Values, typename Names, size_t... Is>
-    constexpr auto generateAll(index_sequence<Values...>, const Names& names, index_sequence<Is...>) {
+    constexpr void generateAll(index_sequence<Values...>, const Names& names, index_sequence<Is...>) {
         ((s.addString(names[Is]), s.addInts((uint)Values)), ...);
     }
 };
@@ -370,6 +377,18 @@ private:
  * Helper classes for MethodParametersGenerator::generateSingleMethodParameter:
  * generate the parameter array
  */
+template<size_t I, size_t N>
+constexpr auto stringFetch(const StringViewArray<N>& s, Index<I>) {
+    if constexpr (I < N) {
+        return s[I];
+    }
+    else {
+        (void)s;
+        struct _{};
+        return _{};
+    }
+}
+
 template<typename ...Args> struct HandleArgsHelper {
     template<typename Strings, typename ParamTypes, size_t I = 0>
     static constexpr void result(Strings&, const ParamTypes&, Index<I> = {})
@@ -412,14 +431,14 @@ struct MethodParametersGenerator {
     State& s;
     constexpr MethodParametersGenerator(State& s) : s(s) {}
     template<class Method, class Index>
-    constexpr auto operator() (const Method& method, Index) {
+    constexpr void operator() (const Method& method, Index) {
         generateSingleMethodParameter(s, method.func, method.paramTypes, method.paramNames);
     }
 
 private:
     // non-const function
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
-    static constexpr auto generateSingleMethodParameter(Strings &ss, Ret (Obj::*)(Args...),
+    static constexpr void generateSingleMethodParameter(Strings &ss, Ret (Obj::*)(Args...),
                                                         const ParamTypes &paramTypes, const ParamNames &paramNames ) {
         HandleType<Ret>::result(ss, 0);
         HandleArgsHelper<Args...>::result(ss, paramTypes);
@@ -427,7 +446,7 @@ private:
     }
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
     // const function
-    static constexpr auto generateSingleMethodParameter(Strings &ss, Ret (Obj::*)(Args...) const,
+    static constexpr void generateSingleMethodParameter(Strings &ss, Ret (Obj::*)(Args...) const,
                                                         const ParamTypes &paramTypes, const ParamNames &paramNames ) {
         HandleType<Ret>::result(ss, 0);
         HandleArgsHelper<Args...>::result(ss, paramTypes);
@@ -435,7 +454,7 @@ private:
     }
     // static member functions
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Ret, typename... Args>
-    static constexpr auto generateSingleMethodParameter(Strings &ss, Ret (*)(Args...),
+    static constexpr void generateSingleMethodParameter(Strings &ss, Ret (*)(Args...),
                                                         const ParamTypes &paramTypes, const ParamNames &paramNames ) {
         HandleType<Ret>::result(ss, 0);
         HandleArgsHelper<Args...>::result(ss, paramTypes);
@@ -448,8 +467,9 @@ template<class State>
 struct ConstructorParametersGenerator {
     State& s;
     constexpr ConstructorParametersGenerator(State& s) : s(s) {}
+
     template<typename... Args, class Index>
-    constexpr auto operator() (MetaConstructorInfo<Args...>, Index) {
+    constexpr void operator() (MetaConstructorInfo<Args...>, Index) {
         s.addInts(IsUnresolvedType | 1);
         HandleArgsHelper<Args...>::result(s, StringViewArray<>{});
         s.addInts(((void)sizeof(Args),1)...); // all the names are 1 (for "\0")
@@ -487,7 +507,7 @@ constexpr auto generateDataPass(const ObjI &objectInfo, State& state) {
     constexpr int enumValueOffset = constructorParamIndex + constructorParamOffset<L, T**>();
 
     state.addInts(QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 8 : 7); // revision
-    state.addString(objectInfo.name);
+    state.addString(ObjI::name);
     state.addStringUntracked(viewLiteral(""));
     state.addInts(
         ObjI::classInfoCount, classInfoOffset, // classinfo
