@@ -378,7 +378,7 @@ private:
  * generate the parameter array
  */
 template<size_t I, size_t N>
-constexpr auto stringFetch(const StringViewArray<N>& s, Index<I>) {
+constexpr auto stringFetch(const StringViewArray<N>& s) {
     if constexpr (I < N) {
         return s[I];
     }
@@ -388,42 +388,28 @@ constexpr auto stringFetch(const StringViewArray<N>& s, Index<I>) {
         return _{};
     }
 }
-
-template<typename ...Args> struct HandleArgsHelper {
-    template<typename Strings, typename ParamTypes, size_t I = 0>
-    static constexpr void result(Strings&, const ParamTypes&, Index<I> = {})
-    {}
-};
-template<typename A, typename... Args>
-struct HandleArgsHelper<A, Args...> {
-    template<typename Strings, typename ParamTypes, size_t I = 0>
-    static constexpr void result(Strings &ss, const ParamTypes &paramTypes, Index<I> = {}) {
-        using Type = typename QtPrivate::RemoveConstRef<A>::Type;
-        auto typeStr = stringFetch(paramTypes, index<I>);
-        using ts_t = decltype(typeStr);
+template<class Arg>
+struct HandleArgType {
+    template<class Strings, class TypeName>
+    static constexpr void result(Strings& ss, const TypeName& typeName) {
+        using Type = typename QtPrivate::RemoveConstRef<Arg>::Type;
         // This way, the overload of result will not pick the StringView one if it is a tuple (because registered types have the priority)
-        auto typeStr2 = std::conditional_t<std::is_same<A, Type>::value, ts_t, std::tuple<ts_t>>{typeStr};
-        HandleType<Type>::result(ss, typeStr2);
-        HandleArgsHelper<Args...>::result(ss, paramTypes, index<I+1>);
+        auto typeName2 = std::conditional_t<std::is_same<Arg, Type>::value, TypeName, std::tuple<TypeName>>{typeName};
+        HandleType<Type>::result(ss, typeName2);
     }
 };
-template<std::size_t N> struct HandleArgNames {
-    template<typename Strings, size_t Ns, size_t I = 0>
-    static constexpr void result(Strings &ss, const StringViewArray<Ns>& pn, Index<I> = {}, std::enable_if_t<(I < Ns)>* = {}) {
-        ss.addString(pn[I]);
-        HandleArgNames<N-1>::result(ss, pn, index<I+1>);
-    }
-    template<typename Strings, size_t Ns, size_t I = 0>
-    static constexpr void result(Strings &ss, const StringViewArray<Ns>& pn, Index<I> = {}, std::enable_if_t<(I >= Ns)>* = {}) {
-        ss.addInts(1);
-        HandleArgNames<N-1>::result(ss, pn, index<I+1>);
-    }
-};
-template<> struct HandleArgNames<0> {
-    template<typename Strings, typename PN, size_t I = 0>
-    static constexpr void result(Strings &, const PN&, Index<I> = {})
-    {}
-};
+template<class... Args, class Strings, class TypeNames, size_t... Is>
+constexpr void handleArgTypes(Strings& ss, const TypeNames& typeNames, index_sequence<Is...>) {
+    (HandleArgType<Args>::result(ss, stringFetch<Is>(typeNames)), ...);
+}
+
+template<size_t ArgCount, class Strings, size_t NameCount>
+constexpr void handleArgNames(Strings& ss, const StringViewArray<NameCount>& paramNames) {
+    auto i = size_t{};
+    for (; i < ArgCount && i < NameCount; ++i) ss.addString(paramNames[i]);
+    for (; i < ArgCount; ++i) ss.addInts(1);
+}
+
 
 // Generator for method parameters to be used in generate<>()
 template<class State>
@@ -440,25 +426,25 @@ private:
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
     static constexpr void generateSingleMethodParameter(Strings &ss, Ret (Obj::*)(Args...),
                                                         const ParamTypes &paramTypes, const ParamNames &paramNames ) {
-        HandleType<Ret>::result(ss, 0);
-        HandleArgsHelper<Args...>::result(ss, paramTypes);
-        HandleArgNames<sizeof...(Args)>::result(ss, paramNames);
+        HandleType<Ret>::result(ss);
+        handleArgTypes<Args...>(ss, paramTypes, make_index_sequence<sizeof... (Args)>{});
+        handleArgNames<sizeof...(Args)>(ss, paramNames);
     }
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
     // const function
     static constexpr void generateSingleMethodParameter(Strings &ss, Ret (Obj::*)(Args...) const,
                                                         const ParamTypes &paramTypes, const ParamNames &paramNames ) {
-        HandleType<Ret>::result(ss, 0);
-        HandleArgsHelper<Args...>::result(ss, paramTypes);
-        HandleArgNames<sizeof...(Args)>::result(ss, paramNames);
+        HandleType<Ret>::result(ss);
+        handleArgTypes<Args...>(ss, paramTypes, make_index_sequence<sizeof... (Args)>{});
+        handleArgNames<sizeof...(Args)>(ss, paramNames);
     }
     // static member functions
     template<typename Strings, typename ParamTypes, typename ParamNames, typename Ret, typename... Args>
     static constexpr void generateSingleMethodParameter(Strings &ss, Ret (*)(Args...),
                                                         const ParamTypes &paramTypes, const ParamNames &paramNames ) {
-        HandleType<Ret>::result(ss, 0);
-        HandleArgsHelper<Args...>::result(ss, paramTypes);
-        HandleArgNames<sizeof...(Args)>::result(ss, paramNames);
+        HandleType<Ret>::result(ss);
+        handleArgTypes<Args...>(ss, paramTypes, make_index_sequence<sizeof... (Args)>{});
+        handleArgNames<sizeof...(Args)>(ss, paramNames);
     }
 };
 
@@ -471,7 +457,7 @@ struct ConstructorParametersGenerator {
     template<typename... Args, class Index>
     constexpr void operator() (MetaConstructorInfo<Args...>, Index) {
         s.addInts(IsUnresolvedType | 1);
-        HandleArgsHelper<Args...>::result(s, StringViewArray<>{});
+        handleArgTypes<Args...>(s, StringViewArray<>{}, make_index_sequence<sizeof... (Args)>{});
         s.addInts(((void)sizeof(Args),1)...); // all the names are 1 (for "\0")
     }
 };
