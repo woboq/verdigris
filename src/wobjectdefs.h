@@ -305,7 +305,7 @@ struct MetaPropertyInfo {
     }
 };
 
-/// Parse a property and fill a MetaPropertyInfo (called from W_PRPERTY macro)
+/// Parse a property and fill a MetaPropertyInfo (called from W_PROPERTY macro)
 // base case
 template <typename PropInfo> constexpr auto parseProperty(const PropInfo &p) { return p; }
 // setter
@@ -595,7 +595,7 @@ template<class State, class T>
 constexpr void w_state(IndexBase, State, T**);
 
 template<size_t L, class State, class TPP, size_t N , size_t M, size_t X = (N+M)/2>
-constexpr auto countBetween() {
+constexpr size_t countBetween() {
     using R = decltype(w_state(index<X>, State{}, TPP{}));
     if constexpr (N==X) {
         return std::is_same_v<void, R> ? N : M;
@@ -608,7 +608,7 @@ constexpr auto countBetween() {
     }
 }
 template<size_t L, class State, class TPP, size_t N = 1>
-constexpr auto count() {
+constexpr size_t count() {
     using R = decltype(w_state(index<N>, State{}, TPP{}));
     if constexpr (std::is_same_v<void, R>) {
         return countBetween<L, State, TPP, N/2, N>();
