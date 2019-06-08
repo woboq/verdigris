@@ -164,10 +164,10 @@ public:
 };
 
 /// returns true if the object T has at least one property with a notify signal
-template <size_t L, typename T>
+template <size_t L, typename TPP>
 static constexpr bool hasNotifySignal() {
     auto r = bool{};
-    foldState<L, PropertyStateTag, T>([&](auto p, auto) {
+    foldState<L, PropertyStateTag, TPP>([&](auto p, auto) {
         r = r || !std::is_same<decltype(p.notify), std::nullptr_t>::value;
     });
     return r;
@@ -742,7 +742,7 @@ struct FriendHelper {
         } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
             (registerMethodArgumentType<T,MethI>(_id, _a),...);
         } else if (_c == QMetaObject::IndexOfMethod) {
-            *reinterpret_cast<int *>(_a[0]) = sums((1+indexOfMethod<T,MethI>(reinterpret_cast<void **>(_a[1])))...)-1;
+            *reinterpret_cast<int *>(_a[0]) = ((1+indexOfMethod<T,MethI>(reinterpret_cast<void **>(_a[1]))) + ... + 0)-1;
         } else if (_c == QMetaObject::CreateInstance) {
             (createInstance<T, ConsI>(_id, _a),...);
         } else if ((_c >= QMetaObject::ReadProperty && _c <= QMetaObject::QueryPropertyUser)

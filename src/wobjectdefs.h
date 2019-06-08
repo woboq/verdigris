@@ -229,7 +229,7 @@ makeMetaSlotInfo(F f, StringView name, IntegralConstant, const ParamTypes &param
 
 // Called from the W_METHOD macro
 template<typename F, typename ParamTypes, int... Flags, typename IntegralConstant>
-constexpr MetaMethodInfo<F,  summed<Flags...> | W_MethodType::Method.value, IntegralConstant, ParamTypes>
+constexpr MetaMethodInfo<F, summed<Flags...> | W_MethodType::Method.value, IntegralConstant, ParamTypes>
 makeMetaMethodInfo(F f, StringView name, IntegralConstant, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
 { return { f, name, paramTypes, {} }; }
 
