@@ -31,11 +31,11 @@
 #define W_VERSION 0x0101ff
 
 namespace w_internal {
-using std::index_sequence;  // From C++14, make sure to enable the C++14 option in your compiler
+using std::index_sequence; // From C++14, make sure to enable the C++14 option in your compiler
 
 #ifdef W_USE_CUSTOM_MAKE_INDEX_SEQUENCE
-/* The default std::make_index_sequence from libstdc++ is recursing O(N) times which is reaching
-    recursion limits level for big strings. This implementation has only O(log N) recursion */
+// The default std::make_index_sequence from libstdc++ is recursing O(N) times which is reaching
+// recursion limits level for big strings. This implementation has only O(log N) recursion
 template<size_t... I1, size_t... I2>
 index_sequence<I1... , (I2 +(sizeof...(I1)))...>
 make_index_sequence_helper_merge(index_sequence<I1...>, index_sequence<I2...>);
@@ -52,26 +52,19 @@ template<std::size_t N> using make_index_sequence = typename make_index_sequence
 using std::make_index_sequence;
 #endif
 
+/// integral_constant with an inheritance based fallback
 struct IndexBase {};
 template <size_t> struct Index : IndexBase {};
 template <size_t I> constexpr auto index = Index<I>{};
 
-template <size_t I> constexpr auto indexValue(Index<I> = {}) { return I; }
-template <class IV> constexpr auto index_value = indexValue(IV{});
-
-/** Compute the sum of many integers */
+/// Compute the sum of many integers
 template<typename... Args>
 constexpr int sums(Args... args) { return static_cast<int>((args + ... + 0)); }
 // This indirection is required to work around a MSVC bug. (See https://github.com/woboq/verdigris/issues/6 )
 template <int ...args>
 constexpr int summed = sums(args...);
 
-/*
- * Helpers to play with static strings
- */
-template<class T, size_t N> using RawArray = T[N];
-
-/** Represents a string of size N  (N includes the '\0' at the end) */
+/// constexpr friendly string_view
 struct StringView {
     const char* b{};
     const char* e{};
@@ -80,11 +73,13 @@ struct StringView {
     constexpr auto begin() const { return b; }
     constexpr auto end() const { return e; }
 };
+// adding this constructor requires more constructors which generates overhead
 template<size_t N>
 constexpr auto viewLiteral(const char (&d)[N]) -> StringView {
     return {&d[0], &d[N]};
 }
 
+/// raw arrays cannot be returned from functions so we wrap it
 template<size_t N = 0>
 struct StringViewArray {
     StringView data[(N > 0 ? N : 1)]{};
@@ -118,8 +113,6 @@ constexpr auto viewValidTails(const char (& ...ns)[Ns]) {
     }
 }
 
-template<class...>struct debug_types;
-
 template<size_t R, size_t... Ns, size_t... Is, class... Args>
 constexpr auto viewValidLiteralsImpl(index_sequence<Is...>, const Args& ... ns) {
     auto r = StringViewArray<R>{};
@@ -140,9 +133,9 @@ constexpr auto viewValidLiterals(const char (& ...ns)[Ns]) {
     }
 }
 
-/*-----------*/
+//-----------
 
-    // From qmetaobject_p.h
+// From qmetaobject_p.h
 enum class PropertyFlags  {
     Invalid = 0x00000000,
     Readable = 0x00000001,
@@ -170,18 +163,18 @@ constexpr uint operator|(uint a, PropertyFlags b) { return a | uint(b); }
 
 template <int N> struct W_MethodFlags { static constexpr int value = N; };
 constexpr W_MethodFlags<0> W_EmptyFlag{};
-} // w_internal
 
-/** Objects that can be used as flags in the W_SLOT macro */
+} // namespace w_internal
+
+/// Objects that are used as flags in the W_SLOT macro
 
 // Mirror of QMetaMethod::Access
 namespace W_Access {
-/* // From qmetaobject_p.h MethodFlags
-    AccessPrivate = 0x00,
-    AccessProtected = 0x01,
-    AccessPublic = 0x02,
-    AccessMask = 0x03, //mask
- */
+    // From qmetaobject_p.h MethodFlags
+    //    AccessPrivate = 0x00,
+    //    AccessProtected = 0x01,
+    //    AccessPublic = 0x02,
+    //    AccessMask = 0x03, //mask
     constexpr w_internal::W_MethodFlags<0x1000> Private{}; // Note: Private has a higher number to differentiate it from the default
     constexpr w_internal::W_MethodFlags<0x01> Protected{};
     constexpr w_internal::W_MethodFlags<0x02> Public{};
@@ -189,25 +182,23 @@ namespace W_Access {
 
 // Mirror of QMetaMethod::MethodType
 namespace W_MethodType {
-    /*  // From qmetaobject_p.h MethodFlags
-        MethodMethod = 0x00,
-        MethodSignal = 0x04,
-        MethodSlot = 0x08,
-        MethodConstructor = 0x0c,
-        MethodTypeMask = 0x0c,
-    */
+    // From qmetaobject_p.h MethodFlags
+    //    MethodMethod = 0x00,
+    //    MethodSignal = 0x04,
+    //    MethodSlot = 0x08,
+    //    MethodConstructor = 0x0c,
+    //    MethodTypeMask = 0x0c,
     constexpr w_internal::W_MethodFlags<0x00> Method{};
     constexpr w_internal::W_MethodFlags<0x04> Signal{};
     constexpr w_internal::W_MethodFlags<0x08> Slot{};
     constexpr w_internal::W_MethodFlags<0x0c> Constructor{};
 }
 
-/*
-MethodCompatibility = 0x10,
-MethodCloned = 0x20,
-MethodScriptable = 0x40,
-MethodRevisioned = 0x80
-*/
+// From qmetaobject_p.h MethodFlags
+//    MethodCompatibility = 0x10,
+//    MethodCloned = 0x20,
+//    MethodScriptable = 0x40,
+//    MethodRevisioned = 0x80
 constexpr w_internal::W_MethodFlags<0x10> W_Compat{};
 constexpr w_internal::W_MethodFlags<0x40> W_Scriptable{};
 constexpr struct {} W_Notify{};
@@ -217,7 +208,7 @@ constexpr std::integral_constant<int, int(w_internal::PropertyFlags::Final)> W_F
 
 namespace w_internal {
 
-/** Holds information about a method */
+/// Holds information about a method
 template<typename F, int Flags, typename IC, typename ParamTypes, typename ParamNames = StringViewArray<>>
 struct MetaMethodInfo {
     F func;
@@ -249,30 +240,26 @@ makeMetaSignalInfo(F f, StringView name, IntegralConstant, const ParamTypes &par
                     const ParamNames &paramNames, W_MethodFlags<Flags>...)
 { return { f, name, paramTypes, paramNames }; }
 
-/** Holds information about a constructor */
-template<typename... Args> struct MetaConstructorInfo {
+/// Holds information about a constructor
+template<typename... Args>
+struct MetaConstructorInfo {
     static constexpr std::size_t argCount = sizeof...(Args);
     static constexpr int flags = W_MethodType::Constructor.value | W_Access::Public.value;
     using IntegralConstant = void*; // Used to detect the access specifier, but it is always public, so no need for this
     StringView name;
-    template<typename T, std::size_t... I>
-    void createInstance(void **_a, index_sequence<I...>) const {
-        *reinterpret_cast<T**>(_a[0]) =
-            new T(*reinterpret_cast<std::remove_reference_t<Args> *>(_a[I+1])...);
-    }
 };
 // called from the W_CONSTRUCTOR macro
-template<typename...  Args> constexpr MetaConstructorInfo<Args...> makeMetaConstructorInfo(StringView name)
+template<typename...  Args>
+constexpr MetaConstructorInfo<Args...> makeMetaConstructorInfo(StringView name)
 { return { name }; }
 
 struct Empty{
     constexpr operator bool() const { return false; }
 };
 
-/** Holds information about a property */
-template<typename Type, typename Getter = Empty,
-            typename Setter = Empty, typename Member = Empty,
-            typename Notify = Empty, typename Reset = Empty, int Flags = 0>
+/// Holds information about a property
+template<typename Type, typename Getter = Empty, typename Setter = Empty,
+          typename Member = Empty, typename Notify = Empty, typename Reset = Empty, int Flags = 0>
 struct MetaPropertyInfo {
     using PropertyType = Type;
     StringView name;
@@ -316,7 +303,7 @@ struct MetaPropertyInfo {
     }
 };
 
-/** Parse a property and fill a MetaPropertyInfo (called from W_PRPERTY macro) */
+/// Parse a property and fill a MetaPropertyInfo (called from W_PRPERTY macro)
 // base case
 template <typename PropInfo> constexpr auto parseProperty(const PropInfo &p) { return p; }
 // setter
@@ -376,7 +363,10 @@ template <typename T, typename = void> struct EnumIsScoped {
 };
 template <typename T> struct EnumIsScoped<QFlags<T>, void> : EnumIsScoped<typename QFlags<T>::enum_type> {};
 
-/** Holds information about an enum */
+template<typename T> struct QEnumOrQFlags { using Type = T; };
+template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
+
+/// Holds information about an enum
 template<bool HasAlias, typename Values_, typename Names, int Flags>
 struct MetaEnumInfo {
     StringView name;
@@ -401,7 +391,7 @@ constexpr auto makeMetaEnumInfo(StringView name, StringView alias, enum_sequence
 }
 
 // Helper function to remove the scope in a scoped enum name. (so "Foo::Bar" -> Bar)
-template<int N> constexpr int removedScopeSize(const RawArray<char, N> &name) {
+template<int N> constexpr int removedScopeSize(const char (&name)[N]) {
     // Find the position of the last colon (or 0 if it is not there)
     int p = N - 1;
     while (p > 0 && name[p] != ':')
@@ -411,19 +401,17 @@ template<int N> constexpr int removedScopeSize(const RawArray<char, N> &name) {
     return N - p;
 }
 
-/**
- * Helper for the implementation of a signal.
- * Called from the signal implementation within the W_SIGNAL macro.
- *
- * 'Func' is the type of the signal. 'Idx' is the signal index (relative).
- * It is implemented as a functor so the operator() has exactly the same amount of argument of the
- * signal so the __VA_ARGS__ works also if there is no arguments (no leading commas)
- *
- * There is specialization for const and non-const,  and for void and non-void signals.
- *
- * the last argument of the operator() is an int, to workaround the ",0" required in the W_SIGNAL
- * macro to make sure there is at least one argument for the ...
- */
+/// Helper for the implementation of a signal.
+/// Called from the signal implementation within the W_SIGNAL macro.
+///
+/// 'Func' is the type of the signal. 'Idx' is the signal index (relative).
+/// It is implemented as a functor so the operator() has exactly the same amount of argument of the
+/// signal so the __VA_ARGS__ works also if there is no arguments (no leading commas)
+///
+/// There is specialization for const and non-const,  and for void and non-void signals.
+///
+/// the last argument of the operator() is an int, to workaround the ",0" required in the W_SIGNAL
+/// macro to make sure there is at least one argument for the ...
 template<typename Func, int Idx> struct SignalImplementation {};
 template<typename Obj, typename Ret, typename... Args, int Idx>
 struct SignalImplementation<Ret (Obj::*)(Args...), Idx>{
@@ -462,15 +450,13 @@ struct SignalImplementation<void (Obj::*)(Args...) const, Idx>{
     }
 };
 
-/**
- * Used in the W_OBJECT macro to compute the base type.
- * Used like this:
- *  using W_BaseType = std::remove_reference_t<decltype(getParentObjectHelper(&W_ThisType::qt_metacast))>;
- * Since qt_metacast for W_ThisType will be declared later, the pointer to member function will be
- * pointing to the qt_metacast of the base class, so T will be deduced to the base class type.
- *
- * Returns a reference so this work if T is an abstract class.
- */
+/// Used in the W_OBJECT macro to compute the base type.
+/// Used like this:
+///  using W_BaseType = std::remove_reference_t<decltype(getParentObjectHelper(&W_ThisType::qt_metacast))>;
+/// Since qt_metacast for W_ThisType will be declared later, the pointer to member function will be
+/// pointing to the qt_metacast of the base class, so T will be deduced to the base class type.
+///
+/// Returns a reference so this work if T is an abstract class.
 template<typename T> T &getParentObjectHelper(void* (T::*)(const char*));
 
 // helper class that can access the private member of any class with W_OBJECT
@@ -593,43 +579,44 @@ constexpr auto simple_hash(char const *p) {
     while (*p++) h = ((h >> 8)*37ull)  ^ *p ^ ((h & 0xff) << 56) ;
     return h;
 }
-}
+} // namespace w_internal
 #define W_INTEGRAL_CONSTANT_HELPER(NAME, ...) std::integral_constant<unsigned long long, w_internal::simple_hash(#NAME #__VA_ARGS__)>
 #endif
 
 namespace w_internal {
 
-template<size_t L, size_t N , size_t M, size_t X = (N+M)/2, class F, class... As>
-constexpr auto countBetween(F f, As... as) {
-    using R = decltype(std::declval<F>()(index<X>, As{}...));
-    if constexpr (N==X) {
-        (void)f;
-        ((void)as, ...);
-        return std::is_same_v<void, R> ? N : M;
-    }
-    else if constexpr (std::is_same_v<void, R>) {
-        return countBetween<L, N, X>(f, as...);
-    }
-    else {
-        return countBetween<L, X, M>(f, as...);
-    }
-}
-template<size_t L, size_t N = 1, class F, class... As>
-constexpr auto count(F f, As... as) {
-    using R = decltype(std::declval<F>()(index<N>, As{}...));
-    if constexpr (std::is_same_v<void, R>) {
-        return countBetween<L, N/2, N>(f, as...);
-    }
-    else {
-        return count<L, N*2>(f, as...);
-    }
-}
-
+/// We store state in overloads for this method.
+/// This overload is found if no better overload was found.
+/// All overloads are found using ADL in the QObject T
 template<class State, class T>
 constexpr void w_state(IndexBase, State, T**);
 
+template<size_t L, class State, class TPP, size_t N , size_t M, size_t X = (N+M)/2>
+constexpr auto countBetween() {
+    using R = decltype(w_state(index<X>, State{}, TPP{}));
+    if constexpr (N==X) {
+        return std::is_same_v<void, R> ? N : M;
+    }
+    else if constexpr (std::is_same_v<void, R>) {
+        return countBetween<L, State, TPP, N, X>();
+    }
+    else {
+        return countBetween<L, State, TPP, X, M>();
+    }
+}
+template<size_t L, class State, class TPP, size_t N = 1>
+constexpr auto count() {
+    using R = decltype(w_state(index<N>, State{}, TPP{}));
+    if constexpr (std::is_same_v<void, R>) {
+        return countBetween<L, State, TPP, N/2, N>();
+    }
+    else {
+        return count<L, State, TPP, N*2>();
+    }
+}
+
 template<size_t L, class State, class TPP>
-constexpr auto stateCount = count<L>([](auto... a) -> decltype(w_state(a...)) {}, State{}, TPP{});
+constexpr auto stateCount = count<L, State, TPP>();
 
 struct SlotStateTag {};
 struct SignalStateTag {};
@@ -657,13 +644,11 @@ struct InterfaceStateTag {};
     static constexpr auto w_state(w_internal::Index<w_internal::stateCount<__COUNTER__, w_internal::STATE##Tag, W_ThisType**>>, \
             w_internal::STATE##Tag, W_ThisType**) W_RETURN((__VA_ARGS__))
 
-//
 // public macros
 
-/** \macro W_OBJECT(TYPE)
- * Like the Q_OBJECT macro, this declare that the object might have signals, slots or properties.
- * Must contains the class name as a parameter and need to be put before any other W_ macro in the class.
- */
+/// \macro W_OBJECT(TYPE)
+/// Like the Q_OBJECT macro, this declare that the object might have signals, slots or properties.
+/// Must contains the class name as a parameter and need to be put before any other W_ macro in the class.
 #define W_OBJECT(TYPE) \
     W_OBJECT_COMMON(TYPE) \
     public: \
@@ -672,19 +657,17 @@ struct InterfaceStateTag {};
     Q_OBJECT \
     QT_ANNOTATE_CLASS(qt_fake, "")
 
-/** \macro W_GADGET(TYPE)
- * Like the Q_GADGET macro, this declare that the object might have properties.
- * Must contains the class name as a parameter and need to be put before any other W_ macro in the class.
- */
+/// \macro W_GADGET(TYPE)
+/// Like the Q_GADGET macro, this declare that the object might have properties.
+/// Must contains the class name as a parameter and need to be put before any other W_ macro in the class.
 #define W_GADGET(TYPE) \
     W_OBJECT_COMMON(TYPE) \
     Q_GADGET \
     QT_ANNOTATE_CLASS(qt_fake, "")
 
-/** \macro W_NAMESPACE(NAMESPACE)
- * Like the Q_GADGET macro, this declare that the object might have properties.
- * Must contains the class name as a parameter and need to be put before any other W_ macro in the class.
- */
+/// \macro W_NAMESPACE(NAMESPACE)
+/// Like the Q_GADGET macro, this declare that the object might have properties.
+/// Must contains the class name as a parameter and need to be put before any other W_ macro in the class.
 #define W_NAMESPACE(NAMESPACE) \
     Q_NAMESPACE \
     struct W_MetaObjectCreatorHelper; \
@@ -696,20 +679,18 @@ struct InterfaceStateTag {};
     template<typename W_Flag> static inline constexpr int w_flagAlias(W_Flag) { Q_UNUSED(W_UnscopedName) return 0; } \
     QT_ANNOTATE_CLASS(qt_fake, "")
 
-/**
- * W_SLOT( <slot name> [, (<parameters types>) ]  [, <flags>]* )
- *
- * The W_SLOT macro needs to be put after the slot declaration.
- *
- * The W_SLOT macro can optionally have a list of parameter types as second argument to disambiguate
- * overloads or use types that are not registered with W_REGISTER_ARGTYPE. The list of parameter
- * need to be within parentheses (even if there is 0 or 1 argument).
- *
- * The W_SLOT macro can have flags:
- * - Specifying the the access:  W_Access::Protected, W_Access::Private
- *   or W_Access::Public. (By default, it is auto-detected from the location of this macro.)
- * - W_Compat: for deprecated methods (equivalent of Q_MOC_COMPAT)
- */
+/// \macro W_SLOT( <slot name> [, (<parameters types>) ]  [, <flags>]* )
+///
+/// The W_SLOT macro needs to be put after the slot declaration.
+///
+/// The W_SLOT macro can optionally have a list of parameter types as second argument to disambiguate
+/// overloads or use types that are not registered with W_REGISTER_ARGTYPE. The list of parameter
+/// need to be within parentheses (even if there is 0 or 1 argument).
+///
+/// The W_SLOT macro can have flags:
+/// - Specifying the the access:  W_Access::Protected, W_Access::Private
+///   or W_Access::Public. (By default, it is auto-detected from the location of this macro.)
+/// - W_Compat: for deprecated methods (equivalent of Q_MOC_COMPAT)
 #define W_SLOT(...) W_MACRO_MSVC_EXPAND(W_SLOT2(__VA_ARGS__, w_internal::W_EmptyFlag))
 #define W_SLOT2(NAME, ...) \
     W_STATE_APPEND(SlotState, w_internal::makeMetaSlotInfo( \
@@ -719,10 +700,8 @@ struct InterfaceStateTag {};
             W_OVERLOAD_REMOVE(__VA_ARGS__))) \
     static inline void w_GetAccessSpecifierHelper(W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)) {}
 
-/**
- * W_INVOKABLE( <slot name> [, (<parameters types>) ]  [, <flags>]* )
- * Exactly like W_SLOT but for Q_INVOKABLE methods.
- */
+/// \macro W_INVOKABLE( <slot name> [, (<parameters types>) ]  [, <flags>]* )
+/// Exactly like W_SLOT but for Q_INVOKABLE methods.
 #define W_INVOKABLE(...) W_MACRO_MSVC_EXPAND(W_INVOKABLE2(__VA_ARGS__, w_internal::W_EmptyFlag))
 #define W_INVOKABLE2(NAME, ...) \
     W_STATE_APPEND(MethodState, w_internal::makeMetaMethodInfo( \
@@ -732,21 +711,19 @@ struct InterfaceStateTag {};
             W_OVERLOAD_REMOVE(__VA_ARGS__))) \
     static inline void w_GetAccessSpecifierHelper(W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)) {}
 
-/**
- * <signal signature>
- * W_SIGNAL(<signal name> [, (<parameter types>) ] , <parameter names> )
- *
- * Unlike W_SLOT, W_SIGNAL must be placed directly after the signal signature declaration.
- * There should not be a semi colon between the signal signature and the macro
- *
- * Like W_SLOT, there can be the types of the parametter as a second argument, within parentheses.
- * You must then follow with the parameter names
- *
- * Note about exported classes: since the signal is inline, GCC won't export it when compiling
- * with -fvisibility-inlines-hidden (which is the default), so connecting using pointer to member
- * functions won't work accross library boundaries. You need to explicitly export the signal with
- * your MYLIB_EXPORT macro in front of the signal declaration.
- */
+/// <signal signature>
+/// \macro W_SIGNAL(<signal name> [, (<parameter types>) ] , <parameter names> )
+///
+/// Unlike W_SLOT, W_SIGNAL must be placed directly after the signal signature declaration.
+/// There should not be a semi colon between the signal signature and the macro
+///
+/// Like W_SLOT, there can be the types of the parametter as a second argument, within parentheses.
+/// You must then follow with the parameter names
+///
+/// Note about exported classes: since the signal is inline, GCC won't export it when compiling
+/// with -fvisibility-inlines-hidden (which is the default), so connecting using pointer to member
+/// functions won't work accross library boundaries. You need to explicitly export the signal with
+/// your MYLIB_EXPORT macro in front of the signal declaration.
 #define W_SIGNAL(...) W_MACRO_MSVC_EXPAND(W_SIGNAL2(__VA_ARGS__ , 0))
 #define W_SIGNAL2(NAME, ...) \
     { /* W_SIGNAL need to be placed directly after the signal declaration, without semicolon. */\
@@ -762,9 +739,8 @@ struct InterfaceStateTag {};
                 W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))) \
     static inline void w_GetAccessSpecifierHelper(W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)) {}
 
-/** \macro W_SIGNAL_COMPAT
- * Same as W_SIGNAL, but set the W_Compat flag
- */
+/// \macro W_SIGNAL_COMPAT
+/// Same as W_SIGNAL, but set the W_Compat flag
 #define W_SIGNAL_COMPAT(...) W_MACRO_MSVC_EXPAND(W_SIGNAL_COMPAT2(__VA_ARGS__, 0))
 #define W_SIGNAL_COMPAT2(NAME, ...) \
     { \
@@ -780,27 +756,25 @@ struct InterfaceStateTag {};
                 W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat)) \
     static inline void w_GetAccessSpecifierHelper(W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)) {}
 
-/** W_CONSTRUCTOR(<parameter types>)
- * Declares that this class can be constructed with this list of argument.
- * Equivalent to Q_INVOKABLE constructor.
- * One can have W_CONSTRUCTOR() for the default constructor even if it is implicit.
- */
+/// \macro W_CONSTRUCTOR(<parameter types>)
+/// Declares that this class can be constructed with this list of argument.
+/// Equivalent to Q_INVOKABLE constructor.
+/// One can have W_CONSTRUCTOR() for the default constructor even if it is implicit.
 #define W_CONSTRUCTOR(...) \
     W_STATE_APPEND(ConstructorState, \
                    w_internal::makeMetaConstructorInfo<__VA_ARGS__>(W_UnscopedName))
 
 
-/** W_PROPERTY(<type>, <name> [, <flags>]*)
- *
- * Declare a property <name> with the type <type>.
- * The flags can be function pointers that are detected to be setter, getters, notify signal or
- * other flags. Use the macro READ, WRITE, MEMBER, ... for the flag so you can write W_PROPERTY
- * just like in a Q_PROPERTY. The only difference with Q_PROPERTY would be the semicolon before the
- * name.
- * W_PROPERTY need to be put after all the setters, getters, signals and members have been declared.
- *
- * <type> can optionally be put in parentheses, if you have a type containing a comma
- */
+/// \macro W_PROPERTY(<type>, <name> [, <flags>]*)
+///
+/// Declare a property <name> with the type <type>.
+/// The flags can be function pointers that are detected to be setter, getters, notify signal or
+/// other flags. Use the macro READ, WRITE, MEMBER, ... for the flag so you can write W_PROPERTY
+/// just like in a Q_PROPERTY. The only difference with Q_PROPERTY would be the semicolon before the
+/// name.
+/// W_PROPERTY need to be put after all the setters, getters, signals and members have been declared.
+///
+/// <type> can optionally be put in parentheses, if you have a type containing a comma
 #define W_PROPERTY(...) W_MACRO_MSVC_EXPAND(W_PROPERTY2(__VA_ARGS__)) // expands the READ, WRITE, and other sub marcos
 #define W_PROPERTY2(TYPE, NAME, ...) \
     W_STATE_APPEND(PropertyState, \
@@ -818,9 +792,8 @@ struct InterfaceStateTag {};
 #undef Q_PRIVATE_PROPERTY // the official macro is not a variadic macro, and the coma in READ would break it
 #define Q_PRIVATE_PROPERTY(...)
 
-/** W_ENUM(<name>, <values>)
- * Similar to Q_ENUM, but one must also manually write all the values.
- */
+/// \macro W_ENUM(<name>, <values>)
+/// Similar to Q_ENUM, but one must also manually write all the values.
 #define W_ENUM(NAME, ...) \
     W_STATE_APPEND(EnumState, w_internal::makeMetaEnumInfo<NAME,false>( \
             w_internal::viewLiteral(#NAME), w_flagAlias(NAME{}), \
@@ -828,22 +801,16 @@ struct InterfaceStateTag {};
     Q_ENUM(NAME)
 
 
-/** W_ENUM_NS(<name>, <values>)
- * Similar to Q_ENUM_NS, like W_ENUM
- */
+/// \macro W_ENUM_NS(<name>, <values>)
+/// Similar to Q_ENUM_NS, like W_ENUM
 #define W_ENUM_NS(NAME, ...) \
     W_STATE_APPEND_NS(EnumState, w_internal::makeMetaEnumInfo<NAME,false>( \
             w_internal::viewLiteral(#NAME), w_flagAlias(NAME{}), \
             w_internal::enum_sequence<NAME,__VA_ARGS__>{}, W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__))) \
     Q_ENUM_NS(NAME)
 
-/** W_FLAG(<name>, <values>)
- * Similar to Q_FLAG, but one must also manually write all the values.
- */
-namespace w_internal {
-template<typename T> struct QEnumOrQFlags { using Type = T; };
-template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
-}
+/// \macro W_FLAG(<name>, <values>)
+/// Similar to Q_FLAG, but one must also manually write all the values.
 #define W_FLAG(NAME, ...) \
     W_STATE_APPEND(EnumState, w_internal::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type,true>( \
             w_internal::viewLiteral(#NAME), w_flagAlias(NAME{}), \
@@ -851,9 +818,8 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
             W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__))) \
     Q_FLAG(NAME)
 
-/** W_FLAG_NS(<name>, <values>)
- * Similar to Q_FLAG_NS, like W_FLAG.
- */
+/// \macro W_FLAG_NS(<name>, <values>)
+/// Similar to Q_FLAG_NS, like W_FLAG.
 #define W_FLAG_NS(NAME, ...) \
     W_STATE_APPEND_NS(EnumState, w_internal::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type,true>( \
             w_internal::viewLiteral(#NAME), w_flagAlias(NAME{}), \
@@ -861,31 +827,29 @@ template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
             W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__))) \
     Q_FLAG_NS(NAME)
 
-/** Same as Q_CLASSINFO.  Note, Q_CLASSINFO_NS is required for namespace */
+/// Same as Q_CLASSINFO.  Note, Q_CLASSINFO_NS is required for namespace
 #define W_CLASSINFO(A, B) \
     W_STATE_APPEND(ClassInfoState, \
         std::pair<w_internal::StringView, w_internal::StringView>{ w_internal::viewLiteral(A), w_internal::viewLiteral(B) })
 
-/** Same as Q_CLASSINFO, but within a namespace */
+/// Same as Q_CLASSINFO, but within a namespace
 #define W_CLASSINFO_NS(A, B) \
     W_STATE_APPEND_NS(ClassInfoState, \
         std::pair<w_internal::StringView, w_internal::StringView>{ w_internal::viewLiteral(A), w_internal::viewLiteral(B) })
 
-
-/** Same as Q_INTERFACE */
+/// Same as Q_INTERFACE
 #define W_INTERFACE(A) \
     W_STATE_APPEND(InterfaceState, static_cast<A*>(nullptr))
 
-/** Same as Q_DECLARE_FLAGS */
+/// Same as Q_DECLARE_FLAGS
 #define W_DECLARE_FLAGS(Flags, Enum) \
     Q_DECLARE_FLAGS(Flags, Enum) \
     static inline constexpr w_internal::StringView w_flagAlias(Flags) { return w_internal::viewLiteral(#Enum); }
 
-/** \macro W_REGISTER_ARGTYPE(TYPE)
- Registers TYPE so it can be used as a parameter of a signal/slot or return value.
- The normalized signature must be used.
- Note: This does not imply Q_DECLARE_METATYPE, and Q_DECLARE_METATYPE does not imply this
-*/
+/// \macro W_REGISTER_ARGTYPE(TYPE)
+/// Registers TYPE so it can be used as a parameter of a signal/slot or return value.
+/// The normalized signature must be used.
+/// Note: This does not imply Q_DECLARE_METATYPE, and Q_DECLARE_METATYPE does not imply this
 namespace w_internal { template<typename T> struct W_TypeRegistery { enum { registered = false }; }; }
 #define W_REGISTER_ARGTYPE(...) namespace w_internal { \
     template<> struct W_TypeRegistery<__VA_ARGS__> { \
