@@ -15,6 +15,7 @@ Project {
         name: "Verdigris"
 
         files: [
+            "src/wobjectcpp.h",
             "src/wobjectdefs.h",
             "src/wobjectimpl.h",
         ]
