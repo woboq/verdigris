@@ -216,6 +216,7 @@ struct MetaMethodInfo {
     ParamTypes paramTypes;
     ParamNames paramNames;
     static constexpr int argCount = QtPrivate::FunctionPointer<F>::ArgumentCount;
+    static constexpr auto argSequence = make_index_sequence<argCount>{};
     static constexpr int flags = Flags;
     using IntegralConstant = IC;
 };
@@ -244,6 +245,7 @@ makeMetaSignalInfo(F f, StringView name, IntegralConstant, const ParamTypes &par
 template<typename... Args>
 struct MetaConstructorInfo {
     static constexpr std::size_t argCount = sizeof...(Args);
+    static constexpr auto argSequence = make_index_sequence<argCount>{};
     static constexpr int flags = W_MethodType::Constructor.value | W_Access::Public.value;
     using IntegralConstant = void*; // Used to detect the access specifier, but it is always public, so no need for this
     StringView name;
@@ -375,6 +377,7 @@ struct MetaEnumInfo {
     using Values = Values_;
     static constexpr uint flags = Flags;
     static constexpr auto count = Values::size();
+    static constexpr auto sequence = make_index_sequence<count>{};
     static constexpr auto hasAlias = HasAlias;
 };
 template<typename Enum, Enum... Value> struct enum_sequence {};

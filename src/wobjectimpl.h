@@ -189,6 +189,11 @@ struct ObjectInfo {
     static constexpr int classInfoCount = stateCount<L, ClassInfoStateTag, T**>;
     static constexpr int interfaceCount = stateCount<L, InterfaceStateTag, T**>;
 
+    static constexpr auto methodSequence = make_index_sequence<methodCount>{};
+    static constexpr auto constructorSequence = make_index_sequence<constructorCount>{};
+    static constexpr auto propertySequence = make_index_sequence<propertyCount>{};
+    static constexpr auto interfaceSequence = make_index_sequence<interfaceCount>{};
+
     template<size_t Idx>
     static constexpr auto method(Index<Idx>) {
         using TPP = T**;
@@ -355,7 +360,7 @@ struct EnumValuesGenerator {
 
     template<class Enum, class Index>
     constexpr void operator() (const Enum& e, Index) {
-        generateAll(typename Enum::Values{}, e.names, make_index_sequence<Enum::count>{});
+        generateAll(typename Enum::Values{}, e.names, Enum::sequence);
     }
 
 private:
@@ -402,33 +407,30 @@ struct MethodParametersGenerator {
     constexpr MethodParametersGenerator(State& s) : s(s) {}
     template<class Method, class Index>
     constexpr void operator() (const Method& method, Index) {
-        generateSingleMethodParameter(method.func, method.paramTypes, method.paramNames);
+        generateSingleMethodParameter(method.func, method);
     }
 
 private:
     // non-const function
-    template<typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
-    constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...),
-                                                 const ParamTypes &paramTypes, const ParamNames &paramNames ) {
+    template<typename Method, typename Obj, typename Ret, typename... Args>
+    constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...), const Method &method) {
         handleType<Ret>(s);
-        handleArgTypes<Args...>(s, paramTypes, make_index_sequence<sizeof... (Args)>{});
-        handleArgNames<sizeof...(Args)>(s, paramNames);
+        handleArgTypes<Args...>(s, method.paramTypes, method.argSequence);
+        handleArgNames<method.argCount>(s, method.paramNames);
     }
-    template<typename ParamTypes, typename ParamNames, typename Obj, typename Ret, typename... Args>
+    template<typename Method, typename Obj, typename Ret, typename... Args>
     // const function
-    constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...) const,
-                                                 const ParamTypes &paramTypes, const ParamNames &paramNames ) {
+    constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...) const, const Method &method) {
         handleType<Ret>(s);
-        handleArgTypes<Args...>(s, paramTypes, make_index_sequence<sizeof... (Args)>{});
-        handleArgNames<sizeof...(Args)>(s, paramNames);
+        handleArgTypes<Args...>(s, method.paramTypes, method.argSequence);
+        handleArgNames<method.argCount>(s, method.paramNames);
     }
     // static member functions
-    template<typename ParamTypes, typename ParamNames, typename Ret, typename... Args>
-    constexpr void generateSingleMethodParameter(Ret (*)(Args...),
-                                                 const ParamTypes &paramTypes, const ParamNames &paramNames ) {
+    template<typename Method, typename Ret, typename... Args>
+    constexpr void generateSingleMethodParameter(Ret (*)(Args...), const Method &method) {
         handleType<Ret>(s);
-        handleArgTypes<Args...>(s, paramTypes, make_index_sequence<sizeof... (Args)>{});
-        handleArgNames<sizeof...(Args)>(s, paramNames);
+        handleArgTypes<Args...>(s, method.paramTypes, method.argSequence);
+        handleArgNames<method.argCount>(s, method.paramNames);
     }
 };
 
@@ -438,9 +440,9 @@ struct ConstructorParametersGenerator {
     constexpr ConstructorParametersGenerator(State& s) : s(s) {}
 
     template<typename... Args, class Index>
-    constexpr void operator() (MetaConstructorInfo<Args...>, Index) {
+    constexpr void operator() (const MetaConstructorInfo<Args...>& info, Index) {
         s.addInts(IsUnresolvedType | 1);
-        handleArgTypes<Args...>(s, StringViewArray<>{}, make_index_sequence<sizeof... (Args)>{});
+        handleArgTypes<Args...>(s, StringViewArray<>{}, info.argSequence);
         s.addInts(((void)sizeof(Args),1)...); // all the names are 1 (for "\0")
     }
 };
@@ -610,26 +612,25 @@ struct FriendHelper {
     template<typename T>
     static constexpr QMetaObject createMetaObject()
     {
-        using Creator = typename T::W_MetaObjectCreatorHelper;
-        using ObjI = decltype(Creator::objectInfo);
+        using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
         constexpr auto& data = dataArray<ObjI>;
         auto string_data = build_string_data<ObjI>(data.stringSequence);
         return { { parentMetaObject<T>(0), string_data, data.ints, T::qt_static_metacall, {}, {} } };
     }
 
     template<typename T> static int qt_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void** _a) {
-        using Creator = typename T::W_MetaObjectCreatorHelper;
+        using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
         _id = _o->T::W_BaseType::qt_metacall(_c, _id, _a);
         if (_id < 0)
             return _id;
         if (_c == QMetaObject::InvokeMetaMethod || _c == QMetaObject::RegisterMethodArgumentMetaType) {
-            constexpr int methodCount = Creator::objectInfo.methodCount;
+            constexpr int methodCount = ObjI::methodCount;
             if (_id < methodCount)
                 T::qt_static_metacall(_o, _c, _id, _a);
             _id -= methodCount;
         } else if ((_c >= QMetaObject::ReadProperty && _c <= QMetaObject::QueryPropertyUser)
                     || _c == QMetaObject::RegisterPropertyMetaType) {
-            constexpr int propertyCount = Creator::objectInfo.propertyCount;
+            constexpr int propertyCount = ObjI::propertyCount;
             if (_id < propertyCount)
                 T::qt_static_metacall(_o, _c, _id, _a);
             _id -= propertyCount;
@@ -642,7 +643,8 @@ struct FriendHelper {
     /// Returns I if the argument is equal to the pointer to member function of the signal of index 'I'
     template<typename T, int I>
     static int indexOfMethod(void **func) {
-        constexpr auto m = T::W_MetaObjectCreatorHelper::objectInfo.method(index<I>);
+        using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
+        constexpr auto m = ObjI::method(index<I>);
         if ((m.flags & 0xc) == W_MethodType::Signal.value
             && m.func == *reinterpret_cast<decltype(m.func)*>(func))
             return I;
@@ -655,7 +657,8 @@ struct FriendHelper {
     template <typename T, int I>
     static void invokeMethod(T *_o, int _id, void **_a) {
         if (_id == I) {
-            constexpr auto f = T::W_MetaObjectCreatorHelper::objectInfo.method(index<I>).func;
+            using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
+            constexpr auto f = ObjI::method(index<I>).func;
             using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
             P::template call<typename P::Arguments, typename P::ReturnType>(f, _o, _a);
         }
@@ -666,7 +669,8 @@ struct FriendHelper {
     template <typename T, int I>
     static void registerMethodArgumentType(int _id, void **_a) {
         if (_id == I) {
-            constexpr auto f = T::W_MetaObjectCreatorHelper::objectInfo.method(index<I>).func;
+            using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
+            constexpr auto f = ObjI::method(index<I>).func;
             using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
             auto _t = QtPrivate::ConnectionTypes<typename P::Arguments>::types();
             uint arg = *reinterpret_cast<uint*>(_a[1]);
@@ -722,7 +726,7 @@ struct FriendHelper {
         if (_id == I) {
             using TPP = T**;
             constexpr auto m = w_state(index<I>, ConstructorStateTag{}, TPP{});
-            createInstanceImpl<T>(_a, m, make_index_sequence<decltype(m)::argCount>{});
+            createInstanceImpl<T>(_a, m, m.argSequence);
         }
     }
 
@@ -768,38 +772,31 @@ struct FriendHelper {
 
     template<typename T, typename... Ts>
     static void qt_static_metacall_impl(Ts &&... args) {
-        using ObjI = decltype(T::W_MetaObjectCreatorHelper::objectInfo);
+        using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
         return qt_static_metacall_impl2<T>(std::forward<Ts>(args)...,
-                                           make_index_sequence<ObjI::methodCount>{},
-                                           make_index_sequence<ObjI::constructorCount>{},
-                                           make_index_sequence<ObjI::propertyCount>{});
-    }
-
-    /// helper for the implementation of qt_metacast
-    template <typename Interface, typename T>
-    static void interfaceMetaCast(void *&result, T *o, const char *clname) {
-        const char *iid = qobject_interface_iid<Interface>();
-        if (iid && !strcmp(clname, iid))
-            result = static_cast<Interface>(o);
+                                           ObjI::methodSequence, ObjI::constructorSequence, ObjI::propertySequence);
     }
 
     /// implementation of qt_metacast
-    template<typename T, size_t... InterfaceI>
-    static void *qt_metacast_impl2(T *o, const char *_clname, std::index_sequence<InterfaceI...>) {
+    template<typename T>
+    static void* qt_metacast_impl(T *o, const char *_clname) {
         if (!_clname)
             return nullptr;
         const QByteArrayDataPtr sd = { const_cast<QByteArrayData*>(T::staticMetaObject.d.stringdata) };
         if (_clname == QByteArray(sd))
             return o;
-        void *result = nullptr;
-        using TPP = T**;
-        (interfaceMetaCast<decltype(w_state(index<InterfaceI>, InterfaceStateTag{}, TPP{}))>(result, o, _clname),...);
-        return result ? result : o->T::W_BaseType::qt_metacast(_clname);
-    }
-    template<typename T>
-    static void* qt_metacast_impl(T *o, const char *_clname) {
-        using ObjI = decltype(T::W_MetaObjectCreatorHelper::objectInfo);
-        return qt_metacast_impl2<T>(o, _clname, make_index_sequence<ObjI::interfaceCount>{});
+        using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
+        void *result = {};
+        auto l = [&](auto i) {
+            using TPP = T**;
+            using Interface = decltype(w_state(i, InterfaceStateTag{}, TPP{}));
+            const char *iid = qobject_interface_iid<Interface>();
+            if (iid && !strcmp(_clname, iid))
+                result = static_cast<Interface>(o);
+        };
+        fold(ObjI::interfaceSequence, l);
+        if (!result) return o->T::W_BaseType::qt_metacast(_clname);
+        return result;
     }
 
 }; // FriendHelper
@@ -827,7 +824,7 @@ struct FriendHelper {
 #define W_OBJECT_IMPL_COMMON(INLINE, ...) \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) struct W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_MetaObjectCreatorHelper { \
         struct Name { static constexpr auto value = w_internal::viewLiteral(W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))); }; \
-        static constexpr auto objectInfo = w_internal::ObjectInfo<1024*1024*1024, W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType, Name>{}; \
+        using ObjectInfo = w_internal::ObjectInfo<1024*1024*1024, W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType, Name>; \
     }; \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) INLINE const QT_INIT_METAOBJECT QMetaObject W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::staticMetaObject = \
         w_internal::FriendHelper::createMetaObject<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>();
