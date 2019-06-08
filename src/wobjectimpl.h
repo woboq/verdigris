@@ -415,22 +415,22 @@ private:
     template<typename Method, typename Obj, typename Ret, typename... Args>
     constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...), const Method &method) {
         handleType<Ret>(s);
-        handleArgTypes<Args...>(s, method.paramTypes, method.argSequence);
-        handleArgNames<method.argCount>(s, method.paramNames);
+        handleArgTypes<Args...>(s, method.paramTypes, Method::argSequence);
+        handleArgNames<Method::argCount>(s, method.paramNames);
     }
     template<typename Method, typename Obj, typename Ret, typename... Args>
     // const function
     constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...) const, const Method &method) {
         handleType<Ret>(s);
-        handleArgTypes<Args...>(s, method.paramTypes, method.argSequence);
-        handleArgNames<method.argCount>(s, method.paramNames);
+        handleArgTypes<Args...>(s, method.paramTypes, Method::argSequence);
+        handleArgNames<Method::argCount>(s, method.paramNames);
     }
     // static member functions
     template<typename Method, typename Ret, typename... Args>
     constexpr void generateSingleMethodParameter(Ret (*)(Args...), const Method &method) {
         handleType<Ret>(s);
-        handleArgTypes<Args...>(s, method.paramTypes, method.argSequence);
-        handleArgNames<method.argCount>(s, method.paramNames);
+        handleArgTypes<Args...>(s, method.paramTypes, Method::argSequence);
+        handleArgNames<Method::argCount>(s, method.paramNames);
     }
 };
 

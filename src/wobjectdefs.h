@@ -97,7 +97,7 @@ template<size_t R, size_t... Ns, size_t... Ts, size_t... Is, class... Args>
 constexpr auto viewValidTailsImpl(index_sequence<Is...>, index_sequence<Ts...>, const Args& ... ns) {
     auto r = StringViewArray<R>{};
     auto p = r.data;
-    ((Is < R ? (*p++ = StringView{&ns[Ns - Ts], &ns[Ns]}, ns) : ns), ...);
+    ((Is < R ? (*p++ = StringView{&ns[Ns - Ts], &ns[Ns]}) : *p), ...);
     return r;
 }
 template<size_t... Ts, size_t... Ns>
@@ -117,7 +117,7 @@ template<size_t R, size_t... Ns, size_t... Is, class... Args>
 constexpr auto viewValidLiteralsImpl(index_sequence<Is...>, const Args& ... ns) {
     auto r = StringViewArray<R>{};
     auto p = r.data;
-    ((Is < R ? (*p++ = viewLiteral(ns), ns) : ns), ...);
+    ((Is < R ? (*p++ = viewLiteral(ns)) : *p), ...);
     return r;
 }
 template<size_t... Ns>
