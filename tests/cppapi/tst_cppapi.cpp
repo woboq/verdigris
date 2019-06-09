@@ -4,6 +4,8 @@
 #include <QtCore/QMetaObject>
 #include <QtTest/QtTest>
 
+namespace test {
+
 template<class...> struct debug_types;
 
 template<size_t> struct Index {};
@@ -15,7 +17,7 @@ class tst_CppApi : public QObject
 {
     W_OBJECT(tst_CppApi)
 
-#ifndef Q_CC_GNU // GCC does not resolve the signals
+#if !defined(Q_CC_GNU) || defined(Q_CC_CLANG) // GCC does not resolve the signals
 
 private slots:
     void firstTest();
@@ -48,7 +50,7 @@ public:
             return makeSignalBuilder(viewLiteral("ageChanged"), &tst_CppApi::notifyPropertyChanged<1>).build();
         }
     };
-    template<size_t I, class = std::enable_if_t<(I<2)>>
+    template<size_t I>
     static constexpr auto mySignals() -> decltype (mySignalsLambda(index<I>)) {
         return mySignalsLambda(index<I>);
     }
@@ -71,14 +73,12 @@ private:
                 .setNotify(&tst_CppApi::notifyPropertyChanged<1>);
         }
     };
-    template<size_t I, class = std::enable_if_t<(I<2)>>
+    template<size_t I>
     static constexpr auto myProperties() -> decltype (myPropertiesLambda(index<I>)) {
         return myPropertiesLambda(index<I>);
     }
     W_CPP_PROPERTY(myProperties)
 };
-
-W_OBJECT_IMPL(tst_CppApi)
 
 void tst_CppApi::firstTest()
 {
@@ -123,8 +123,11 @@ void tst_CppApi::notifyTest()
 
 #else // Q_CC_GNU
 };
-W_OBJECT_IMPL(tst_CppApi)
 
 #endif
 
-QTEST_MAIN(tst_CppApi)
+} // namespace test
+
+W_OBJECT_IMPL(test::tst_CppApi)
+
+QTEST_MAIN(test::tst_CppApi)
