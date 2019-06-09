@@ -26,99 +26,38 @@
 
 namespace w_internal {
 
-template<class T, size_t N> using RawArray = T[N];
-
 // Match MetaDataFlags constants form the MetaDataFlags in qmetaobject_p.h
 enum : uint { IsUnresolvedType = 0x80000000, IsUnresolvedNotifySignal = 0x70000000 };
 
-struct LayoutBuilder {
-    size_t stringSize{};
-    uint stringCount{};
-    uint intCount{};
+/// all details about a class T
+template<class T, class Name, size_t L = 1024*1024*1024>
+struct ObjectInfo {
+    using Type = T;
+    static constexpr auto counter = L;
+    static constexpr auto name = StringView{Name::value};
 
-    constexpr void addString(const StringView& s) {
-        stringSize += s.size();
-        stringCount += 1;
-        intCount += 1;
-    }
-    constexpr void addStringUntracked(const StringView& s) {
-        stringSize += s.size();
-        stringCount += 1;
-    }
-    template<uint Flag = IsUnresolvedType>
-    constexpr void addTypeString(const StringView& s) {
-        stringSize += s.size();
-        stringCount += 1;
-        intCount += 1;
-    }
-    template<class... Ts>
-    constexpr void addInts(Ts...) {
-        intCount += sizeof... (Ts);
+    static constexpr int signalCount = stateCount<L, SignalStateTag, T**>;
+    static constexpr int slotCount = stateCount<L, SlotStateTag, T**>;
+    static constexpr int methodCount = signalCount + slotCount + stateCount<L, MethodStateTag, T**>;
+    static constexpr int constructorCount = stateCount<L, ConstructorStateTag, T**>;
+    static constexpr int propertyCount = stateCount<L, PropertyStateTag, T**>;
+    static constexpr int enumCount = stateCount<L, EnumStateTag, T**>;
+    static constexpr int classInfoCount = stateCount<L, ClassInfoStateTag, T**>;
+    static constexpr int interfaceCount = stateCount<L, InterfaceStateTag, T**>;
+
+    static constexpr auto methodSequence = make_index_sequence<methodCount>{};
+    static constexpr auto constructorSequence = make_index_sequence<constructorCount>{};
+    static constexpr auto propertySequence = make_index_sequence<propertyCount>{};
+    static constexpr auto interfaceSequence = make_index_sequence<interfaceCount>{};
+
+    template<size_t Idx>
+    static constexpr auto method(Index<Idx>) {
+        using TPP = T**;
+        if constexpr (Idx < signalCount) return w_state(index<Idx>, SignalStateTag{}, TPP{});
+        else if constexpr (Idx - signalCount < slotCount) return w_state(index<Idx - signalCount>, SlotStateTag{}, TPP{});
+        else return w_state(index<Idx - signalCount - slotCount>, MethodStateTag{}, TPP{});
     }
 };
-template<size_t StringSize, uint StringCount, uint IntCount>
-struct DataHolder {
-    static constexpr auto stringSize = StringSize;
-    static constexpr auto stringCount = StringCount;
-    static constexpr auto stringSequence = make_index_sequence<StringCount>{};
-    static constexpr auto intCount = IntCount;
-    RawArray<char, StringSize> stringChars{};
-    RawArray<qptrdiff, StringCount> stringOffsets{};
-    RawArray<int, StringCount> stringSizes{};
-    RawArray<uint, IntCount> ints{};
-};
-struct DataBuilder {
-    char* scp{};
-    qptrdiff* sop{};
-    int* ssp{};
-    uint* ip{};
-    uint stringCount{};
-    uint intCount{};
-    qptrdiff so{};
-
-    constexpr DataBuilder() = default;
-    DataBuilder(const DataBuilder&) = delete;
-    template<size_t StringSize, uint StringCount, uint IntCount>
-    constexpr DataBuilder(DataHolder<StringSize, StringCount, IntCount>& r)
-        : scp(r.stringChars)
-        , sop(r.stringOffsets)
-        , ssp(r.stringSizes)
-        , ip(r.ints) {}
-
-    constexpr void addString(const StringView& s) {
-        for (auto c : s) *scp++ = c;
-        *sop++ = so;
-        *ssp++ = s.size();
-        *ip++ = stringCount;
-        so += s.size();
-        stringCount += 1;
-        intCount += 1;
-    }
-    constexpr void addStringUntracked(const StringView& s) {
-        for (auto c : s) *scp++ = c;
-        *sop++ = so;
-        *ssp++ = s.size();
-        so += s.size();
-        stringCount += 1;
-    }
-
-    template<uint Flag = IsUnresolvedType>
-    constexpr void addTypeString(const StringView& s) {
-        for (auto c : s) *scp++ = c;
-        *sop++ = so;
-        *ssp++ = s.size();
-        *ip++ = Flag | stringCount;
-        so += s.size();
-        stringCount += 1;
-        intCount += 1;
-    }
-    template<class... Ts>
-    constexpr void addInts(Ts... vs) {
-        ((*ip++ = vs),...);
-        intCount += sizeof... (Ts);
-    }
-};
-
 
 template<class F, size_t... Is>
 constexpr auto fold(index_sequence<Is...>, F&& f) {
@@ -173,35 +112,6 @@ static constexpr bool hasNotifySignal() {
     return r;
 }
 
-/// Holds information about a class, including all the properties and methods
-template<size_t L, class T, class Name>
-struct ObjectInfo {
-    using Type = T;
-    static constexpr auto counter = L;
-    static constexpr auto name = StringView{Name::value};
-
-    static constexpr int signalCount = stateCount<L, SignalStateTag, T**>;
-    static constexpr int slotCount = stateCount<L, SlotStateTag, T**>;
-    static constexpr int methodCount = signalCount + slotCount + stateCount<L, MethodStateTag, T**>;
-    static constexpr int constructorCount = stateCount<L, ConstructorStateTag, T**>;
-    static constexpr int propertyCount = stateCount<L, PropertyStateTag, T**>;
-    static constexpr int enumCount = stateCount<L, EnumStateTag, T**>;
-    static constexpr int classInfoCount = stateCount<L, ClassInfoStateTag, T**>;
-    static constexpr int interfaceCount = stateCount<L, InterfaceStateTag, T**>;
-
-    static constexpr auto methodSequence = make_index_sequence<methodCount>{};
-    static constexpr auto constructorSequence = make_index_sequence<constructorCount>{};
-    static constexpr auto propertySequence = make_index_sequence<propertyCount>{};
-    static constexpr auto interfaceSequence = make_index_sequence<interfaceCount>{};
-
-    template<size_t Idx>
-    static constexpr auto method(Index<Idx>) {
-        using TPP = T**;
-        if constexpr (Idx < signalCount) return w_state(index<Idx>, SignalStateTag{}, TPP{});
-        else if constexpr (Idx - signalCount < slotCount) return w_state(index<Idx - signalCount>, SlotStateTag{}, TPP{});
-        else return w_state(index<Idx - signalCount - slotCount>, MethodStateTag{}, TPP{});
-    }
-};
 
 template<class State>
 struct ClassInfoGenerator {
@@ -462,10 +372,99 @@ constexpr int constructorParamOffset() {
     return sum;
 }
 
-/// Transform ObjI into State
-template<typename ObjI, typename State>
+
+template<class T, size_t N> using RawArray = T[N];
+template<class T, size_t N> struct OwnArray {
+    RawArray<T, N> data{};
+    constexpr OwnArray(const T (&s)[N]) {
+        auto p = data;
+        for (auto c : s) *p++ = c;
+    }
+};
+
+struct LayoutBuilder {
+    size_t stringSize{};
+    uint stringCount{};
+    uint intCount{};
+
+    constexpr void addString(const StringView& s) {
+        stringSize += s.size();
+        stringCount += 1;
+        intCount += 1;
+    }
+    constexpr void addStringUntracked(const StringView& s) {
+        stringSize += s.size();
+        stringCount += 1;
+    }
+    template<uint Flag = IsUnresolvedType>
+    constexpr void addTypeString(const StringView& s) {
+        stringSize += s.size();
+        stringCount += 1;
+        intCount += 1;
+    }
+    template<class... Ts>
+    constexpr void addInts(Ts...) {
+        intCount += sizeof... (Ts);
+    }
+};
+struct DataBuilder {
+    char* stringCharP{};
+    qptrdiff* stringOffestP{};
+    int* stringLengthP{};
+    uint* intP{};
+    uint stringCount{};
+    uint intCount{};
+    qptrdiff stringOffset{};
+
+    constexpr DataBuilder() = default;
+    DataBuilder(const DataBuilder&) = delete;
+    template<class Holder>
+    constexpr DataBuilder(Holder& r)
+        : stringCharP(r.stringChars)
+        , stringOffestP(r.stringOffsets)
+        , stringLengthP(r.stringLengths)
+        , intP(r.ints)
+        , stringOffset(r.stringOffset) {}
+
+    constexpr void addString(const StringView& s) {
+        for (auto c : s) *stringCharP++ = c;
+        *stringOffestP++ = stringOffset;
+        *stringLengthP++ = s.size() - 1;
+        *intP++ = stringCount;
+        stringOffset += s.size() - sizeof(QByteArrayData);
+        stringCount += 1;
+        intCount += 1;
+    }
+    constexpr void addStringUntracked(const StringView& s) {
+        for (auto c : s) *stringCharP++ = c;
+        *stringOffestP++ = stringOffset;
+        *stringLengthP++ = s.size() - 1;
+        stringOffset += s.size() - sizeof(QByteArrayData);
+        stringCount += 1;
+    }
+
+    template<uint Flag = IsUnresolvedType>
+    constexpr void addTypeString(const StringView& s) {
+        for (auto c : s) *stringCharP++ = c;
+        *stringOffestP++ = stringOffset;
+        *stringLengthP++ = s.size() - 1;
+        *intP++ = Flag | stringCount;
+        stringOffset += s.size() - sizeof(QByteArrayData);
+        stringCount += 1;
+        intCount += 1;
+    }
+    template<class... Ts>
+    constexpr void addInts(Ts... vs) {
+        ((*intP++ = vs),...);
+        intCount += sizeof... (Ts);
+    }
+};
+
+
+/// fold ObjectInfo into State
+template<typename T, typename State>
 constexpr void generateDataPass(State& state) {
-    using T = typename ObjI::Type;
+    using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
     constexpr size_t L = ObjI::counter;
     constexpr bool hasNotify = hasNotifySignal<L, T**>();
     constexpr int classInfoOffset = 14;
@@ -514,63 +513,58 @@ constexpr void generateDataPass(State& state) {
     //if (state.intCount != enumValueOffset) throw "offset mismatch!";
     foldState<L, EnumStateTag, T**>(EnumValuesGenerator<State>{state});
 }
-template<typename ObjI>
-constexpr auto generateDataArray() {
-    constexpr LayoutBuilder layout = [] {
-        auto r = LayoutBuilder{};
-        generateDataPass<ObjI>(r);
+
+template<class T>
+constexpr LayoutBuilder dataLayout = [](){
+    auto r = LayoutBuilder{};
+    generateDataPass<T>(r);
+    return r;
+}();
+
+/// Final data holder
+template<std::size_t StringSize, std::size_t StringCount>
+struct MetaDataHolder {
+    RawArray<QByteArrayData,StringCount> byteArrays;
+    OwnArray<char, StringSize> stringChars;
+    const uint* ints;
+};
+template<class T>
+struct MetaDataProvider {
+    static constexpr auto stringSize = dataLayout<T>.stringSize;
+    static constexpr auto stringCount = dataLayout<T>.stringCount;
+    static constexpr auto intCount = dataLayout<T>.intCount;
+    using MetaDataType = const MetaDataHolder<stringSize, stringCount>;
+
+    struct Arrays {
+#ifndef Q_CC_MSVC
+        constexpr static qptrdiff stringOffset = offsetof(MetaDataType, stringChars);
+#else // offsetof does not work with MSVC
+        constexpr static qptrdiff stringOffset = sizeof(MetaDataType::byteArrays);
+#endif
+        RawArray<qptrdiff, stringCount> stringOffsets{};
+        RawArray<int, stringCount> stringLengths{};
+        RawArray<char, stringSize> stringChars{};
+        RawArray<uint, intCount> ints{};
+    };
+    constexpr static Arrays arrays = []() {
+        auto r = Arrays{};
+        auto b = DataBuilder{r};
+        generateDataPass<T>(b);
         return r;
     }();
-    auto r = DataHolder<layout.stringSize, layout.stringCount, layout.intCount>{};
-    auto b = DataBuilder{r};
-    generateDataPass<ObjI>(b);
-    return r;
-}
-template<typename ObjI>
-constexpr auto dataArray = generateDataArray<ObjI>();
-
-template<size_t N>
-struct OwnString {
-    char data[N];
-
-    constexpr OwnString(const char (&s)[N]) {
-        auto p = data;
-        for (auto c : s) *p++ = c;
-    }
 };
 
-/// Holder for the string data.  Just like in the moc generated code.
-template<std::size_t N, std::size_t L> struct qt_meta_stringdata_t {
-     QByteArrayData data[N];
-     OwnString<L> stringdata;
-};
-
-/// Builds the string data
-/// \tparam T the W_MetaObjectCreatorHelper
-/// \tparam I an index_sequence that goes from 0 to the number of string
-template<typename ObjI, std::size_t... I>
-struct BuildStringDataHelper {
-    static constexpr auto& data = dataArray<ObjI>;
-    using meta_stringdata_t = const qt_meta_stringdata_t<data.stringCount, data.stringSize>;
-#ifndef Q_CC_MSVC
-    static constexpr qptrdiff stringdata_offset = offsetof(meta_stringdata_t, stringdata);
-#else // offsetof does not work with MSVC
-    static constexpr qptrdiff stringdata_offset = sizeof(meta_stringdata_t::data);
-#endif
-    inline static meta_stringdata_t qt_meta_stringdata = {
-        {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(
-            data.stringSizes[I]-1,
-            static_cast<qptrdiff>(stringdata_offset + data.stringOffsets[I] - I * sizeof(QByteArrayData)))
-        ...}, {data.stringChars}
+template<class T, class IS>
+struct MetaDataBuilder;
+template<class T, std::size_t... Is>
+struct MetaDataBuilder<T, index_sequence<Is...>> {
+    using P = MetaDataProvider<T>;
+    using MetaDataType = typename P::MetaDataType;
+    constexpr static MetaDataType meta_data = {
+        {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(P::arrays.stringLengths[Is], P::arrays.stringOffsets[Is])...},
+        P::arrays.stringChars, P::arrays.ints
     };
 };
-
-/// returns the string data suitable for the QMetaObject from a list of string
-/// T is W_MetaObjectCreatorHelper<ObjectType>
-template<typename ObjI, size_t... Is>
-constexpr const QByteArrayData *build_string_data(index_sequence<Is...>)  {
-    return BuildStringDataHelper<ObjI, Is...>::qt_meta_stringdata.data;
-}
 
 /// Returns the QMetaObject* of the base type. Use SFINAE to only return it if it exists
 template<typename T>
@@ -610,12 +604,9 @@ inline void propReset(T...) {}
 struct FriendHelper {
 
     template<typename T>
-    static constexpr QMetaObject createMetaObject()
-    {
-        using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
-        constexpr auto& data = dataArray<ObjI>;
-        auto string_data = build_string_data<ObjI>(data.stringSequence);
-        return { { parentMetaObject<T>(0), string_data, data.ints, T::qt_static_metacall, {}, {} } };
+    static constexpr QMetaObject createMetaObject() {
+        using MetaData = MetaDataBuilder<T, make_index_sequence<dataLayout<T>.stringCount>>;
+        return { { parentMetaObject<T>(0), MetaData::meta_data.byteArrays, MetaData::meta_data.ints, T::qt_static_metacall, {}, {} } };
     }
 
     template<typename T> static int qt_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void** _a) {
@@ -824,7 +815,7 @@ struct FriendHelper {
 #define W_OBJECT_IMPL_COMMON(INLINE, ...) \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) struct W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_MetaObjectCreatorHelper { \
         struct Name { static constexpr auto value = w_internal::viewLiteral(W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))); }; \
-        using ObjectInfo = w_internal::ObjectInfo<1024*1024*1024, W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType, Name>; \
+        using ObjectInfo = w_internal::ObjectInfo<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType, Name>; \
     }; \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) INLINE const QT_INIT_METAOBJECT QMetaObject W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::staticMetaObject = \
         w_internal::FriendHelper::createMetaObject<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>();
