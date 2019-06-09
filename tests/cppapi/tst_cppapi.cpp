@@ -4,12 +4,10 @@
 #include <QtCore/QMetaObject>
 #include <QtTest/QtTest>
 
-namespace test {
-
 template<class...> struct debug_types;
 
 template<size_t> struct Index {};
-template<size_t I> constexpr Index<I> index = {};
+template<size_t I> constexpr Index<I> mkIndex = {};
 template<size_t I> constexpr size_t indexValue(Index<I>) { return I; }
 template<class IV> constexpr size_t index_value = indexValue(IV{});
 
@@ -51,8 +49,8 @@ public:
         }
     };
     template<size_t I>
-    static constexpr auto mySignals() -> decltype (mySignalsLambda(index<I>)) {
-        return mySignalsLambda(index<I>);
+    static constexpr auto mySignals() -> decltype (mySignalsLambda(mkIndex<I>)) {
+        return mySignalsLambda(mkIndex<I>);
     }
     W_CPP_SIGNAL(mySignals)
 
@@ -74,8 +72,8 @@ private:
         }
     };
     template<size_t I>
-    static constexpr auto myProperties() -> decltype (myPropertiesLambda(index<I>)) {
-        return myPropertiesLambda(index<I>);
+    static constexpr auto myProperties() -> decltype (myPropertiesLambda(mkIndex<I>)) {
+        return myPropertiesLambda(mkIndex<I>);
     }
     W_CPP_PROPERTY(myProperties)
 };
@@ -90,7 +88,7 @@ void tst_CppApi::firstTest()
 
     m_name = "Hello";
     auto v = prop.read(this);
-    QCOMPARE(m_name, v);
+    QCOMPARE(QVariant(m_name), v);
 
     prop = mo->property(mo->indexOfProperty("age"));
     QVERIFY(prop.isValid());
@@ -126,8 +124,6 @@ void tst_CppApi::notifyTest()
 
 #endif
 
-} // namespace test
+W_OBJECT_IMPL(tst_CppApi)
 
-W_OBJECT_IMPL(test::tst_CppApi)
-
-QTEST_MAIN(test::tst_CppApi)
+QTEST_MAIN(tst_CppApi)
