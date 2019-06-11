@@ -57,9 +57,20 @@ struct IndexBase {};
 template <size_t> struct Index : IndexBase {};
 template <size_t I> constexpr auto index = Index<I>{};
 
+template<typename... Args> constexpr void ordered(Args...) {}
+template<class T> constexpr void ordered2(std::initializer_list<T>) {}
+
 /// Compute the sum of many integers
 template<typename... Args>
-constexpr int sums(Args... args) { return static_cast<int>((args + ... + 0)); }
+constexpr int sums(Args... args) {
+#if __cplusplus > 201700L
+    return static_cast<int>((args + ... + 0));
+#else
+    auto r = int{};
+    ordered2<int>({(r += args)...});
+    return r;
+#endif
+}
 // This indirection is required to work around a MSVC bug. (See https://github.com/woboq/verdigris/issues/6 )
 template <int ...args>
 constexpr int summed = sums(args...);
@@ -90,47 +101,48 @@ struct StringViewArray {
 template<size_t... Ns>
 constexpr size_t countValidSizes() {
     auto c = size_t{};
+#if __cplusplus > 201700L
     (void)(true && ... && (Ns > 1 ? ++c : false));
+#else
+    auto b = true;
+    ordered2<size_t>({((Ns > 1 && b ? (c += 1) : ((void)(b=false), c)))...});
+#endif
     return c;
 }
 template<size_t R, size_t... Ns, size_t... Ts, size_t... Is, class... Args>
 constexpr auto viewValidTailsImpl(index_sequence<Is...>, index_sequence<Ts...>, const Args& ... ns) {
     auto r = StringViewArray<R>{};
+#if __cplusplus > 201700L
     auto p = r.data;
     ((Is < R ? (*p++ = StringView{&ns[Ns - Ts], &ns[Ns]}) : *p), ...);
+#else
+    ordered((Is < R ? (r.data[Is] = StringView{&ns[Ns - Ts], &ns[Ns]}, 0) : 0)...);
+#endif
     return r;
 }
 template<size_t... Ts, size_t... Ns>
 constexpr auto viewValidTails(const char (& ...ns)[Ns]) {
     constexpr auto r = countValidSizes<Ts...>();
-    if constexpr (r == 0) {
-        ((void)ns,...);
-        return StringViewArray<>{};
-    }
-    else {
-        constexpr auto is = make_index_sequence<sizeof... (Ns)>{};
-        return viewValidTailsImpl<r, Ns...>(is, index_sequence<Ts...>{}, ns...);
-    }
+    constexpr auto is = make_index_sequence<sizeof... (Ns)>{};
+    return viewValidTailsImpl<r, Ns...>(is, index_sequence<Ts...>{}, ns...);
 }
 
 template<size_t R, size_t... Ns, size_t... Is, class... Args>
 constexpr auto viewValidLiteralsImpl(index_sequence<Is...>, const Args& ... ns) {
     auto r = StringViewArray<R>{};
+#if __cplusplus > 201700L
     auto p = r.data;
     ((Is < R ? (*p++ = viewLiteral(ns)) : *p), ...);
+#else
+    ordered((Is < R ? (r.data[Is] = viewLiteral(ns), 0) : 0)...);
+#endif
     return r;
 }
 template<size_t... Ns>
 constexpr auto viewValidLiterals(const char (& ...ns)[Ns]) {
     constexpr auto r = countValidSizes<Ns...>();
-    if constexpr (r == 0) {
-        ((void)ns,...);
-        return StringViewArray<>{};
-    }
-    else {
-        constexpr auto is = make_index_sequence<sizeof... (Ns)>{};
-        return viewValidLiteralsImpl<r, Ns...>(is, ns...);
-    }
+    constexpr auto is = make_index_sequence<sizeof... (Ns)>{};
+    return viewValidLiteralsImpl<r, Ns...>(is, ns...);
 }
 
 //-----------
@@ -385,7 +397,7 @@ template<typename Enum, Enum... Value> struct enum_sequence {};
 template<typename Enum, int Flag, Enum... Values, typename Names>
 constexpr auto makeMetaEnumInfo(StringView name, int, enum_sequence<Enum, Values...>, Names names)
         -> MetaEnumInfo<false, index_sequence<size_t(Values)...>, Names, Flag | EnumIsScoped<Enum>::Value> {
-    return { name, {""}, names };
+    return { name, viewLiteral(""), names };
 }
 template<typename Enum, int Flag, Enum... Values, typename Names>
 constexpr auto makeMetaEnumInfo(StringView name, StringView alias, enum_sequence<Enum, Values...>, Names names)
@@ -591,9 +603,10 @@ namespace w_internal {
 /// We store state in overloads for this method.
 /// This overload is found if no better overload was found.
 /// All overloads are found using ADL in the QObject T
-template<class State, class T>
-constexpr void w_state(IndexBase, State, T**);
+template<class State, class TPP>
+constexpr void w_state(IndexBase, State, TPP);
 
+#if __cplusplus > 201700L
 template<size_t L, class State, class TPP, size_t N , size_t M, size_t X = (N+M)/2>
 constexpr size_t countBetween() {
     using R = decltype(w_state(index<X>, State{}, TPP{}));
@@ -620,6 +633,33 @@ constexpr size_t count() {
 
 template<size_t L, class State, class TPP>
 constexpr auto stateCount = count<L, State, TPP>();
+#else
+template<size_t L, class State, class TPP
+          , size_t N, size_t M, size_t X = (N+M)/2
+          , bool noX = std::is_same<void, decltype(w_state(index<X>, State{}, TPP{}))>::value
+          , bool up = N==X>
+struct CountBetween;
+
+template<size_t L, class State, class TPP, size_t N, size_t M, size_t X>
+struct CountBetween<L, State, TPP, N, M, X, true, true> {
+    static constexpr auto value = N;
+};
+template<size_t L, class State, class TPP, size_t N, size_t M, size_t X>
+struct CountBetween<L, State, TPP, N, M, X, false, true> {
+    static constexpr auto value = M;
+};
+template<size_t L, class State, class TPP, size_t N, size_t M, size_t X>
+struct CountBetween<L, State, TPP, N, M, X, true, false> {
+    static constexpr auto value = CountBetween<L, State, TPP, N, X>::value;
+};
+template<size_t L, class State, class TPP, size_t N, size_t M, size_t X>
+struct CountBetween<L, State, TPP, N, M, X, false, false> {
+    static constexpr auto value = CountBetween<L, State, TPP, X, M>::value;
+};
+
+template<size_t L, class State, class TPP>
+constexpr auto stateCount = CountBetween<L, State, TPP, 0, 1024>::value;
+#endif
 
 struct SlotStateTag {};
 struct SignalStateTag {};

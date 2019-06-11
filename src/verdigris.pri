@@ -1,2 +1,2 @@
 INCLUDEPATH += $$PWD
-CONFIG += c++17
+CONFIG += c++14

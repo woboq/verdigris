@@ -50,6 +50,7 @@ struct ObjectInfo {
     static constexpr auto propertySequence = make_index_sequence<propertyCount>{};
     static constexpr auto interfaceSequence = make_index_sequence<interfaceCount>{};
 
+#if __cplusplus > 201700L
     template<size_t Idx>
     static constexpr auto method(Index<Idx>) {
         using TPP = T**;
@@ -57,21 +58,56 @@ struct ObjectInfo {
         else if constexpr (Idx - signalCount < slotCount) return w_state(index<Idx - signalCount>, SlotStateTag{}, TPP{});
         else return w_state(index<Idx - signalCount - slotCount>, MethodStateTag{}, TPP{});
     }
+#else
+    template<size_t Idx>
+    static constexpr auto method(Index<Idx>, std::enable_if_t<(Idx < signalCount)>* = {}) {
+        using TPP = T**;
+        return w_state(index<Idx>, SignalStateTag{}, TPP{});
+    }
+    template<size_t Idx>
+    static constexpr auto method(Index<Idx>, std::enable_if_t<(Idx >= signalCount && Idx - signalCount < slotCount)>* = {}) {
+        using TPP = T**;
+        return w_state(index<Idx - signalCount>, SlotStateTag{}, TPP{});
+    }
+    template<size_t Idx>
+    static constexpr auto method(Index<Idx>, std::enable_if_t<(Idx >= signalCount + slotCount)>* = {}) {
+        using TPP = T**;
+        return w_state(index<Idx - signalCount - slotCount>, MethodStateTag{}, TPP{});
+    }
+#endif
 };
 
 template<class F, size_t... Is>
-constexpr auto fold(index_sequence<Is...>, F&& f) {
+constexpr void fold(index_sequence<Is...>, F&& f) {
     (void)f;
+#if __cplusplus > 201700L
     (f(index<Is>), ...);
+#else
+    ordered((f(index<Is>),0)...);
+#endif
 }
 
+#if __cplusplus > 201700L
 template <size_t L, class State, class TPP, class F>
-constexpr auto foldState(F&& f) {
+constexpr void foldState(F&& f) {
     fold(make_index_sequence<stateCount<L, State, TPP>>{}, [&](auto i) { f(w_state(i, State{}, TPP{}), i); });
 }
+#else
+template<class F, class State, class TPP>
+struct FoldState {
+    F&& f;
+    template<class I>
+    constexpr void operator() (I i) { f(w_state(i, State{}, TPP{}), i); }
+};
+template <size_t L, class State, class TPP, class F>
+constexpr void foldState(F&& f) {
+    auto fs = FoldState<F, State, TPP>{std::forward<F>(f)};
+    fold(make_index_sequence<stateCount<L, State, TPP>>{}, fs);
+}
+#endif
 
 template <size_t L, class T, class F>
-constexpr auto foldMethods(F&& f) {
+constexpr void foldMethods(F&& f) {
     foldState<L, SignalStateTag, T>(f);
     foldState<L, SlotStateTag, T>(f);
     foldState<L, MethodStateTag, T>(f);
@@ -93,7 +129,11 @@ private:
     template<size_t... Is>
     static constexpr int indexFold(index_sequence<Is...>) {
         int r = -1;
+#if __cplusplus > 201700L
         ((match<Is>(0) ? r = (int)Is : 0), ...);
+#else
+        ordered2<int>({(match<Is>(0) ? r = (int)Is : 0)...});
+#endif
         return r;
     }
 public:
@@ -103,14 +143,30 @@ public:
 };
 
 /// returns true if the object T has at least one property with a notify signal
+#if __cplusplus > 201700L
 template <size_t L, typename TPP>
-static constexpr bool hasNotifySignal() {
+constexpr bool hasNotifySignal() {
     auto r = bool{};
     foldState<L, PropertyStateTag, TPP>([&](auto p, auto) {
         r = r || !std::is_same<decltype(p.notify), std::nullptr_t>::value;
     });
     return r;
 }
+#else
+struct HasNotifySignal {
+    bool r{};
+    template<class P, class I>
+    constexpr void operator() (P p, I) {
+        r = r || !std::is_same<decltype(p.notify), std::nullptr_t>::value;
+    }
+};
+template <size_t L, typename TPP>
+constexpr bool hasNotifySignal() {
+    auto hns = HasNotifySignal{};
+    foldState<L, PropertyStateTag, TPP>(hns);
+    return hns.r;
+}
+#endif
 
 
 template<class State>
@@ -168,20 +224,36 @@ template <typename T> struct MetaTypeIdIsBuiltIn<T, typename std::enable_if<QMet
 /// Helper to generate the type information of type 'T':
 /// If T is a builtin QMetaType, its meta type id need to be added in the state.
 /// If it's not builtin, then it would be an reference to T's name.
+#if __cplusplus > 201700L
 template<typename T, typename State, typename TypeStr = int>
-static constexpr auto handleType(State& s, TypeStr v = {}) {
+constexpr void handleType(State& s, TypeStr v = {}) {
     (void)v;
     if constexpr (MetaTypeIdIsBuiltIn<T>::value) {
-        return s.addInts(QMetaTypeId2<T>::MetaType);
+        s.addInts(QMetaTypeId2<T>::MetaType);
     }
     else if constexpr (std::is_same_v<std::decay_t<TypeStr>, StringView>) {
-        return s.addTypeString(v);
+        s.addTypeString(v);
     }
     else {
-        return s.addTypeString(W_TypeRegistery<T>::name);
+        s.addTypeString(W_TypeRegistery<T>::name);
         static_assert(W_TypeRegistery<T>::registered, "Please Register T with W_REGISTER_ARGTYPE");
     }
 }
+#else
+template<typename T, typename State, typename TypeStr = int>
+constexpr void handleType(State& s, TypeStr = {}, std::enable_if_t<MetaTypeIdIsBuiltIn<T>::value>* = {}) {
+    s.addInts(QMetaTypeId2<T>::MetaType);
+}
+template<typename T, typename State, typename TypeStr = int>
+constexpr void handleType(State& s, TypeStr = {}, std::enable_if_t<!MetaTypeIdIsBuiltIn<T>::value>* = {}) {
+    s.addTypeString(W_TypeRegistery<T>::name);
+    static_assert(W_TypeRegistery<T>::registered, "Please Register T with W_REGISTER_ARGTYPE");
+}
+template<typename T, typename State>
+constexpr void handleType(State& s, StringView v, std::enable_if_t<!MetaTypeIdIsBuiltIn<T>::value>* = {}) {
+    s.addTypeString(v);
+}
+#endif
 
 template<class State, class T>
 struct PropertyGenerator {
@@ -201,18 +273,38 @@ struct PropertyGenerator {
     }
 };
 
+#if __cplusplus > 201700L
 template<class State, size_t L, class T, bool hasNotify>
 struct NotifySignalGenerator {
+#else
+template<class State, size_t L, class T, bool hasNotify>
+struct NotifySignalGenerator;
+template<class State, size_t L, class T>
+struct NotifySignalGenerator<State, L, T, false> {
+    constexpr NotifySignalGenerator(State&) {}
+    template<class Prop, size_t Idx>
+    constexpr void operator() (const Prop&, Index<Idx>) {}
+};
+template<class State, size_t L, class T>
+struct NotifySignalGenerator<State, L, T, true> {
+#endif
     using TP = T**;
     State& s;
     constexpr NotifySignalGenerator(State& s) : s(s) {}
 
+#if __cplusplus > 201700L
     template<class Prop, size_t Idx>
     constexpr void operator() (const Prop& prop, Index<Idx>) {
         if constexpr (hasNotify) {
             process(prop.notify, index<Idx>);
         }
     }
+#else
+    template<class Prop, size_t Idx>
+    constexpr void operator() (const Prop& prop, Index<Idx>) {
+        process(prop.notify, index<Idx>);
+    }
+#endif
 
 private:
     template<size_t Idx>
@@ -255,7 +347,11 @@ struct EnumGenerator {
         (void)nameIndex;
         s.addString(e.name); // name
 #if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
+#if __cplusplus > 201700L
         if constexpr (Enum::hasAlias) s.addString(e.alias); // alias
+#else
+        if (Enum::hasAlias) s.addString(e.alias); // alias
+#endif
         else s.addInts(nameIndex);
 #endif
         s.addInts(Enum::flags, (uint)Enum::count, dataIndex);
@@ -276,11 +372,15 @@ struct EnumValuesGenerator {
 private:
     template<size_t... Values, typename Names, size_t... Is>
     constexpr void generateAll(index_sequence<Values...>, const Names& names, index_sequence<Is...>) {
+#if __cplusplus > 201700L
         ((s.addString(names[Is]), s.addInts((uint)Values)), ...);
+#else
+        ordered((s.addString(names[Is]), s.addInts((uint)Values), 0)...);
+#endif
     }
 };
 
-
+#if __cplusplus > 201700L
 template<size_t I, size_t N>
 constexpr auto stringFetch(const StringViewArray<N>& s) {
     if constexpr (I < N) {
@@ -292,6 +392,18 @@ constexpr auto stringFetch(const StringViewArray<N>& s) {
         return _{};
     }
 }
+#else
+template<size_t I, size_t N>
+constexpr auto stringFetch(const StringViewArray<N>& s, std::enable_if_t<(I < N)>* = {}) {
+    return s[I];
+}
+template<size_t I, size_t N>
+constexpr auto stringFetch(const StringViewArray<N>& s, std::enable_if_t<!(I < N)>* = {}) {
+    (void)s;
+    struct _{};
+    return _{};
+}
+#endif
 template<class Arg, class State, class TypeName>
 constexpr void handleArgType(State& ss, const TypeName& typeName) {
     using Type = typename QtPrivate::RemoveConstRef<Arg>::Type;
@@ -301,7 +413,11 @@ constexpr void handleArgType(State& ss, const TypeName& typeName) {
 }
 template<class... Args, class State, class TypeNames, size_t... Is>
 constexpr void handleArgTypes(State& ss, const TypeNames& typeNames, index_sequence<Is...>) {
+#if __cplusplus > 201700L
     (handleArgType<Args>(ss, stringFetch<Is>(typeNames)), ...);
+#else
+    ordered((handleArgType<Args>(ss, stringFetch<Is>(typeNames)), 0)...);
+#endif
 }
 
 template<size_t ArgCount, class State, size_t NameCount>
@@ -359,19 +475,47 @@ struct ConstructorParametersGenerator {
 
 /// Given method, a binary::tree containing information about methods or constructor,
 /// return the amount of item it will add in the int array.
+#if __cplusplus > 201700L
 template<size_t L, class T>
 constexpr int methodsParamOffset() {
     auto sum = int{};
     foldMethods<L, T>([&](auto m, auto) { sum += int(1 + m.argCount * 2); });
     return sum;
 }
+#else
+struct MethodParamOffset {
+    int sum{};
+    template<class M, class I>
+    constexpr void operator() (M m, I) { sum += int(1 + m.argCount * 2); }
+};
+template<size_t L, class T>
+constexpr int methodsParamOffset() {
+    auto mpo = MethodParamOffset{};
+    foldMethods<L, T>(mpo);
+    return mpo.sum;
+}
+#endif
+#if __cplusplus > 201700L
 template<size_t L, class T>
 constexpr int constructorParamOffset() {
     auto sum = int{};
     foldState<L, ConstructorStateTag, T>([&](auto m, auto) { sum += int(1 + m.argCount * 2); });
     return sum;
 }
+#else
+struct ConstructorParamOffset {
+    int sum{};
+    template<class M, class I>
+    constexpr void operator() (M m, I) { sum += int(1 + m.argCount * 2); }
+};
+template<size_t L, class T>
+constexpr int constructorParamOffset() {
+    auto cpo = ConstructorParamOffset{};
+    foldState<L, ConstructorStateTag, T>(cpo);
+    return cpo.sum;
+}
 
+#endif
 
 template<class T, size_t N> using RawArray = T[N];
 template<class T, size_t N> struct OwnArray {
@@ -387,6 +531,9 @@ struct LayoutBuilder {
     uint stringCount{};
     uint intCount{};
 
+#if __cplusplus < 201700L
+    constexpr LayoutBuilder() = default;
+#endif
     constexpr void addString(const StringView& s) {
         stringSize += s.size();
         stringCount += 1;
@@ -455,7 +602,11 @@ struct DataBuilder {
     }
     template<class... Ts>
     constexpr void addInts(Ts... vs) {
+#if __cplusplus > 201700L
         ((*intP++ = vs),...);
+#else
+        ordered2<uint>({(*intP++ = vs)...});
+#endif
         intCount += sizeof... (Ts);
     }
 };
@@ -514,12 +665,23 @@ constexpr void generateDataPass(State& state) {
     foldState<L, EnumStateTag, T**>(EnumValuesGenerator<State>{state});
 }
 
+#if __cplusplus > 201700L
 template<class T>
 constexpr LayoutBuilder dataLayout = [](){
     auto r = LayoutBuilder{};
     generateDataPass<T>(r);
     return r;
 }();
+#else
+template<class T>
+constexpr auto createLayout() {
+    auto r = LayoutBuilder{};
+    generateDataPass<T>(r);
+    return r;
+}
+template<class T>
+constexpr LayoutBuilder dataLayout = createLayout<T>();
+#endif
 
 /// Final data holder
 template<std::size_t StringSize, std::size_t StringCount>
@@ -546,12 +708,26 @@ struct MetaDataProvider {
         RawArray<char, stringSize> stringChars{};
         RawArray<uint, intCount> ints{};
     };
+#if __cplusplus > 201700L
     constexpr static Arrays arrays = []() {
         auto r = Arrays{};
-        auto b = DataBuilder{r};
+        DataBuilder b{r};
         generateDataPass<T>(b);
         return r;
     }();
+#else
+    constexpr static auto buildArrays() {
+        auto r = Arrays{};
+        DataBuilder b{r};
+        generateDataPass<T>(b);
+        return r;
+    }
+#if defined(Q_CC_MSVC)
+    constexpr static Arrays arrays = buildArrays();
+#else
+    inline static Arrays arrays = buildArrays();
+#endif
+#endif
 };
 
 template<class T, class IS>
@@ -560,7 +736,11 @@ template<class T, std::size_t... Is>
 struct MetaDataBuilder<T, index_sequence<Is...>> {
     using P = MetaDataProvider<T>;
     using MetaDataType = typename P::MetaDataType;
+#if defined(Q_CC_MSVC)
     constexpr static MetaDataType meta_data = {
+#else
+    inline static MetaDataType meta_data = {
+#endif
         {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(P::arrays.stringLengths[Is], P::arrays.stringOffsets[Is])...},
         P::arrays.stringChars, P::arrays.ints
     };
@@ -729,16 +909,38 @@ struct FriendHelper {
         Q_UNUSED(_id) Q_UNUSED(_o) Q_UNUSED(_a)
         if (_c == QMetaObject::InvokeMetaMethod) {
             Q_ASSERT(T::staticMetaObject.cast(_o));
+#if __cplusplus > 201700L
             (invokeMethod<T, MethI>(reinterpret_cast<T*>(_o), _id, _a),...);
+#else
+            ordered((invokeMethod<T, MethI>(reinterpret_cast<T*>(_o), _id, _a),0)...);
+#endif
         } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
+#if __cplusplus > 201700L
             (registerMethodArgumentType<T,MethI>(_id, _a),...);
+#else
+            ordered((registerMethodArgumentType<T,MethI>(_id, _a),0)...);
+#endif
         } else if (_c == QMetaObject::IndexOfMethod) {
+#if __cplusplus > 201700L
             *reinterpret_cast<int *>(_a[0]) = ((1+indexOfMethod<T,MethI>(reinterpret_cast<void **>(_a[1]))) + ... + 0)-1;
+#else
+            auto r = int{-1};
+            ordered2<int>({(r += (1+indexOfMethod<T,MethI>(reinterpret_cast<void **>(_a[1]))))...});
+            *reinterpret_cast<int *>(_a[0]) = r;
+#endif
         } else if (_c == QMetaObject::CreateInstance) {
+#if __cplusplus > 201700L
             (createInstance<T, ConsI>(_id, _a),...);
+#else
+            ordered((createInstance<T, ConsI>(_id, _a),0)...);
+#endif
         } else if ((_c >= QMetaObject::ReadProperty && _c <= QMetaObject::QueryPropertyUser)
                 || _c == QMetaObject::RegisterPropertyMetaType) {
+#if __cplusplus > 201700L
             (propertyOperation<T,PropI>(static_cast<T*>(_o), _c, _id, _a),...);
+#else
+            ordered((propertyOperation<T,PropI>(static_cast<T*>(_o), _c, _id, _a),0)...);
+#endif
         }
     }
 
@@ -748,16 +950,32 @@ struct FriendHelper {
                             std::index_sequence<MethI...>, std::index_sequence<ConsI...>, std::index_sequence<PropI...>) {
         Q_UNUSED(_id) Q_UNUSED(_o) Q_UNUSED(_a)
         if (_c == QMetaObject::InvokeMetaMethod) {
+#if __cplusplus > 201700L
             (invokeMethod<T, MethI>(_o, _id, _a),...);
+#else
+            ordered((invokeMethod<T, MethI>(_o, _id, _a), 0)...);
+#endif
         } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
+#if __cplusplus > 201700L
             (registerMethodArgumentType<T,MethI>(_id, _a),...);
+#else
+            ordered((registerMethodArgumentType<T,MethI>(_id, _a), 0)...);
+#endif
         } else if (_c == QMetaObject::IndexOfMethod) {
             Q_ASSERT_X(false, "qt_static_metacall", "IndexOfMethod called on a Q_GADGET");
         } else if (_c == QMetaObject::CreateInstance) {
+#if __cplusplus > 201700L
             (createInstance<T, ConsI>(_id, _a),...);
+#else
+            ordered((createInstance<T, ConsI>(_id, _a), 0)...);
+#endif
         } else if ((_c >= QMetaObject::ReadProperty && _c <= QMetaObject::QueryPropertyUser)
                 || _c == QMetaObject::RegisterPropertyMetaType) {
+#if __cplusplus > 201700L
             (propertyOperation<T,PropI>(_o, _c, _id, _a),...);
+#else
+            ordered((propertyOperation<T,PropI>(_o, _c, _id, _a), 0)...);
+#endif
         }
     }
 
