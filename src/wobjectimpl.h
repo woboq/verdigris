@@ -444,6 +444,14 @@ private:
         handleArgTypes<Args...>(s, method.paramTypes, Method::argSequence);
         handleArgNames<Method::argCount>(s, method.paramNames);
     }
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510
+    template<typename Method, typename Obj, typename Ret, typename... Args>
+    constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...) noexcept, const Method &method) {
+        handleType<Ret>(s);
+        handleArgTypes<Args...>(s, method.paramTypes, Method::argSequence);
+        handleArgNames<Method::argCount>(s, method.paramNames);
+    }
+#endif
     template<typename Method, typename Obj, typename Ret, typename... Args>
     // const function
     constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...) const, const Method &method) {
@@ -451,6 +459,14 @@ private:
         handleArgTypes<Args...>(s, method.paramTypes, Method::argSequence);
         handleArgNames<Method::argCount>(s, method.paramNames);
     }
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510
+    template<typename Method, typename Obj, typename Ret, typename... Args>
+    constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...) const noexcept, const Method &method) {
+        handleType<Ret>(s);
+        handleArgTypes<Args...>(s, method.paramTypes, Method::argSequence);
+        handleArgNames<Method::argCount>(s, method.paramNames);
+    }
+#endif
     // static member functions
     template<typename Method, typename Ret, typename... Args>
     constexpr void generateSingleMethodParameter(Ret (*)(Args...), const Method &method) {
@@ -458,6 +474,14 @@ private:
         handleArgTypes<Args...>(s, method.paramTypes, Method::argSequence);
         handleArgNames<Method::argCount>(s, method.paramNames);
     }
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510
+    template<typename Method, typename Ret, typename... Args>
+    constexpr void generateSingleMethodParameter(Ret (*)(Args...) noexcept, const Method &method) {
+        handleType<Ret>(s);
+        handleArgTypes<Args...>(s, method.paramTypes, Method::argSequence);
+        handleArgNames<Method::argCount>(s, method.paramNames);
+    }
+#endif
 };
 
 template<class State>
@@ -531,9 +555,6 @@ struct LayoutBuilder {
     uint stringCount{};
     uint intCount{};
 
-#if __cplusplus < 201700L
-    constexpr LayoutBuilder() = default;
-#endif
     constexpr void addString(const StringView& s) {
         stringSize += s.size();
         stringCount += 1;
