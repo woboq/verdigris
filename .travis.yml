@@ -3,6 +3,34 @@ language: cpp
 matrix:
   include:
     - os: linux
+      dist: trusty
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - sourceline: ppa:beineri/opt-qt551-trusty
+          packages:
+            - g++-5
+            - qt55base
+      env:
+        - QT_VERSION=55
+        - GCC_VERSION=5
+
+    - os: linux
+      dist: trusty
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - sourceline: ppa:beineri/opt-qt563-trusty
+          packages:
+            - g++-6
+            - qt56base
+      env:
+        - QT_VERSION=56
+        - GCC_VERSION=6
+
+    - os: linux
       dist: xenial
       addons:
         apt:
@@ -42,12 +70,12 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - sourceline: ppa:beineri/opt-qt-5.12.3-xenial
+            - sourceline: ppa:beineri/opt-qt-5.10.1-xenial
           packages:
             - g++-7
-            - qt512base
+            - qt510base
       env:
-        - QT_VERSION=512
+        - QT_VERSION=510
         - GCC_VERSION=7
 
     - os: linux
