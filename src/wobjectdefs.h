@@ -657,8 +657,22 @@ struct CountBetween<L, State, TPP, N, M, X, false, false> {
     static constexpr auto value = CountBetween<L, State, TPP, X, M>::value;
 };
 
+template<size_t L, class State, class TPP
+          , size_t N = 1
+          , bool noX = std::is_same<void, decltype(w_state(index<N>, State{}, TPP{}))>::value>
+struct Count;
+
+template<size_t L, class State, class TPP, size_t N>
+struct Count<L, State, TPP, N, true> {
+    static constexpr auto value = CountBetween<L, State, TPP, N/2, N>::value;
+};
+template<size_t L, class State, class TPP, size_t N>
+struct Count<L, State, TPP, N, false> {
+    static constexpr auto value = Count<L, State, TPP, N*2>::value;
+};
+
 template<size_t L, class State, class TPP>
-constexpr auto stateCount = CountBetween<L, State, TPP, 0, 1024>::value;
+constexpr auto stateCount = Count<L, State, TPP>::value;
 #endif
 
 struct SlotStateTag {};
