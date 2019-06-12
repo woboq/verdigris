@@ -684,18 +684,22 @@ constexpr LayoutBuilder dataLayout = createLayout<T>();
 #endif
 
 /// Final data holder
-template<std::size_t StringSize, std::size_t StringCount>
+template<std::size_t StringSize, std::size_t StringCount, std::size_t IntCount>
 struct MetaDataHolder {
     RawArray<QByteArrayData,StringCount> byteArrays;
     OwnArray<char, StringSize> stringChars;
+#if __cplusplus > 201700L
     const uint* ints;
+#else
+    OwnArray<uint, IntCount> ints;
+#endif
 };
 template<class T>
 struct MetaDataProvider {
     static constexpr auto stringSize = dataLayout<T>.stringSize;
     static constexpr auto stringCount = dataLayout<T>.stringCount;
     static constexpr auto intCount = dataLayout<T>.intCount;
-    using MetaDataType = const MetaDataHolder<stringSize, stringCount>;
+    using MetaDataType = const MetaDataHolder<stringSize, stringCount, intCount>;
 
     struct Arrays {
 #ifndef Q_CC_MSVC
@@ -722,11 +726,7 @@ struct MetaDataProvider {
         generateDataPass<T>(b);
         return r;
     }
-#if defined(Q_CC_MSVC)
     constexpr static Arrays arrays = buildArrays();
-#else
-    inline static Arrays arrays = buildArrays();
-#endif
 #endif
 };
 
@@ -736,15 +736,22 @@ template<class T, std::size_t... Is>
 struct MetaDataBuilder<T, index_sequence<Is...>> {
     using P = MetaDataProvider<T>;
     using MetaDataType = typename P::MetaDataType;
-#if defined(Q_CC_MSVC)
+#if __cplusplus >= 201700L
     constexpr static MetaDataType meta_data = {
-#else
-    inline static MetaDataType meta_data = {
-#endif
         {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(P::arrays.stringLengths[Is], P::arrays.stringOffsets[Is])...},
         P::arrays.stringChars, P::arrays.ints
     };
+#else
+    static MetaDataType meta_data;
+#endif
 };
+#if __cplusplus < 201700L
+template<class T, std::size_t... Is>
+typename MetaDataBuilder<T, index_sequence<Is...>>::MetaDataType MetaDataBuilder<T, index_sequence<Is...>>::meta_data = {
+    {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(P::arrays.stringLengths[Is], P::arrays.stringOffsets[Is])...},
+    P::arrays.stringChars, P::arrays.ints
+};
+#endif
 
 /// Returns the QMetaObject* of the base type. Use SFINAE to only return it if it exists
 template<typename T>
@@ -786,7 +793,11 @@ struct FriendHelper {
     template<typename T>
     static constexpr QMetaObject createMetaObject() {
         using MetaData = MetaDataBuilder<T, make_index_sequence<dataLayout<T>.stringCount>>;
+#if __cplusplus > 201700L
         return { { parentMetaObject<T>(0), MetaData::meta_data.byteArrays, MetaData::meta_data.ints, T::qt_static_metacall, {}, {} } };
+#else
+        return { { parentMetaObject<T>(0), MetaData::meta_data.byteArrays, MetaData::meta_data.ints.data, T::qt_static_metacall, {}, {} } };
+#endif
     }
 
     template<typename T> static int qt_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void** _a) {
