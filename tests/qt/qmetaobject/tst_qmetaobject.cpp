@@ -277,39 +277,6 @@ class tst_QMetaObject : public QObject
 {
     W_OBJECT(tst_QMetaObject)
 
-public:
-    enum EnumType { EnumType1 };
-    W_ENUM(EnumType,EnumType1);
-
-    void setValue(EnumType) {}
-    EnumType getValue() const { return EnumType1; }
-
-    void set_value(EnumType) {}
-    EnumType get_value() const { return EnumType1; }
-
-    void setVal3(MyStruct) {}
-    MyStruct val3() const { MyStruct s = {42}; return s; }
-
-    void setVal4(const QList<QVariant> &list) { value4 = list; }
-    QList<QVariant> val4() const { return value4; }
-
-    void setVal5(const QVariantList &list) { value5 = list; }
-    QVariantList val5() const { return value5; }
-
-    int value6() const { return 1; }
-
-    void setVal7(MyStruct) {}
-    MyStruct value7() const { MyStruct s = {42}; return s; }
-
-    int value8() const { return 1; }
-
-    int value9() const { return 1; }
-
-    int value10() const { return 1; }
-
-    QList<QVariant> value4;
-    QVariantList value5;
-
 private slots:
     void connectSlotsByName();
     void invokeMetaMember();
@@ -406,6 +373,39 @@ private slots:
     W_SLOT(inherits, W_Access::Private)
 
     void notifySignalsInParentClass();
+
+public:
+    enum EnumType { EnumType1 };
+    W_ENUM(EnumType,EnumType1);
+
+    void setValue(EnumType) {}
+    EnumType getValue() const { return EnumType1; }
+
+    void set_value(EnumType) {}
+    EnumType get_value() const { return EnumType1; }
+
+    void setVal3(MyStruct) {}
+    MyStruct val3() const { MyStruct s = {42}; return s; }
+
+    void setVal4(const QList<QVariant> &list) { value4 = list; }
+    QList<QVariant> val4() const { return value4; }
+
+    void setVal5(const QVariantList &list) { value5 = list; }
+    QVariantList val5() const { return value5; }
+
+    int value6() const { return 1; }
+
+    void setVal7(MyStruct) {}
+    MyStruct value7() const { MyStruct s = {42}; return s; }
+
+    int value8() const { return 1; }
+
+    int value9() const { return 1; }
+
+    int value10() const { return 1; }
+
+    QList<QVariant> value4;
+    QVariantList value5;
 
 signals:
     void value6Changed()

@@ -23,7 +23,7 @@ class tst_Templates : public QObject
 {
     W_OBJECT(tst_Templates)
 
-private /*slots*/:
+private slots:
 
     // from https://codereview.qt-project.org/49864/
     void templatesMethod_data(); W_SLOT(templatesMethod_data, W_Access::Private)
