@@ -2,4 +2,5 @@ TEMPLATE = subdirs
 
 SUBDIRS += internal basic qt templates manyproperties
 
-!lessThan(QT_VERSION,5.12.0): SUBDIRS += cppapi
+equals(QT_MAJOR_VERSION, 5):greaterThan(QT_MINOR_VERSION, 11): SUBDIRS += cppapi
+greaterThan(QT_MAJOR_VERSION, 5): SUBDIRS += cppapi
