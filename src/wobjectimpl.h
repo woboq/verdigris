@@ -770,7 +770,7 @@ struct MetaDataBuilder<T, index_sequence<Is...>> {
 template<class T, std::size_t... Is>
 typename MetaDataBuilder<T, index_sequence<Is...>>::MetaDataType MetaDataBuilder<T, index_sequence<Is...>>::meta_data = {
     {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(P::arrays.stringLengths[Is], P::arrays.stringOffsets[Is])...},
-    P::arrays.stringChars, P::arrays.ints
+    {P::arrays.stringChars}, {P::arrays.ints}
 };
 #endif
 
