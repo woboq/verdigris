@@ -605,7 +605,7 @@ namespace w_internal {
 /// This overload is found if no better overload was found.
 /// All overloads are found using ADL in the QObject T
 template<class State, class TPP>
-constexpr void w_state(IndexBase, State, TPP);
+void w_state(IndexBase, State, TPP);
 
 #if __cplusplus > 201700L
 template<size_t L, class State, class TPP, size_t N , size_t M, size_t X = (N+M)/2>

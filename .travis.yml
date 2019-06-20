@@ -78,24 +78,24 @@ matrix:
         - QT_VERSION=512
         - GCC_VERSION=8
 
-#    - name: clang-3.8 qt5.6.3 -std=c++14 -lib=stdc++-5
-#      os: linux
-#      dist: trusty
-#      addons:
-#        apt:
-#          sources:
-#            - ubuntu-toolchain-r-test
-#            - llvm-toolchain-trusty-3.8
-#            - sourceline: ppa:beineri/opt-qt563-trusty
-#          packages:
-#            - clang-3.8
-#            - libstdc++-5-dev
-#            - qt56base
-#      env:
-#        - STD_CPP=C++14
-#        - QT_VERSION=56
-#        - CLANG_VERSION=3.8
-#        - QMAKESPEC=linux-clang
+    - name: clang-3.8 qt5.6.3 -std=c++14 -lib=stdc++-5
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-trusty-3.8
+            - sourceline: ppa:beineri/opt-qt563-trusty
+          packages:
+            - clang-3.8
+            - libstdc++-5-dev
+            - qt56base
+      env:
+        - STD_CPP=C++14
+        - QT_VERSION=56
+        - CLANG_VERSION=3.8
+        - QMAKESPEC=linux-clang
 
     - name: clang-3.9 qt5.7.1 -std=c++14 -lib=stdc++-5
       os: linux
