@@ -116,7 +116,8 @@ constexpr auto viewValidTailsImpl(index_sequence<Is...>, index_sequence<Ts...>, 
     auto p = r.data;
     ((Is < R ? (*p++ = StringView{&ns[Ns - Ts], &ns[Ns]}) : *p), ...);
 #else
-    ordered((Is < R ? (r.data[Is] = StringView{&ns[Ns - Ts], &ns[Ns]}, 0) : 0)...);
+    auto i = 0;
+    ordered2<int>({(Is < R ? (r.data[i++] = StringView{&ns[Ns - Ts], &ns[Ns]}, 0) : 0)...});
 #endif
     return r;
 }
