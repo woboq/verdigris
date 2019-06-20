@@ -42,7 +42,7 @@ Also make sure to set your compiler in, at least, C++14 mode. With qmake, you ca
 `CONFIG += c++14`.
 
 Tested with Qt >= 5.5.
-Need a compiler that can do C++14 relaxed constexpr such as GCC 6.1 or Clang 3.5, or MSVC 2017
+Need a compiler that can do C++14 relaxed constexpr such as GCC 5.1 or Clang 3.5, or MSVC 2017
 
 ### Translations
 
