@@ -2,6 +2,9 @@ Version 1.2 (???)
  * Added W_OBJECT_IMPL_INLINE / W_GADGET_IMPL_INLINE / W_NAMESPACE_IMPL_INLINE (#51)
  * Fix multiple-definition linker errors caused by W_NAMESPACE macro (#54)
  * Fix build with MSVC 2019 (#46)
+ * Massive compile time improvements (#66)
+ * Qbs project files (#63)
+ * Tested with to Qt 5.13
 
 Version 1.1 (September 2018)
  * Auto-detect the access specifier. (No need to add W_Access::Private or
