@@ -1,15 +1,7 @@
 #include <wobjectcpp.h>
 #include <wobjectimpl.h>
-#include <QtCore/QObject>
 #include <QtCore/QMetaObject>
 #include <QtTest/QtTest>
-
-template<class...> struct debug_types;
-
-template<size_t> struct Index {};
-template<size_t I> constexpr Index<I> mkIndex = {};
-template<size_t I> constexpr size_t indexValue(Index<I>) { return I; }
-template<class IV> constexpr size_t index_value = indexValue(IV{});
 
 class tst_CppApi : public QObject
 {
