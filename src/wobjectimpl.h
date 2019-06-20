@@ -846,10 +846,8 @@ struct FriendHelper {
         return _id;
     }
 
-#ifdef Q_CC_GNU
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress"
-#endif
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_GCC("-Waddress")
     /// Helper for implementation of qt_static_metacall for QMetaObject::IndexOfMethod
     /// T is the class, and I is the index of a method.
     /// Returns I if the argument is equal to the pointer to member function of the signal of index 'I'
@@ -862,9 +860,7 @@ struct FriendHelper {
             return I;
         return -1;
     }
-#ifdef Q_CC_GNU
-#pragma GCC diagnostic pop
-#endif
+QT_WARNING_POP
 
     /// Helper for implementation of qt_static_metacall for QMetaObject::InvokeMetaMethod
     /// T is the class, and I is the index of a method.
