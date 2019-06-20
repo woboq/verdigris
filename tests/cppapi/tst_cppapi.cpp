@@ -15,7 +15,7 @@ class tst_CppApi : public QObject
 {
     W_OBJECT(tst_CppApi)
 
-#if !defined(Q_CC_GNU) || defined(Q_CC_CLANG) // GCC does not resolve the signals
+#if !defined(Q_CC_GNU) || defined(Q_CC_CLANG) // GCC refuses to properly resolve registered signals for properties
 
 private slots:
     void firstTest();
@@ -31,51 +31,68 @@ public:
 public:
     QString getName() const { return m_name; }
 
-    //void baseNotify() W_SIGNAL(baseNotify)
-
     template<size_t I>
-    void notifyPropertyChanged() {
-        W_CPP_SIGNAL_IMPL(decltype (&tst_CppApi::notifyPropertyChanged<I>), mySignals, I, 0)
-    }
+    void notifyPropertyChanged() W_CPP_SIGNAL_IMPL(decltype (&tst_CppApi::notifyPropertyChanged<I>), MySignals, I, 0)
 
-    static constexpr auto mySignalsLambda = [](auto i) {
-        constexpr auto I = index_value<decltype (i)>;
-        using namespace w_cpp;
-        if constexpr (I == 0) {
-            return makeSignalBuilder(viewLiteral("nameChanged"), &tst_CppApi::notifyPropertyChanged<0>).build();
-        }
-        else if constexpr (I == 1) {
-            return makeSignalBuilder(viewLiteral("ageChanged"), &tst_CppApi::notifyPropertyChanged<1>).build();
-        }
+#if __cplusplus > 201700L
+    template<size_t I>
+    static constexpr auto signalName() {
+        if constexpr (I == 0) return w_cpp::viewLiteral("nameChanged");
+        else if constexpr (I == 1) return w_cpp::viewLiteral("ageChanged");
+    }
+    template<size_t I, class = std::enable_if_t<(I < 2)>>
+    struct MySignals {
+        constexpr static auto signal = w_cpp::makeSignalBuilder(signalName<I>(), &tst_CppApi::notifyPropertyChanged<I>).build();
     };
+#else
     template<size_t I>
-    static constexpr auto mySignals() -> decltype (mySignalsLambda(mkIndex<I>)) {
-        return mySignalsLambda(mkIndex<I>);
-    }
-    W_CPP_SIGNAL(mySignals)
+    struct MySignals;
+    template<>
+    struct MySignals<0> {
+        constexpr static auto signal = w_cpp::makeSignalBuilder(w_cpp::viewLiteral("nameChanged"), &tst_CppApi::notifyPropertyChanged<0>).build();
+    };
+    template<>
+    struct MySignals<1> {
+        constexpr static auto signal = w_cpp::makeSignalBuilder(w_cpp::viewLiteral("ageChanged"), &tst_CppApi::notifyPropertyChanged<1>).build();
+    };
+#endif
+    W_CPP_SIGNAL(MySignals)
 
 private:
-    // W_PROPERTY(QString, name2 READ getName NOTIFY notifyPropertyChanged<0>)
-
-    static constexpr auto myPropertiesLambda = [](auto i) {
-        constexpr auto I = index_value<decltype (i)>;
-        using namespace w_cpp;
-        if constexpr (I == 0) {
-            return makeProperty<QString>(viewLiteral("name"), viewLiteral("QString"))
+#if __cplusplus > 201700L
+    template<size_t I, class = std::enable_if_t<(I < 2)>>
+    struct MyProperties {
+        constexpr static auto property = []{
+            using namespace w_cpp;
+            if constexpr (I == 0) {
+                return makeProperty<QString>(viewLiteral("name"), viewLiteral("QString"))
+                    .setGetter(&tst_CppApi::getName)
+                    .setNotify(&tst_CppApi::notifyPropertyChanged<0>);
+            }
+            else if constexpr (I == 1) {
+                return makeProperty<int>(viewLiteral("age"), viewLiteral("int"))
+                    .setMember(&tst_CppApi::m_age)
+                    .setNotify(&tst_CppApi::notifyPropertyChanged<1>);
+            }
+        }();
+    };
+#else
+    template<size_t I>
+    struct MyProperties;
+    template<>
+    struct MyProperties<0> {
+        constexpr static auto property = w_cpp::makeProperty<QString>(w_cpp::viewLiteral("name"), w_cpp::viewLiteral("QString"))
                 .setGetter(&tst_CppApi::getName)
                 .setNotify(&tst_CppApi::notifyPropertyChanged<0>);
-        }
-        else if constexpr (I == 1) {
-            return makeProperty<int>(viewLiteral("age"), viewLiteral("int"))
+    };
+    template<>
+    struct MyProperties<1> {
+        constexpr static auto property = w_cpp::makeProperty<int>(w_cpp::viewLiteral("age"), w_cpp::viewLiteral("int"))
                 .setMember(&tst_CppApi::m_age)
                 .setNotify(&tst_CppApi::notifyPropertyChanged<1>);
-        }
     };
-    template<size_t I>
-    static constexpr auto myProperties() -> decltype (myPropertiesLambda(mkIndex<I>)) {
-        return myPropertiesLambda(mkIndex<I>);
-    }
-    W_CPP_PROPERTY(myProperties)
+#endif
+    W_CPP_PROPERTY(MyProperties)
 };
 
 void tst_CppApi::firstTest()
