@@ -116,7 +116,8 @@ constexpr auto viewValidTailsImpl(index_sequence<Is...>, index_sequence<Ts...>, 
     auto p = r.data;
     ((Is < R ? (*p++ = StringView{&ns[Ns - Ts], &ns[Ns]}) : *p), ...);
 #else
-    ordered((Is < R ? (r.data[Is] = StringView{&ns[Ns - Ts], &ns[Ns]}, 0) : 0)...);
+    auto i = 0;
+    ordered2<int>({(Is < R ? (r.data[i++] = StringView{&ns[Ns - Ts], &ns[Ns]}, 0) : 0)...});
 #endif
     return r;
 }
@@ -604,7 +605,7 @@ namespace w_internal {
 /// This overload is found if no better overload was found.
 /// All overloads are found using ADL in the QObject T
 template<class State, class TPP>
-constexpr void w_state(IndexBase, State, TPP);
+void w_state(IndexBase, State, TPP);
 
 #if __cplusplus > 201700L
 template<size_t L, class State, class TPP, size_t N , size_t M, size_t X = (N+M)/2>

@@ -184,13 +184,15 @@ matrix:
             -p autotest-runner
 
 before_script:
-  - if [[ $GCC_VERSION ]]; then
-      sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} 90;
-      g++ --version;
+  - |
+    if [[ $GCC_VERSION ]]; then
+      sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} 90
+      g++ --version
     fi
-  - if [[ $CLANG_VERSION ]]; then
-      sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${CLANG_VERSION} 90;
-      clang++ --version;
+  - |
+    if [[ $CLANG_VERSION ]]; then
+      ln -s $(which clang++-${CLANG_VERSION}) ~/bin/clang++
+      clang++ --version
     fi
   - source /opt/qt$QT_VERSION/bin/qt${QT_VERSION}-env.sh
   - which qmake

@@ -182,8 +182,13 @@ struct ClassInfoGenerator {
 };
 
 /// auto-detect the access specifiers
-template <typename T, typename M, typename = void> struct isPublic : std::false_type {};
-template <typename T, typename M> struct isPublic<T, M, decltype(T::w_GetAccessSpecifierHelper(std::declval<M>()))> : std::true_type {};
+template<class T, class M>
+auto test_public(int) -> std::enable_if_t<std::is_same<void, decltype(T::w_GetAccessSpecifierHelper(M{}))>::value, std::true_type>;
+template<class T, class M>
+auto test_public(float) -> std::false_type;
+template<class T, class M>
+using isPublic = decltype(test_public<T, M>(0));
+
 template <typename T, typename M, typename = void> struct isProtected : std::false_type {};
 template <typename T, typename = std::enable_if_t<!std::is_final<T>::value>>
 struct Derived : T { template<typename M, typename X = T> static decltype(X::w_GetAccessSpecifierHelper(std::declval<M>())) test(M); };
@@ -841,6 +846,8 @@ struct FriendHelper {
         return _id;
     }
 
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_GCC("-Waddress")
     /// Helper for implementation of qt_static_metacall for QMetaObject::IndexOfMethod
     /// T is the class, and I is the index of a method.
     /// Returns I if the argument is equal to the pointer to member function of the signal of index 'I'
@@ -853,6 +860,7 @@ struct FriendHelper {
             return I;
         return -1;
     }
+QT_WARNING_POP
 
     /// Helper for implementation of qt_static_metacall for QMetaObject::InvokeMetaMethod
     /// T is the class, and I is the index of a method.
