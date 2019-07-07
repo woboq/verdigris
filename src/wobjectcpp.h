@@ -1,6 +1,19 @@
 #pragma once
 #include "wobjectdefs.h"
 
+#if __cplusplus <= 201700L
+namespace w_internal {
+
+template<bool... Bs>
+constexpr bool all() {
+    bool b = true;
+    ordered2<bool>({(b = b && Bs)...});
+    return b;
+}
+
+} // namespace w_internal
+#endif
+
 namespace w_cpp {
 
 using w_internal::StringView;
@@ -10,15 +23,6 @@ template<typename T>
 constexpr auto makeProperty(StringView name, StringView type) {
     return w_internal::MetaPropertyInfo<T>{ name, type, {}, {}, {}, {}, {} };
 }
-
-#if __cplusplus <= 201700L
-template<bool... Bs>
-constexpr bool all() {
-    bool b = true;
-    w_internal::ordered2<bool>({(b = b && Bs)...});
-    return b;
-}
-#endif
 
 template<class F, int Flags, class IC = int, class ParamTypes = w_internal::StringViewArray<>, class ParamNames = w_internal::StringViewArray<>>
 struct MetaMethodInfoBuilder {
@@ -32,7 +36,7 @@ struct MetaMethodInfoBuilder {
 #if __cplusplus > 201700L
     template<class... Args, class = std::enable_if_t<(std::is_same_v<std::decay_t<Args>, StringView> && ...)>>
 #else
-    template<class... Args, class = std::enable_if_t<all<std::is_same<std::decay_t<Args>, StringView>::value...>()>>
+    template<class... Args, class = std::enable_if_t<w_internal::all<std::is_same<std::decay_t<Args>, StringView>::value...>()>>
 #endif
     constexpr auto setParamTypes(Args... paramTypes) const
         -> MetaMethodInfoBuilder<F, Flags, IC, w_internal::StringViewArray<sizeof... (Args)>, ParamNames> {
@@ -41,7 +45,7 @@ struct MetaMethodInfoBuilder {
 #if __cplusplus > 201700L
     template<class... Args, class = std::enable_if_t<(std::is_same_v<std::decay_t<Args>, StringView> && ...)>>
 #else
-    template<class... Args, class = std::enable_if_t<all<std::is_same<std::decay_t<Args>, StringView>::value...>()>>
+    template<class... Args, class = std::enable_if_t<w_internal::all<std::is_same<std::decay_t<Args>, StringView>::value...>()>>
 #endif
     constexpr auto setParamNames(Args... paramNames) const
         -> MetaMethodInfoBuilder<F, Flags, IC, ParamTypes, w_internal::StringViewArray<sizeof... (Args)>> {
@@ -54,16 +58,16 @@ struct MetaMethodInfoBuilder {
 #else
         -> MetaMethodInfoBuilder<F, w_internal::summed<fs ..., Flags>, IC, ParamTypes, ParamNames> {
 #endif
-        return {name, func, paramTypes, paramNames};
-    }
-    template<class IC2>
-    constexpr auto setIntegralConstant() const -> MetaMethodInfoBuilder<F, Flags, IC2, ParamTypes, ParamNames> {
-        return {name, func, paramTypes, paramNames};
-    }
+            return {name, func, paramTypes, paramNames};
+}
+template<class IC2>
+constexpr auto setIntegralConstant() const -> MetaMethodInfoBuilder<F, Flags, IC2, ParamTypes, ParamNames> {
+    return {name, func, paramTypes, paramNames};
+}
 
-    constexpr auto build() const -> w_internal::MetaMethodInfo<F, Flags, IC, ParamTypes, ParamNames> {
-        return {func, name, paramTypes, paramNames};
-    }
+constexpr auto build() const -> w_internal::MetaMethodInfo<F, Flags, IC, ParamTypes, ParamNames> {
+    return {func, name, paramTypes, paramNames};
+}
 };
 
 template<typename F>
