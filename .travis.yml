@@ -14,6 +14,22 @@ matrix:
         - which qmake
         - qmake --version
 
+    - name: g++5 qt5.5.1 -std=c++14
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - sourceline: ppa:beineri/opt-qt551-trusty
+          packages:
+            - g++-5
+            - qt55base
+      env:
+        - STD_CPP=C++14
+        - QT_VERSION=55
+        - GCC_VERSION=5
+
     - name: g++6 qt5.5.1 -std=c++14
       os: linux
       dist: trusty
@@ -168,13 +184,15 @@ matrix:
             -p autotest-runner
 
 before_script:
-  - if [[ $GCC_VERSION ]]; then
-      sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} 90;
-      g++ --version;
+  - |
+    if [[ $GCC_VERSION ]]; then
+      sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} 90
+      g++ --version
     fi
-  - if [[ $CLANG_VERSION ]]; then
-      sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${CLANG_VERSION} 90;
-      clang++ --version;
+  - |
+    if [[ $CLANG_VERSION ]]; then
+      ln -s $(which clang++-${CLANG_VERSION}) ~/bin/clang++
+      clang++ --version
     fi
   - source /opt/qt$QT_VERSION/bin/qt${QT_VERSION}-env.sh
   - which qmake
