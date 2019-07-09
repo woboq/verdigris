@@ -1,4 +1,4 @@
-Version 1.2 (???)
+Version 1.2 (Juli 2019)
  * Added W_OBJECT_IMPL_INLINE / W_GADGET_IMPL_INLINE / W_NAMESPACE_IMPL_INLINE (#51)
  * Fix multiple-definition linker errors caused by W_NAMESPACE macro (#54)
  * Fix build with MSVC 2019 (#46)
