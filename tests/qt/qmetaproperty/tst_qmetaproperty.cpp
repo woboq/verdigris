@@ -67,6 +67,7 @@ private slots:
     W_SLOT(mapProperty, W_Access::Private)
     W_SLOT(conversion, W_Access::Private)
 
+
 public:
     enum EnumType { EnumType1 };
 

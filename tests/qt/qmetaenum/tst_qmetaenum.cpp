@@ -36,24 +36,18 @@
 class tst_QMetaEnum : public QObject
 {
     W_OBJECT(tst_QMetaEnum)
-
-private slots:
-    void fromType();
-    void valuesToKeys_data();
-    void valuesToKeys();
-    void defaultConstructed();
-
-    W_SLOT(fromType)
-    W_SLOT(valuesToKeys_data)
-    W_SLOT(valuesToKeys)
-    W_SLOT(defaultConstructed)
-
 public:
     enum SuperEnum { SuperValue1 = 1 , SuperValue2 = 2 };
     enum Flag { Flag1 = 1 , Flag2 = 2 };
     W_DECLARE_FLAGS(Flags, Flag)
     W_ENUM(SuperEnum, SuperValue1, SuperValue2)
     W_FLAG(Flags, Flag1, Flag2)
+
+private:
+    void fromType(); W_SLOT(fromType)
+    void valuesToKeys_data(); W_SLOT(valuesToKeys_data)
+    void valuesToKeys(); W_SLOT(valuesToKeys)
+    void defaultConstructed();
 };
 
 W_OBJECT_IMPL(tst_QMetaEnum)
