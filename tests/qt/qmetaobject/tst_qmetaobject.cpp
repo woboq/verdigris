@@ -1380,6 +1380,10 @@ void tst_QMetaObject::invokeException()
 
 void tst_QMetaObject::invokeQueuedAutoRegister()
 {
+#if QT_VERSION < QT_VERSION_CHECK(5, 9, 0)
+    QSKIP("Bug fixed in Qt 5.9");
+#endif
+
     QtTestObject obj;
 
     auto shared = QSharedPointer<QtTestObject>::create(QStringLiteral("myShared-"));
