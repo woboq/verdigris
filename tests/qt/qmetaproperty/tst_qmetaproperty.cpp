@@ -51,22 +51,15 @@ class tst_QMetaProperty : public QObject
     W_OBJECT(tst_QMetaProperty)
 
 private slots:
-    void hasStdCppSet();
-    void isConstant();
-    void isFinal();
-    void gadget();
-    void readAndWriteWithLazyRegistration();
-    void mapProperty();
-    void conversion();
-
-    W_SLOT(hasStdCppSet, W_Access::Private)
-    W_SLOT(isConstant, W_Access::Private)
-    W_SLOT(isFinal, W_Access::Private)
-    W_SLOT(gadget, W_Access::Private)
-    W_SLOT(readAndWriteWithLazyRegistration, W_Access::Private)
-    W_SLOT(mapProperty, W_Access::Private)
-    W_SLOT(conversion, W_Access::Private)
-
+#define DECLARE_TEST(NAME) void NAME(); W_SLOT(NAME)
+    DECLARE_TEST(hasStdCppSet)
+    DECLARE_TEST(isConstant)
+    DECLARE_TEST(isFinal)
+    DECLARE_TEST(gadget)
+    DECLARE_TEST(readAndWriteWithLazyRegistration)
+    DECLARE_TEST(mapProperty)
+    DECLARE_TEST(conversion)
+#undef DECLARE_TEST
 
 public:
     enum EnumType { EnumType1 };
