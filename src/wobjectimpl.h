@@ -1072,11 +1072,14 @@ QT_WARNING_POP
 
 #define W_OBJECT_IMPL_COMMON(INLINE, ...) \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) struct W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_MetaObjectCreatorHelper { \
-        struct Name { static constexpr auto value = w_internal::viewLiteral(W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))); }; \
-        using ObjectInfo = w_internal::ObjectInfo<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType, Name>; \
+        struct Name { \
+            static constexpr auto defaultName = w_internal::viewLiteral(W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))); \
+            static constexpr auto value = w_internal::overrideOrDefaultName<typename W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>(defaultName); \
+        }; \
+        using ObjectInfo = w_internal::ObjectInfo<typename W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType, Name>; \
     }; \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) INLINE const QT_INIT_METAOBJECT QMetaObject W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::staticMetaObject = \
-        w_internal::FriendHelper::createMetaObject<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>();
+        w_internal::FriendHelper::createMetaObject<typename W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>();
 
 /// \macro W_OBJECT_IMPL(TYPE [, TEMPLATE_STUFF])
 /// This macro expand to the code that instantiate the QMetaObject. It must be placed outside of

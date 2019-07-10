@@ -221,6 +221,28 @@ constexpr std::integral_constant<int, int(w_internal::PropertyFlags::Final)> W_F
 
 namespace w_internal {
 
+
+template<class T>
+struct W_TypeWrap {};
+
+template<class T>
+constexpr void W_ClassNameOverride(W_TypeWrap<T> = {});
+
+template<class T>
+constexpr auto overrideOrDefaultName(const StringView& defaultName) ->
+    std::enable_if_t<std::is_same<void, decltype (W_ClassNameOverride(W_TypeWrap<T>{}))>::value, StringView>
+{
+    return defaultName;
+}
+
+template<class T>
+constexpr auto overrideOrDefaultName(const StringView&) ->
+    std::enable_if_t<!std::is_same<void, decltype (W_ClassNameOverride(W_TypeWrap<T>{}))>::value, StringView>
+{
+    return W_ClassNameOverride(W_TypeWrap<T>{});
+}
+
+
 /// Holds information about a method
 template<typename F, int Flags, typename IC, typename ParamTypes, typename ParamNames = StringViewArray<>>
 struct MetaMethodInfo {
