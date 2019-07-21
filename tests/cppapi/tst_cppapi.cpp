@@ -24,7 +24,9 @@ public:
     QString getName() const { return m_name; }
 
     template<size_t I>
-    void notifyPropertyChanged() W_CPP_SIGNAL_IMPL(decltype (&tst_CppApi::notifyPropertyChanged<I>), MySignals, I, 0)
+    void notifyPropertyChanged() {
+        W_CPP_SIGNAL_IMPL(decltype (&tst_CppApi::notifyPropertyChanged<I>), MySignals, I, 0);
+    }
 
 #if __cplusplus > 201700L
     template<size_t I>

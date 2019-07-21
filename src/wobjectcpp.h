@@ -156,7 +156,6 @@ constexpr auto makeSignalBuilder(StringView name, F func) {
 ///     template<size_t I>
 ///     void notifyPropertyChanged() W_CPP_SIGNAL_IMPL(decltype (&tst_CppApi::notifyPropertyChanged<I>), MySignals, I, 0)
 ///
-#define W_CPP_SIGNAL_IMPL(type, a, i, ...) { \
+#define W_CPP_SIGNAL_IMPL(type, a, i, ...) \
     constexpr int index = W_ThisType::W_MACRO_CONCAT(a,_O) + i; \
-    return w_internal::SignalImplementation<type, index>{this}(__VA_ARGS__); \
-}
+    return w_internal::SignalImplementation<type, index>{this}(__VA_ARGS__)
