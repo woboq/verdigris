@@ -277,103 +277,6 @@ class tst_QMetaObject : public QObject
 {
     W_OBJECT(tst_QMetaObject)
 
-private slots:
-    void connectSlotsByName();
-    void invokeMetaMember();
-    void invokePointer();
-    void invokeQueuedMetaMember();
-    void invokeQueuedPointer();
-    void invokeBlockingQueuedMetaMember();
-    void invokeBlockingQueuedPointer();
-    void invokeCustomTypes();
-    void invokeMetaConstructor();
-    void invokeTypedefTypes();
-    void invokeException();
-    void invokeQueuedAutoRegister();
-    void qtMetaObjectInheritance();
-    void normalizedSignature_data();
-    void normalizedSignature();
-    void normalizedType_data();
-    void normalizedType();
-    void customPropertyType();
-    void checkScope_data();
-    void checkScope();
-    void propertyNotify();
-    void propertyConstant();
-    void propertyFinal();
-
-    void stdSet();
-    void classInfo();
-
-    void metaMethod();
-
-    void indexOfMethod_data();
-    void indexOfMethod();
-
-    void indexOfMethodPMF();
-
-    void signalOffset_data();
-    void signalOffset();
-    void signalCount_data();
-    void signalCount();
-    void signal_data();
-    void signal();
-    void signalIndex_data();
-    void signalIndex();
-    void enumDebugStream_data();
-    void enumDebugStream();
-
-    void inherits_data();
-    void inherits();
-
-    /***/
-    W_SLOT(connectSlotsByName, W_Access::Private)
-    W_SLOT(invokeMetaMember, W_Access::Private)
-    W_SLOT(invokeQueuedMetaMember, W_Access::Private)
-    W_SLOT(invokeBlockingQueuedMetaMember, W_Access::Private)
-    W_SLOT(invokeCustomTypes, W_Access::Private)
-    W_SLOT(invokeMetaConstructor, W_Access::Private)
-    W_SLOT(invokeTypedefTypes, W_Access::Private)
-    W_SLOT(invokeException, W_Access::Private)
-    W_SLOT(qtMetaObjectInheritance, W_Access::Private)
-    W_SLOT(normalizedSignature_data, W_Access::Private)
-    W_SLOT(normalizedSignature, W_Access::Private)
-    W_SLOT(normalizedType_data, W_Access::Private)
-    W_SLOT(normalizedType, W_Access::Private)
-    W_SLOT(customPropertyType, W_Access::Private)
-    W_SLOT(checkScope_data, W_Access::Private)
-    W_SLOT(checkScope, W_Access::Private)
-    W_SLOT(propertyNotify, W_Access::Private)
-    W_SLOT(propertyConstant, W_Access::Private)
-    W_SLOT(propertyFinal, W_Access::Private)
-
-    W_SLOT(stdSet, W_Access::Private)
-    W_SLOT(classInfo, W_Access::Private)
-
-    W_SLOT(metaMethod, W_Access::Private)
-
-    W_SLOT(indexOfMethod_data, W_Access::Private)
-    W_SLOT(indexOfMethod, W_Access::Private)
-
-    W_SLOT(indexOfMethodPMF, W_Access::Private)
-
-#ifdef QT_BUILD_INTERNAL
-    W_SLOT(signalOffset_data, W_Access::Private)
-    W_SLOT(signalOffset, W_Access::Private)
-    W_SLOT(signalCount_data, W_Access::Private)
-    W_SLOT(signalCount, W_Access::Private)
-    W_SLOT(signal_data, W_Access::Private)
-    W_SLOT(signal, W_Access::Private)
-    W_SLOT(signalIndex_data, W_Access::Private)
-    W_SLOT(signalIndex, W_Access::Private)
-#endif
-    W_SLOT(enumDebugStream, W_Access::Private)
-
-    W_SLOT(inherits_data, W_Access::Private)
-    W_SLOT(inherits, W_Access::Private)
-
-    void notifySignalsInParentClass();
-
 public:
     enum EnumType { EnumType1 };
     W_ENUM(EnumType,EnumType1);
@@ -406,6 +309,61 @@ public:
 
     QList<QVariant> value4;
     QVariantList value5;
+
+private slots:
+#define DECLARE_TEST(NAME) void NAME(); W_SLOT(NAME)
+    DECLARE_TEST(connectSlotsByName)
+    DECLARE_TEST(invokeMetaMember)
+    DECLARE_TEST(invokePointer)
+    DECLARE_TEST(invokeQueuedMetaMember)
+    DECLARE_TEST(invokeQueuedPointer)
+    DECLARE_TEST(invokeBlockingQueuedMetaMember)
+    DECLARE_TEST(invokeBlockingQueuedPointer)
+    DECLARE_TEST(invokeCustomTypes)
+    DECLARE_TEST(invokeMetaConstructor)
+    DECLARE_TEST(invokeTypedefTypes)
+    DECLARE_TEST(invokeException)
+    DECLARE_TEST(invokeQueuedAutoRegister)
+    DECLARE_TEST(qtMetaObjectInheritance)
+    DECLARE_TEST(normalizedSignature_data)
+    DECLARE_TEST(normalizedSignature)
+    DECLARE_TEST(normalizedType_data)
+    DECLARE_TEST(normalizedType)
+    DECLARE_TEST(customPropertyType)
+    DECLARE_TEST(checkScope_data)
+    DECLARE_TEST(checkScope)
+    DECLARE_TEST(propertyNotify)
+    DECLARE_TEST(propertyConstant)
+    DECLARE_TEST(propertyFinal)
+
+    DECLARE_TEST(stdSet)
+    DECLARE_TEST(classInfo)
+
+    DECLARE_TEST(metaMethod)
+
+    DECLARE_TEST(indexOfMethod_data)
+    DECLARE_TEST(indexOfMethod)
+
+    DECLARE_TEST(indexOfMethodPMF)
+
+#ifdef QT_BUILD_INTERNAL
+    DECLARE_TEST(signalOffset_data)
+    DECLARE_TEST(signalOffset)
+    DECLARE_TEST(signalCount_data)
+    DECLARE_TEST(signalCount)
+    DECLARE_TEST(signal_data)
+    DECLARE_TEST(signal)
+    DECLARE_TEST(signalIndex_data)
+    DECLARE_TEST(signalIndex)
+#endif
+    DECLARE_TEST(enumDebugStream_data)
+    DECLARE_TEST(enumDebugStream)
+
+    DECLARE_TEST(inherits_data)
+    DECLARE_TEST(inherits)
+
+    DECLARE_TEST(notifySignalsInParentClass)
+#undef DECLARE_TEST
 
 signals:
     void value6Changed()
@@ -645,6 +603,9 @@ public slots:
             + o3->slotResult + o4.data()->slotResult + QString::number(o5.size())
             + QString::number(o6.size());
     }
+    W_SLOT(slotWithRegistrableArgument, (QtTestObject*, QPointer<QtTestObject>,
+                                     QSharedPointer<QtTestObject>, QWeakPointer<QtTestObject>,
+                                     QVector<QtTestObject*>,QList<QtTestObject*>))
 
 public:
     static void staticFunction0();
@@ -1419,6 +1380,10 @@ void tst_QMetaObject::invokeException()
 
 void tst_QMetaObject::invokeQueuedAutoRegister()
 {
+#if QT_VERSION < QT_VERSION_CHECK(5, 9, 0)
+    QSKIP("Bug fixed in Qt 5.9");
+#endif
+
     QtTestObject obj;
 
     auto shared = QSharedPointer<QtTestObject>::create(QStringLiteral("myShared-"));

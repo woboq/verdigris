@@ -28,7 +28,7 @@
 #include <QtCore/qmetatype.h>
 #include <utility>
 
-#define W_VERSION 0x0101ff
+#define W_VERSION 0x010200
 
 namespace w_internal {
 using std::index_sequence; // From C++14, make sure to enable the C++14 option in your compiler
