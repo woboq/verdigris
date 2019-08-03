@@ -73,7 +73,7 @@ using w_internal::StringView;
 /// Generate a constexpr StringView from a C++ string literal.
 ///
 /// example usage:
-///     constexpr auto view & w_cpp::StringView{"Hello"};
+///     constexpr auto view = w_cpp::viewLiteral("Hello");
 using w_internal::viewLiteral;
 
 /// create a compile time property description for registraton usage
