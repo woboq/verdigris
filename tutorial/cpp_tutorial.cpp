@@ -144,7 +144,7 @@ using PersonHolder = GenericPropertyHolder<Name, BirthYear>;
 int main(int argc, char *argv[]) {
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
-    QGuiApplication app(argc, argv);
+    QGuiApplication app{argc, argv};
 
     QQmlApplicationEngine engine{};
 
@@ -152,7 +152,7 @@ int main(int argc, char *argv[]) {
     qmlRegisterUncreatableType<PersonHolder>("CppTutorial", 1, 0, "PersonHolder", "");
 
     // create a famous person of your liking
-    PersonHolder person{Name{"Albert Einstein"}, BirthYear{1879}};
+    PersonHolder person{Name{"Albert Einstein"}, BirthYear{1879}, {}};
 
     // make this person accessable as global context property in QML
     auto context = engine.rootContext();
