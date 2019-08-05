@@ -16,7 +16,6 @@ Project {
     Application {
         name: "cpp_tutorial"
         consoleApplication: true
-        condition: !qbs.toolchain.contains('gcc')
 
         Depends { name: "Verdigris" }
         Depends { name: "Qt.quick" }
