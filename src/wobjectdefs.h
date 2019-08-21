@@ -734,7 +734,7 @@ struct InterfaceStateTag {};
         static constexpr auto qt_static_metacall = nullptr; \
     }; \
     static constexpr auto W_UnscopedName = w_internal::viewLiteral(#NAMESPACE); \
-    template<typename W_Flag> static inline constexpr int w_flagAlias(W_Flag) { Q_UNUSED(W_UnscopedName) return 0; } \
+    template<typename W_Flag> Q_DECL_UNUSED static inline constexpr int w_flagAlias(W_Flag) { Q_UNUSED(W_UnscopedName) return 0; } \
     QT_ANNOTATE_CLASS(qt_fake, "")
 
 /// \macro W_SLOT( <slot name> [, (<parameters types>) ]  [, <flags>]* )
