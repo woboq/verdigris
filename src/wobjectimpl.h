@@ -604,7 +604,7 @@ struct DataBuilder {
         *stringOffestP++ = stringOffset;
         *stringLengthP++ = s.size() - 1;
         *intP++ = stringCount;
-        stringOffset += s.size() - sizeof(QByteArrayData);
+        stringOffset += s.size() - qptrdiff(sizeof(QByteArrayData));
         stringCount += 1;
         intCount += 1;
     }
@@ -612,7 +612,7 @@ struct DataBuilder {
         for (auto c : s) *stringCharP++ = c;
         *stringOffestP++ = stringOffset;
         *stringLengthP++ = s.size() - 1;
-        stringOffset += s.size() - sizeof(QByteArrayData);
+        stringOffset += s.size() - qptrdiff(sizeof(QByteArrayData));
         stringCount += 1;
     }
 
@@ -622,7 +622,7 @@ struct DataBuilder {
         *stringOffestP++ = stringOffset;
         *stringLengthP++ = s.size() - 1;
         *intP++ = Flag | stringCount;
-        stringOffset += s.size() - sizeof(QByteArrayData);
+        stringOffset += s.size() - qptrdiff(sizeof(QByteArrayData));
         stringCount += 1;
         intCount += 1;
     }
