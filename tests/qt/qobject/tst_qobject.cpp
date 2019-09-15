@@ -52,6 +52,11 @@
 
 #include <wobjectimpl.h>
 
+QT_WARNING_DISABLE_GCC("-Wdeprecated-declarations")
+QT_WARNING_DISABLE_CLANG("-Wdeprecated-declarations")
+QT_WARNING_DISABLE_GCC("-Wdeprecated-copy")
+
+
 W_REGISTER_ARGTYPE(int&)
 W_REGISTER_ARGTYPE(short&)
 W_REGISTER_ARGTYPE(bool&)

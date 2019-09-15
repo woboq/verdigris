@@ -252,10 +252,10 @@ namespace MyNamespace {
 
         private:
             int m_value2 = 0;
-            int m_value3 = 0;
 
         W_PROPERTY(int, value2 MEMBER m_value2 NOTIFY propertiesChanged)
 #if 0 // With verdigris, this is a compilation error when the NOTIFY signal is not a signal
+            int m_value3 = 0;
         W_PROPERTY(int, value3 MEMBER m_value3 NOTIFY thisIsNotASignal)
 #endif
     };

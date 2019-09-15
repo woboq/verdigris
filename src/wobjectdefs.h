@@ -105,6 +105,7 @@ constexpr size_t countValidSizes() {
     (void)(true && ... && (Ns > 1 ? ++c : false));
 #else
     auto b = true;
+    Q_UNUSED(b)
     ordered2<size_t>({((Ns > 1 && b ? (c += 1) : ((void)(b=false), c)))...});
 #endif
     return c;
@@ -117,6 +118,7 @@ constexpr auto viewValidTailsImpl(index_sequence<Is...>, index_sequence<Ts...>, 
     ((Is < R ? (*p++ = StringView{&ns[Ns - Ts], &ns[Ns]}) : *p), ...);
 #else
     auto i = 0;
+    Q_UNUSED(i)
     ordered2<int>({(Is < R ? (r.data[i++] = StringView{&ns[Ns - Ts], &ns[Ns]}, 0) : 0)...});
 #endif
     return r;
