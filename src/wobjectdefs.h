@@ -80,7 +80,7 @@ struct StringView {
     const char* b{};
     const char* e{};
 
-    constexpr auto size() const -> size_t { return static_cast<size_t>(e-b); }
+    constexpr auto size() const -> qptrdiff { return e - b; }
     constexpr auto begin() const { return b; }
     constexpr auto end() const { return e; }
 };
