@@ -33,6 +33,8 @@ private slots:
     void connectTemplate();  W_SLOT(connectTemplate, W_Access::Private)
 
     void gadget(); W_SLOT(gadget, W_Access::Private)
+
+    void smartPointer(); W_SLOT(smartPointer, W_Access::Private)
 };
 
 
@@ -261,6 +263,29 @@ void tst_Templates::gadget()
     testGadget(QByteArray("toto"));
 }
 
+#include <wobjectcpp.h>
+
+namespace test {
+
+template<typename T>
+class RegisterTemplate : public QObject {
+    W_OBJECT(RegisterTemplate)
+};
+using IntTest = RegisterTemplate<int>;
+
+constexpr auto w_explicitObjectName(IntTest*) {
+    return w_cpp::viewLiteral("IntTest");
+}
+
+} // namespace test
+
+void tst_Templates::smartPointer() {
+    auto smart_ptr = QSharedPointer<test::IntTest>{};
+    // note: this will fail if no w_explicitObjectName was registered
+    auto var = QVariant::fromValue(smart_ptr);
+}
+
+
 QTEST_MAIN(tst_Templates)
 
 W_REGISTER_ARGTYPE(ReduceKernel<Functor,Functor,int>*)
@@ -274,3 +299,4 @@ W_OBJECT_IMPL((TemplateTemplateParameter<C1, C2, C3>), template<template<typenam
 W_OBJECT_IMPL((MappedReducedKernel<ReducedResultType, Iterator, MapFunctor, ReduceFunctor, Reducer>), template <typename ReducedResultType, typename Iterator, typename MapFunctor, typename ReduceFunctor, typename Reducer>)
 W_OBJECT_IMPL(TemplateObject<T>, template<typename T>)
 W_GADGET_IMPL(TemplateGadget<T>, template<typename T>)
+W_OBJECT_IMPL((test::RegisterTemplate<T>), template<typename T>)

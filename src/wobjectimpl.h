@@ -113,6 +113,16 @@ constexpr void foldMethods(F&& f) {
     foldState<L, MethodStateTag, T>(f);
 }
 
+template<class T>
+constexpr auto fetchExplicitName(const StringView& defaultName, ...) {
+    return defaultName;
+}
+
+template<class T>
+constexpr auto fetchExplicitName(const StringView&, int) -> decltype (w_explicitObjectName(static_cast<T*>(nullptr))) {
+    return w_explicitObjectName(static_cast<T*>(nullptr));
+}
+
 /// Helper to get information about the notify signal of the property within object T
 template<size_t L, size_t PropIdx, typename T, typename O>
 struct ResolveNotifySignal {
@@ -1072,7 +1082,10 @@ QT_WARNING_POP
 
 #define W_OBJECT_IMPL_COMMON(INLINE, ...) \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) struct W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_MetaObjectCreatorHelper { \
-        struct Name { static constexpr auto value = w_internal::viewLiteral(W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))); }; \
+        struct Name { \
+            static constexpr auto defaultName = w_internal::viewLiteral(W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))); \
+            static constexpr auto value = w_internal::fetchExplicitName<typename W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>(defaultName, 0); \
+        }; \
         using ObjectInfo = w_internal::ObjectInfo<typename W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType, Name>; \
     }; \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) INLINE const QT_INIT_METAOBJECT QMetaObject W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::staticMetaObject = \
