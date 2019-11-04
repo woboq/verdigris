@@ -4,10 +4,11 @@ Project {
     name: "tests"
 
     references: [
-        "internal",
         "basic",
+        "cppapi",
+        "internal",
+        "manyproperties",
         "qt",
         "templates",
-        "manyproperties"
     ]
 }

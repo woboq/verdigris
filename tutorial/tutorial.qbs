@@ -1,13 +1,29 @@
 import qbs
 
-Application {
-    name: "tutorial"
-    consoleApplication: true
-    type: ["application"]
+Project {
 
-    Depends { name: "Verdigris" }
+    Application {
+        name: "tutorial"
+        consoleApplication: true
 
-    files: [
-        "tutorial.cpp"
-    ]
+        Depends { name: "Verdigris" }
+
+        files: [
+            "tutorial.cpp"
+        ]
+    }
+
+    Application {
+        name: "cpp_tutorial"
+        consoleApplication: true
+
+        Depends { name: "Verdigris" }
+        Depends { name: "Qt.quick" }
+
+        files: [
+            "cpp_tutorial.cpp",
+            "cpp_tutorial.qml",
+            "cpp_tutorial.qrc",
+        ]
+    }
 }
