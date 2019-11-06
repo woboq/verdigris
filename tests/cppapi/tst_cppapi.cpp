@@ -7,6 +7,10 @@ class tst_CppApi : public QObject
 {
     W_OBJECT(tst_CppApi)
 
+#if !defined(Q_CC_GNU) || defined(Q_CC_CLANG)
+    // GCC does not allow specialization
+    // see: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=85282
+
     enum class Level {
         Easy,
         Normal,
@@ -39,8 +43,6 @@ class tst_CppApi : public QObject
 private slots:
     void enumBase();
     W_SLOT(enumBase, W_Access::Private)
-
-#if !defined(Q_CC_GNU) || defined(Q_CC_CLANG) // GCC refuses to properly resolve registered signals for properties
 
     void firstTest();
     W_SLOT(firstTest, W_Access::Private)
@@ -179,10 +181,6 @@ void tst_CppApi::notifyTest()
     disconnect(conn0);
     disconnect(conn1);
 }
-#else // Q_CC_GNU
-};
-
-#endif
 
 void tst_CppApi::enumBase()
 {
@@ -191,6 +189,10 @@ void tst_CppApi::enumBase()
     QVERIFY(em.isValid());
     QCOMPARE(em.keyCount(), 3);
 }
+#else // Q_CC_GNU
+};
+
+#endif
 
 W_OBJECT_IMPL(tst_CppApi)
 
