@@ -1,4 +1,4 @@
-/****************************************************************************
+﻿/****************************************************************************
  *  Copyright (C) 2016-2018 Woboq GmbH
  *  Olivier Goffart <ogoffart at woboq.com>
  *  https://woboq.com/
@@ -571,17 +571,17 @@ struct LayoutBuilder {
     uint intCount{};
 
     constexpr void addString(const StringView& s) {
-        stringSize += s.size();
+        stringSize += s.size() + 1;
         stringCount += 1;
         intCount += 1;
     }
     constexpr void addStringUntracked(const StringView& s) {
-        stringSize += s.size();
+        stringSize += s.size() + 1;
         stringCount += 1;
     }
     template<uint Flag = IsUnresolvedType>
     constexpr void addTypeString(const StringView& s) {
-        stringSize += s.size();
+        stringSize += s.size() + 1;
         stringCount += 1;
         intCount += 1;
     }
@@ -611,28 +611,31 @@ struct DataBuilder {
 
     constexpr void addString(const StringView& s) {
         for (auto c : s) *stringCharP++ = c;
+        *stringCharP++ = '\0';
         *stringOffestP++ = stringOffset;
-        *stringLengthP++ = s.size() - 1;
+        *stringLengthP++ = s.size();
         *intP++ = stringCount;
-        stringOffset += s.size() - qptrdiff(sizeof(QByteArrayData));
+        stringOffset += 1 + s.size() - qptrdiff(sizeof(QByteArrayData));
         stringCount += 1;
         intCount += 1;
     }
     constexpr void addStringUntracked(const StringView& s) {
         for (auto c : s) *stringCharP++ = c;
+        *stringCharP++ = '\0';
         *stringOffestP++ = stringOffset;
-        *stringLengthP++ = s.size() - 1;
-        stringOffset += s.size() - qptrdiff(sizeof(QByteArrayData));
+        *stringLengthP++ = s.size();
+        stringOffset += 1 + s.size() - qptrdiff(sizeof(QByteArrayData));
         stringCount += 1;
     }
 
     template<uint Flag = IsUnresolvedType>
     constexpr void addTypeString(const StringView& s) {
         for (auto c : s) *stringCharP++ = c;
+        *stringCharP++ = '\0';
         *stringOffestP++ = stringOffset;
-        *stringLengthP++ = s.size() - 1;
+        *stringLengthP++ = s.size();
         *intP++ = Flag | stringCount;
-        stringOffset += s.size() - qptrdiff(sizeof(QByteArrayData));
+        stringOffset += 1 + s.size() - qptrdiff(sizeof(QByteArrayData));
         stringCount += 1;
         intCount += 1;
     }

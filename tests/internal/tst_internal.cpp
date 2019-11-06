@@ -31,8 +31,8 @@ namespace w_internal {
 //static_assert(std::is_same<decltype(viewValidLiterals()), StringViewArray<>>::value, "");
 constexpr auto vl1 = viewValidLiterals("H", "el");
 static_assert(std::is_same<std::decay_t<decltype(vl1)>, StringViewArray<2>>::value, "");
-static_assert (vl1[0].size() == 2, "");
-static_assert (vl1[1].size() == 3, "");
+static_assert (vl1[0].size() == 1, "");
+static_assert (vl1[1].size() == 2, "");
 static_assert(vl1[0].b[0] == 'H', "");
 static_assert(vl1[0].b[1] == '\0', "");
 static_assert(std::is_same<decltype(viewValidLiterals("H", "", "el")), StringViewArray<1>>::value, "");

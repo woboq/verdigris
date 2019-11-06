@@ -1,4 +1,4 @@
-/****************************************************************************
+﻿/****************************************************************************
  *  Copyright (C) 2016-2018 Woboq GmbH
  *  Olivier Goffart <ogoffart at woboq.com>
  *  https://woboq.com/
@@ -87,7 +87,7 @@ struct StringView {
 // adding this constructor requires more constructors which generates overhead
 template<size_t N>
 constexpr auto viewLiteral(const char (&d)[N]) -> StringView {
-    return {&d[0], &d[N]};
+    return {&d[0], &d[N-1]};
 }
 
 /// raw arrays cannot be returned from functions so we wrap it
@@ -115,11 +115,11 @@ constexpr auto viewValidTailsImpl(index_sequence<Is...>, index_sequence<Ts...>, 
     auto r = StringViewArray<R>{};
 #if __cplusplus > 201700L
     auto p = r.data;
-    ((Is < R ? (*p++ = StringView{&ns[Ns - Ts], &ns[Ns]}) : *p), ...);
+    ((Is < R ? (*p++ = StringView{&ns[Ns - Ts], &ns[Ns-1]}) : *p), ...);
 #else
     auto i = 0;
     Q_UNUSED(i)
-    ordered2<int>({(Is < R ? (r.data[i++] = StringView{&ns[Ns - Ts], &ns[Ns]}, 0) : 0)...});
+    ordered2<int>({(Is < R ? (r.data[i++] = StringView{&ns[Ns - Ts], &ns[Ns-1]}, 0) : 0)...});
 #endif
     return r;
 }
