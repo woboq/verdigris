@@ -136,6 +136,11 @@ W_OBJECT_IMPL(GenericPropertyHolder<Properties...>, template<class... Properties
 // For your person example you can now instanciate our template
 using PersonHolder = GenericPropertyHolder<Name, BirthYear>;
 
+constexpr auto w_explicitObjectName(PersonHolder*) {
+    return w_cpp::viewLiteral("PersonHolder");
+}
+
+
 // Implement a QML Quick application
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
