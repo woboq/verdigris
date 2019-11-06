@@ -98,54 +98,121 @@ struct StringViewArray {
     constexpr auto operator[] (size_t i) const { return data[i]; }
 };
 
-template<size_t... Ns>
-constexpr size_t countValidSizes() {
-    auto c = size_t{};
-#if __cplusplus > 201700L
-    (void)(true && ... && (Ns > 1 ? ++c : false));
-#else
-    auto b = true;
-    Q_UNUSED(b)
-    ordered2<size_t>({((Ns > 1 && b ? (c += 1) : ((void)(b=false), c)))...});
-#endif
-    return c;
-}
-template<size_t R, size_t... Ns, size_t... Ts, size_t... Is, class... Args>
-constexpr auto viewValidTailsImpl(index_sequence<Is...>, index_sequence<Ts...>, const Args& ... ns) {
-    auto r = StringViewArray<R>{};
-#if __cplusplus > 201700L
-    auto p = r.data;
-    ((Is < R ? (*p++ = StringView{&ns[Ns - Ts], &ns[Ns-1]}) : *p), ...);
-#else
-    auto i = 0;
-    Q_UNUSED(i)
-    ordered2<int>({(Is < R ? (r.data[i++] = StringView{&ns[Ns - Ts], &ns[Ns-1]}, 0) : 0)...});
-#endif
-    return r;
-}
-template<size_t... Ts, size_t... Ns>
-constexpr auto viewValidTails(const char (& ...ns)[Ns]) {
-    constexpr auto r = countValidSizes<Ts...>();
-    constexpr auto is = make_index_sequence<sizeof... (Ns)>{};
-    return viewValidTailsImpl<r, Ns...>(is, index_sequence<Ts...>{}, ns...);
+
+template<size_t SN>
+constexpr auto countParsedLiterals(const char (&s)[SN]) {
+    auto r = size_t{};
+    auto i = 0u;
+    while (true) {
+        while (true) {
+            if (i >= SN-1) return r;
+            if (s[i] != ' ' && s[i] != ',') break; // start found
+            i++;
+        }
+        r++;
+        i++;
+        while (true) {
+            if (i >= SN-1) return r;
+            if (s[i] == ',') break;
+            i++;
+        }
+        i++;
+    }
 }
 
-template<size_t R, size_t... Ns, size_t... Is, class... Args>
-constexpr auto viewValidLiteralsImpl(index_sequence<Is...>, const Args& ... ns) {
-    auto r = StringViewArray<R>{};
-#if __cplusplus > 201700L
-    auto p = r.data;
-    ((Is < R ? (*p++ = viewLiteral(ns)) : *p), ...);
-#else
-    ordered((Is < R ? (r.data[Is] = viewLiteral(ns), 0) : 0)...);
-#endif
-    return r;
+template<size_t N, size_t SN>
+constexpr auto viewParsedLiterals(const char (&s)[SN]) -> StringViewArray<N> {
+    // assumtions:
+    // 1. s is generated from a macro
+    // 2. each value is seperated by comma
+    // 3. exactly N values are generated
+    // 4. no second space can follow a space (no tabs or line breaks)
+    auto r = StringViewArray<N>{};
+    auto ri = size_t{};
+    auto i = 0u;
+    while (true) {
+        while (true) {
+            if (i >= SN-1) return r;
+            if (s[i] != ' ' && s[i] != ',') break; // start found
+            i++;
+        }
+        r.data[ri].b = &s[i];
+        i++;
+        while (true) {
+            if (i >= SN-1) {
+                r.data[ri].e = &s[i];
+                return r;  // text - end
+            }
+            if (s[i] == ' ') {
+                if (i+1 >= SN-1) {
+                    r.data[ri].e = &s[i];
+                    return r; // text - whitespace - end
+                }
+                if (s[i+1] == ',') {
+                    r.data[ri].e = &s[i];
+                    i += 2;
+                    break; // text - whitespace - comma
+                }
+                i += 2;
+                continue; // text - whitespace - text
+            }
+            if (s[i] == ',') {
+                r.data[ri].e = &s[i];
+                i++;
+                break; // text - comma
+            }
+            i++;
+        }
+        ri++;
+    }
 }
-template<size_t... Ns>
-constexpr auto viewValidLiterals(const char (& ...ns)[Ns]) {
-    constexpr auto r = countValidSizes<Ns...>();
-    constexpr auto is = make_index_sequence<sizeof... (Ns)>{};
-    return viewValidLiteralsImpl<r, Ns...>(is, ns...);
+
+template<size_t N, size_t SN>
+constexpr auto viewScopedLiterals(const char (&s)[SN]) -> StringViewArray<N> {
+    auto r = StringViewArray<N>{};
+    auto ri = size_t{};
+    auto i = 0u;
+    while (true) {
+        while (true) {
+            if (i >= SN-1) return r;
+            if (s[i] != ' ' && s[i] != ',' && s[i] != ':') break; // start found
+            i++;
+        }
+        r.data[ri].b = &s[i];
+        i++;
+        while (true) {
+            if (i >= SN-1) {
+                r.data[ri].e = &s[i];
+                return r;  // text - end
+            }
+            if (s[i] == ':') {
+                i++;
+                if (s[i] == ' ') i++;
+                r.data[ri].b = &s[i];
+                continue;
+            }
+            if (s[i] == ' ') {
+                if (i+1 >= SN-1) {
+                    r.data[ri].e = &s[i];
+                    return r; // text - whitespace - end
+                }
+                if (s[i+1] == ',') {
+                    r.data[ri].e = &s[i];
+                    i += 2;
+                    break; // text - whitespace - comma
+                }
+                i += 2;
+                continue; // text - whitespace - text
+            }
+            if (s[i] == ',') {
+                r.data[ri].e = &s[i];
+                i++;
+                break; // text - comma
+            }
+            i++;
+        }
+        ri++;
+    }
 }
 
 //-----------
@@ -541,20 +608,11 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 #define W_MACRO_CONCAT2(A, B) A##_##B
 
 // strignify and make a StaticStringList out of an array of arguments
-#define W_PARAM_TOSTRING(...) W_MACRO_MSVC_EMPTY W_MACRO_MSVC_DELAY(W_PARAM_TOSTRING2,__VA_ARGS__ ,,,,,,,,,,,,,,,,)
-#define W_PARAM_TOSTRING2(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
-    w_internal::viewValidLiterals(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
+#define W_PARAM_TOSTRING(...) W_MACRO_MSVC_EMPTY W_MACRO_MSVC_DELAY(W_PARAM_TOSTRING2,__VA_ARGS__)
+#define W_PARAM_TOSTRING2(...) w_internal::viewParsedLiterals<w_internal::countParsedLiterals("" #__VA_ARGS__)>("" #__VA_ARGS__)
 
-#define W_PARAM_TOSTRING_REMOVE_SCOPE(...) W_MACRO_MSVC_EMPTY W_MACRO_MSVC_DELAY(W_PARAM_TOSTRING2_REMOVE_SCOPE,__VA_ARGS__ ,,,,,,,,,,,,,,,,)
-#define W_PARAM_TOSTRING2_REMOVE_SCOPE(A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,...) \
-    w_internal::viewValidTails< \
-        w_internal::removedScopeSize(#A1), w_internal::removedScopeSize(#A2), w_internal::removedScopeSize(#A3), \
-        w_internal::removedScopeSize(#A4), w_internal::removedScopeSize(#A5), w_internal::removedScopeSize(#A6), \
-        w_internal::removedScopeSize(#A7), w_internal::removedScopeSize(#A8), w_internal::removedScopeSize(#A9), \
-        w_internal::removedScopeSize(#A10), w_internal::removedScopeSize(#A11), w_internal::removedScopeSize(#A12), \
-        w_internal::removedScopeSize(#A13), w_internal::removedScopeSize(#A14), w_internal::removedScopeSize(#A15), \
-        w_internal::removedScopeSize(#A16)>(#A1,#A2,#A3,#A4,#A5,#A6,#A7,#A8,#A9,#A10,#A11,#A12,#A13,#A14,#A15,#A16)
-
+#define W_PARAM_TOSTRING_REMOVE_SCOPE(...) W_MACRO_MSVC_EMPTY W_MACRO_MSVC_DELAY(W_PARAM_TOSTRING2_REMOVE_SCOPE,__VA_ARGS__)
+#define W_PARAM_TOSTRING2_REMOVE_SCOPE(...) w_internal::viewScopedLiterals<w_internal::countParsedLiterals("" #__VA_ARGS__)>("" #__VA_ARGS__)
 
 // remove the surrounding parentheses
 #define W_MACRO_REMOVEPAREN(A) W_MACRO_DELAY(W_MACRO_REMOVEPAREN2, W_MACRO_REMOVEPAREN_HELPER A)

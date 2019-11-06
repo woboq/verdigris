@@ -28,19 +28,26 @@
 
 namespace w_internal {
 
-//static_assert(std::is_same<decltype(viewValidLiterals()), StringViewArray<>>::value, "");
-constexpr auto vl1 = viewValidLiterals("H", "el");
-static_assert(std::is_same<std::decay_t<decltype(vl1)>, StringViewArray<2>>::value, "");
-static_assert (vl1[0].size() == 1, "");
-static_assert (vl1[1].size() == 2, "");
-static_assert(vl1[0].b[0] == 'H', "");
-static_assert(vl1[0].b[1] == '\0', "");
-static_assert(std::is_same<decltype(viewValidLiterals("H", "", "el")), StringViewArray<1>>::value, "");
-static_assert(viewValidLiterals("H", "", "el")[0].b[0] == 'H', "");
-static_assert(viewValidLiterals("H", "", "el")[0].b[1] == '\0', "");
+constexpr auto operator==(StringView a, StringView b) {
+    if (a.size() != b.size()) return false;
+    for (auto i = 0u; i < a.size() && i < b.size(); i++) if (a.b[i] != b.b[i]) return false;
+    return true;
+}
 
-static_assert(std::is_same<decltype(viewValidTails()), StringViewArray<>>::value, "");
-static_assert(viewValidTails<2,1,3>("H", "", "el")[0].b[1] == '\0', "");
+static_assert (countParsedLiterals(" a ")==1, "");
+static_assert (countParsedLiterals(" a, b ")==2, "");
+static_assert (countParsedLiterals(",")==0, "");
+
+static_assert (viewParsedLiterals<2>("H, el")[0] == viewLiteral("H"), "");
+static_assert (viewParsedLiterals<2>("H, el")[1] == viewLiteral("el"), "");
+
+static_assert (viewParsedLiterals<2>(" c H , , el")[0] == viewLiteral("c H"), "");
+static_assert (viewParsedLiterals<2>(" H , , el")[1] == viewLiteral("el"), "");
+
+static_assert (viewScopedLiterals<1>("one")[0] == viewLiteral("one"), "");
+static_assert (viewScopedLiterals<1>("::two")[0] == viewLiteral("two"), "");
+static_assert (viewScopedLiterals<1>(" hallo::one ")[0] == viewLiteral("one"), "");
+static_assert (viewScopedLiterals<1>("x::h:: two ")[0] == viewLiteral("two"), "");
 
 }
 
@@ -56,20 +63,6 @@ class tst_Internal : public QObject
     W_OBJECT(tst_Internal)
 
 private slots:
-    void removedScope() {
-        QCOMPARE(w_internal::removedScopeSize("foo"), int(sizeof("foo")));
-        QCOMPARE(w_internal::removedScopeSize("::foo"), int(sizeof("foo")));
-        QCOMPARE(w_internal::removedScopeSize("hallo::fo"), int(sizeof("fo")));
-        QCOMPARE(w_internal::removedScopeSize("x::hallo::fo"), int(sizeof("fo")));
-
-        using namespace w_internal;
-        QCOMPARE(QByteArray(w_internal::viewValidTails<w_internal::removedScopeSize("foo")>("foo")[0].b),  QByteArray("foo"));
-        QCOMPARE(QByteArray(W_PARAM_TOSTRING_REMOVE_SCOPE(::foo)[0].b), QByteArray("foo"));
-        QCOMPARE(QByteArray(W_PARAM_TOSTRING_REMOVE_SCOPE(::foo, hallo::fo)[1].b), QByteArray("fo"));
-        QCOMPARE(QByteArray(W_PARAM_TOSTRING_REMOVE_SCOPE(::foo, hallo::fo, x::hallo::fo)[2].b), QByteArray("fo"));
-    }
-    W_SLOT(removedScope)
-
 };
 
 W_OBJECT_IMPL(tst_Internal)
