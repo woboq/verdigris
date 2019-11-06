@@ -65,7 +65,7 @@ namespace w_cpp {
 ///
 /// example usage:
 ///     constexpr char text[6] = "Hello"; // if you have a string literal use `viewLiteral` below.
-///     constexpr auto view = w_cpp::StringView{&text[0], &text[6]};
+///     constexpr auto view = w_cpp::StringView{&text[0], &text[5]};
 ///
 /// \note the end pointer has to point behind the \0
 using w_internal::StringView;
