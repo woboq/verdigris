@@ -14,22 +14,6 @@ matrix:
         - which qmake
         - qmake --version
 
-    - name: g++5 qt5.5.1 -std=c++14
-      os: linux
-      dist: trusty
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - sourceline: ppa:beineri/opt-qt551-trusty
-          packages:
-            - g++-5
-            - qt55base
-      env:
-        - STD_CPP=C++14
-        - QT_VERSION=55
-        - GCC_VERSION=5
-
     - name: g++6 qt5.5.1 -std=c++14
       os: linux
       dist: trusty
@@ -93,6 +77,22 @@ matrix:
         - STD_CPP=C++17
         - QT_VERSION=512
         - GCC_VERSION=8
+
+    - name: g++9 qt5.5.1 -std=c++14
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - sourceline: ppa:beineri/opt-qt551-trusty
+          packages:
+            - g++-9
+            - qt55base
+      env:
+        - STD_CPP=C++14
+        - QT_VERSION=55
+        - GCC_VERSION=9
 
     - name: clang-3.8 qt5.6.3 -std=c++14 -lib=stdc++-5
       os: linux
