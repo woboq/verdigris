@@ -26,6 +26,7 @@
 // In a header file you would include the wobjectdefs.h header
 // This is equivalent to the qobjectdefs.h header
 #include <wobjectdefs.h>
+#include <wproperty.h>
 // And because you will inherit from QObject you also need to QObject header
 #include <QObject>
 

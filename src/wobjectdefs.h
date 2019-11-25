@@ -26,6 +26,7 @@
 
 #include <QtCore/qobjectdefs.h>
 #include <QtCore/qmetatype.h>
+
 #include <utility>
 
 #define W_VERSION 0x010200
@@ -883,33 +884,6 @@ struct InterfaceStateTag {};
                    w_internal::makeMetaConstructorInfo<__VA_ARGS__>(W_UnscopedName))
 
 
-/// \macro W_PROPERTY(<type>, <name> [, <flags>]*)
-///
-/// Declare a property <name> with the type <type>.
-/// The flags can be function pointers that are detected to be setter, getters, notify signal or
-/// other flags. Use the macro READ, WRITE, MEMBER, ... for the flag so you can write W_PROPERTY
-/// just like in a Q_PROPERTY. The only difference with Q_PROPERTY would be the semicolon before the
-/// name.
-/// W_PROPERTY need to be put after all the setters, getters, signals and members have been declared.
-///
-/// <type> can optionally be put in parentheses, if you have a type containing a comma
-#define W_PROPERTY(...) W_MACRO_MSVC_EXPAND(W_PROPERTY2(__VA_ARGS__)) // expands the READ, WRITE, and other sub marcos
-#define W_PROPERTY2(TYPE, NAME, ...) \
-    W_STATE_APPEND(PropertyState, \
-        w_internal::makeMetaPropertyInfo<W_MACRO_REMOVEPAREN(TYPE)>(\
-                            w_internal::viewLiteral(#NAME), w_internal::viewLiteral(W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE))), __VA_ARGS__))
-
-#define WRITE , &W_ThisType::
-#define READ , &W_ThisType::
-#define NOTIFY , W_Notify, &W_ThisType::
-#define RESET , W_Reset, &W_ThisType::
-#define MEMBER , &W_ThisType::
-#define CONSTANT , W_Constant
-#define FINAL , W_Final
-
-#undef Q_PRIVATE_PROPERTY // the official macro is not a variadic macro, and the coma in READ would break it
-#define Q_PRIVATE_PROPERTY(...)
-
 /// \macro W_ENUM(<name>, <values>)
 /// Similar to Q_ENUM, but one must also manually write all the values.
 #define W_ENUM(NAME, ...) \
@@ -981,7 +955,6 @@ W_REGISTER_ARGTYPE(const char*)
 // just to avoid parse errors when moc is run over things that it should ignore
 #define W_SIGNAL(...)        ;
 #define W_SIGNAL_COMPAT(...) ;
-#define W_PROPERTY(...)
 #define W_SLOT(...)
 #define W_CLASSINFO(...)
 #define W_INTERFACE(...)

@@ -51,6 +51,7 @@
 #include <math.h>
 
 #include <wobjectimpl.h>
+#include <wproperty.h>
 
 QT_WARNING_DISABLE_GCC("-Wdeprecated-declarations")
 QT_WARNING_DISABLE_CLANG("-Wdeprecated-declarations")

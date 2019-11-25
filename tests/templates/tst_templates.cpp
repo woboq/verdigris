@@ -18,6 +18,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <wobjectdefs.h>
+#include <wproperty.h>
 #include <QtCore/QObject>
 class tst_Templates : public QObject
 {

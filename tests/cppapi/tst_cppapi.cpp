@@ -1,5 +1,6 @@
 #include <wobjectcpp.h>
 #include <wobjectimpl.h>
+#include <wproperty.h>
 #include <QtCore/QMetaObject>
 #include <QtTest/QtTest>
 

@@ -33,6 +33,7 @@
 #include <qobject.h>
 #include <qmetaobject.h>
 #include <wobjectimpl.h>
+#include <wproperty.h>
 
 struct CustomType
 {

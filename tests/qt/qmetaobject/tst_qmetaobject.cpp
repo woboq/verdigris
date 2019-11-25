@@ -36,6 +36,7 @@
 #endif
 
 #include <wobjectimpl.h>
+#include <wproperty.h>
 
 Q_DECLARE_METATYPE(const QMetaObject *)
 

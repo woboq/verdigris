@@ -22,6 +22,7 @@
 
 #include <QObject>
 #include <wobjectimpl.h>
+#include <wproperty.h>
 
 namespace AnotherTU {
 struct Gaga {
