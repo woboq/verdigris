@@ -893,19 +893,33 @@ struct InterfaceStateTag {};
 /// W_PROPERTY need to be put after all the setters, getters, signals and members have been declared.
 ///
 /// <type> can optionally be put in parentheses, if you have a type containing a comma
+///
+/// The macro to be used inside W_PROPERTY can also be prefixed by W_ (W_READ, W_WRITE, ...)
+/// If you define the macro W_NO_PROPERTY_MACRO in your build settings, the macro without prefix
+/// won't be defined.
 #define W_PROPERTY(...) W_MACRO_MSVC_EXPAND(W_PROPERTY2(__VA_ARGS__)) // expands the READ, WRITE, and other sub marcos
 #define W_PROPERTY2(TYPE, NAME, ...) \
     W_STATE_APPEND(PropertyState, \
         w_internal::makeMetaPropertyInfo<W_MACRO_REMOVEPAREN(TYPE)>(\
                             w_internal::viewLiteral(#NAME), w_internal::viewLiteral(W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE))), __VA_ARGS__))
 
-#define WRITE , &W_ThisType::
-#define READ , &W_ThisType::
-#define NOTIFY , W_Notify, &W_ThisType::
-#define RESET , W_Reset, &W_ThisType::
-#define MEMBER , &W_ThisType::
-#define CONSTANT , W_Constant
-#define FINAL , W_Final
+#define W_WRITE , &W_ThisType::
+#define W_READ , &W_ThisType::
+#define W_NOTIFY , W_Notify, &W_ThisType::
+#define W_RESET , W_Reset, &W_ThisType::
+#define W_MEMBER , &W_ThisType::
+#define W_CONSTANT , W_Constant
+#define W_FINAL , W_Final
+
+#ifndef W_NO_PROPERTY_MACRO
+#define WRITE     W_WRITE
+#define READ      W_READ
+#define NOTIFY    W_NOTIFY
+#define RESET     W_RESET
+#define MEMBER    W_MEMBER
+#define CONSTANT  W_CONSTANT
+#define FINAL     W_FINAL
+#endif
 
 #undef Q_PRIVATE_PROPERTY // the official macro is not a variadic macro, and the coma in READ would break it
 #define Q_PRIVATE_PROPERTY(...)
