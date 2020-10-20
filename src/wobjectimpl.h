@@ -113,6 +113,19 @@ constexpr void foldMethods(F&& f) {
     foldState<L, MethodStateTag, T>(f);
 }
 
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
+constexpr bool isPropertyMetacall(QMetaObject::Call call) noexcept
+{
+  return (call >= QMetaObject::ReadProperty && call <= QMetaObject::QueryPropertyUser)
+      || call == QMetaObject::RegisterPropertyMetaType;
+}
+#else
+constexpr bool isPropertyMetacall(QMetaObject::Call call) noexcept
+{
+  return (call >= QMetaObject::ReadProperty && call <= QMetaObject::ResetProperty)
+      || call == QMetaObject::RegisterPropertyMetaType;
+}
+#endif
 /// Helper to get information about the notify signal of the property within object T
 template<size_t L, size_t PropIdx, typename T, typename O>
 struct ResolveNotifySignal {
@@ -831,8 +844,7 @@ struct FriendHelper {
             if (_id < methodCount)
                 T::qt_static_metacall(_o, _c, _id, _a);
             _id -= methodCount;
-        } else if ((_c >= QMetaObject::ReadProperty && _c <= QMetaObject::QueryPropertyUser)
-                    || _c == QMetaObject::RegisterPropertyMetaType) {
+        } else if (isPropertyMetacall(_c)) {
             constexpr int propertyCount = ObjI::propertyCount;
             if (_id < propertyCount)
                 T::qt_static_metacall(_o, _c, _id, _a);
@@ -966,8 +978,7 @@ struct FriendHelper {
 #else
             ordered((createInstance<T, ConsI>(_id, _a),0)...);
 #endif
-        } else if ((_c >= QMetaObject::ReadProperty && _c <= QMetaObject::QueryPropertyUser)
-                || _c == QMetaObject::RegisterPropertyMetaType) {
+        } else if (isPropertyMetacall(_c)) {
 #if __cplusplus > 201700L
             (propertyOperation<T,PropI>(static_cast<T*>(_o), _c, _id, _a),...);
 #else
@@ -1001,8 +1012,7 @@ struct FriendHelper {
 #else
             ordered((createInstance<T, ConsI>(_id, _a), 0)...);
 #endif
-        } else if ((_c >= QMetaObject::ReadProperty && _c <= QMetaObject::QueryPropertyUser)
-                || _c == QMetaObject::RegisterPropertyMetaType) {
+        } else if (isPropertyMetacall(_c)) {
 #if __cplusplus > 201700L
             (propertyOperation<T,PropI>(_o, _c, _id, _a),...);
 #else
