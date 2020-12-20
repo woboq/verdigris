@@ -600,7 +600,7 @@ public slots:
                                      QVector<QtTestObject *> o5, QList<QtTestObject *> o6)
     {
         slotResult = QLatin1String("slotWithRegistrableArgument:") + o1->slotResult + o2->slotResult
-            + o3->slotResult + o4.data()->slotResult + QString::number(o5.size())
+            + o3->slotResult + o4.lock().data()->slotResult + QString::number(o5.size())
             + QString::number(o6.size());
     }
     W_SLOT(slotWithRegistrableArgument, (QtTestObject*, QPointer<QtTestObject>,

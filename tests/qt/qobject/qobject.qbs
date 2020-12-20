@@ -17,9 +17,24 @@ Project {
         Depends { name: "Qt.test" }
         Depends { name: "signalbug" }
 
-        files: [
-            "tst_qobject.cpp",
-        ]
+        Group {
+            name: "qt5"
+            condition: Qt.core.versionMajor < 6
+            // fileTags: ["unmocable"]
+            // overrideTags: false
+            files: [
+                "tst_qobject5.cpp",
+            ]
+        }
+        Group {
+            name: "qt6"
+            condition: Qt.core.versionMajor >= 6
+            // fileTags: ["unmocable"]
+            // overrideTags: false
+            files: [
+                "tst_qobject6.cpp",
+            ]
+        }
     }
 
 }

@@ -136,7 +136,7 @@ public:
     QString m_value;
     void setValue(const QString &value) { m_value = value; }
     QString getValue() { return m_value; }
-    void resetValue() { m_value = QLatin1Literal("reset"); }
+    void resetValue() { m_value = QLatin1String("reset"); }
     W_GADGET(MyGadget)
     W_PROPERTY(QString, value READ getValue WRITE setValue RESET resetValue)
 };
@@ -150,7 +150,7 @@ void tst_QMetaProperty::gadget()
     QVERIFY(valueProp.isValid());
     {
         MyGadget g;
-        QString hello = QLatin1Literal("hello");
+        QString hello = QLatin1String("hello");
         QVERIFY(valueProp.writeOnGadget(&g, hello));
         QCOMPARE(g.m_value, QLatin1String("hello"));
         QCOMPARE(valueProp.readOnGadget(&g), QVariant(hello));
@@ -261,7 +261,7 @@ void tst_QMetaProperty::conversion()
     QCOMPARE(custom.str, QString());
     // or reset resetable
     QVERIFY(value7P.write(this, QVariant()));
-    QCOMPARE(value7, QLatin1Literal("reset"));
+    QCOMPARE(value7, QLatin1String("reset"));
 }
 
 QTEST_MAIN(tst_QMetaProperty)

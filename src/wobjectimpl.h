@@ -133,7 +133,7 @@ constexpr bool isPropertyMetacall(QMetaObject::Call call) noexcept
 constexpr bool isPropertyMetacall(QMetaObject::Call call) noexcept
 {
   return (call >= QMetaObject::ReadProperty && call <= QMetaObject::ResetProperty)
-      || call == QMetaObject::RegisterPropertyMetaType;
+      || call == QMetaObject::RegisterPropertyMetaType || call == QMetaObject::BindableProperty;
 }
 #endif
 /// Helper to get information about the notify signal of the property within object T
@@ -227,11 +227,19 @@ struct MethodGenerator {
     template<class Method, class Index>
     constexpr void operator() (const Method& method, Index) {
         s.addString(method.name); // name
-        s.addInts((uint)Method::argCount,
-                   parameterIndex, //parameters
-                   1, //tag, always \0
-                   adjustFlags(Method::flags, typename Method::IntegralConstant()));
+        s.addInts(
+            (uint)Method::argCount,
+            parameterIndex, //parameters
+            1, //tag, always \0
+            adjustFlags(Method::flags, typename Method::IntegralConstant())
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+            , s.metaTypeCount
+#endif
+            );
         parameterIndex += 1 + Method::argCount * 2;
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+        registerMetaTypes(method);
+#endif
     }
 
 private:
@@ -243,6 +251,51 @@ private:
         }
         return f & static_cast<uint>(~W_Access::Private.value); // Because QMetaMethod::Private is 0, but not W_Access::Private;
     }
+
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+    template<class Method>
+    constexpr void registerMetaTypes(const Method& method) {
+        generateSingleMethodParameter(method.func);
+    }
+    template<class... Args>
+    constexpr void registerMetaTypes(const MetaConstructorInfo<Args...>&) {
+        (s.template addMetaType<Args>(), ...);
+    }
+
+    // non-const function
+    template<typename Obj, typename Ret, typename... Args>
+    constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...)) {
+        s.template addMetaType<Ret>();
+        (s.template addMetaType<Args>(), ...);
+    }
+    template<typename Obj, typename Ret, typename... Args>
+    constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...) noexcept) {
+        s.template addMetaType<Ret>();
+        (s.template addMetaType<Args>(), ...);
+    }
+    template<typename Obj, typename Ret, typename... Args>
+    // const function
+    constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...) const) {
+        s.template addMetaType<Ret>();
+        (s.template addMetaType<Args>(), ...);
+    }
+    template<typename Obj, typename Ret, typename... Args>
+    constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...) const noexcept) {
+        s.template addMetaType<Ret>();
+        (s.template addMetaType<Args>(), ...);
+    }
+    // static member functions
+    template<typename Ret, typename... Args>
+    constexpr void generateSingleMethodParameter(Ret (*)(Args...)) {
+        s.template addMetaType<Ret>();
+        (s.template addMetaType<Args>(), ...);
+    }
+    template<typename Ret, typename... Args>
+    constexpr void generateSingleMethodParameter(Ret (*)(Args...) noexcept) {
+        s.template addMetaType<Ret>();
+        (s.template addMetaType<Args>(), ...);
+    }
+#endif
 };
 
 /// compute if type T is a builtin QMetaType
@@ -283,13 +336,17 @@ constexpr void handleType(State& s, StringView v, std::enable_if_t<!MetaTypeIdIs
 }
 #endif
 
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
 template<class State, class T>
+#else
+template<class State, size_t L, class T>
+#endif
 struct PropertyGenerator {
     State& s;
     constexpr PropertyGenerator(State& s) : s(s) {}
 
-    template<class Prop, class Index>
-    constexpr void operator() (const Prop& prop, Index) {
+    template<class Prop, size_t Idx>
+    constexpr void operator() (const Prop& prop, Index<Idx>) {
         s.addString(prop.name);
         handleType<typename Prop::PropertyType>(s, prop.typeStr);
         constexpr uint moreFlags = (QtPrivate::IsQEnumHelper<typename Prop::PropertyType>::Value
@@ -298,8 +355,25 @@ struct PropertyGenerator {
         constexpr uint defaultFlags = 0 | PropertyFlags::Stored | PropertyFlags::Scriptable
             | PropertyFlags::Designable;
         s.addInts(Prop::flags | moreFlags | finalFlag | defaultFlags);
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+        constexpr int signalIndex = ResolveNotifySignal<L, Idx, T, T>::signalIndex();
+        s.addInts(signalIndex, 0); // revision
+#endif
     }
 };
+
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+template<class State, class T>
+struct PropertyMetaTypeGenerator {
+    State& s;
+    constexpr PropertyMetaTypeGenerator(State& s) : s(s) {}
+
+    template<class Prop, class I>
+    constexpr void operator() (const Prop&, I) {
+        s.template addMetaType<typename Prop::PropertyType>();
+    }
+};
+#endif
 
 #if __cplusplus > 201700L
 template<class State, size_t L, class T, bool hasNotify>
@@ -316,7 +390,6 @@ struct NotifySignalGenerator<State, L, T, false> {
 template<class State, size_t L, class T>
 struct NotifySignalGenerator<State, L, T, true> {
 #endif
-    using TP = T**;
     State& s;
     constexpr NotifySignalGenerator(State& s) : s(s) {}
 
@@ -582,6 +655,9 @@ struct LayoutBuilder {
     size_t stringSize{};
     uint stringCount{};
     uint intCount{};
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+    uint metaTypeCount{};
+#endif
 
     constexpr void addString(const StringView& s) {
         stringSize += s.size() + 1;
@@ -602,15 +678,27 @@ struct LayoutBuilder {
     constexpr void addInts(Ts...) {
         intCount += sizeof... (Ts);
     }
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+    template<class T>
+    constexpr void addMetaType() {
+        metaTypeCount += 1;
+    }
+#endif
 };
 struct DataBuilder {
     char* stringCharP{};
     qptrdiff* stringOffestP{};
     int* stringLengthP{};
     uint* intP{};
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+    const QtPrivate::QMetaTypeInterface** metaTypeP{};
+#endif
     uint stringCount{};
     uint intCount{};
     qptrdiff stringOffset{};
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+    uint metaTypeCount{};
+#endif
 
     constexpr DataBuilder() = default;
     DataBuilder(const DataBuilder&) = delete;
@@ -620,6 +708,9 @@ struct DataBuilder {
         , stringOffestP(r.stringOffsets)
         , stringLengthP(r.stringLengths)
         , intP(r.ints)
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+        , metaTypeP(r.metaTypes)
+#endif
         , stringOffset(r.stringOffset) {}
 
     constexpr void addString(const StringView& s) {
@@ -628,7 +719,11 @@ struct DataBuilder {
         *stringOffestP++ = stringOffset;
         *stringLengthP++ = s.size();
         *intP++ = stringCount;
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
         stringOffset += 1 + s.size() - qptrdiff(sizeof(QByteArrayData));
+#else
+        stringOffset += 1 + s.size();
+#endif
         stringCount += 1;
         intCount += 1;
     }
@@ -637,7 +732,11 @@ struct DataBuilder {
         *stringCharP++ = '\0';
         *stringOffestP++ = stringOffset;
         *stringLengthP++ = s.size();
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
         stringOffset += 1 + s.size() - qptrdiff(sizeof(QByteArrayData));
+#else
+        stringOffset += 1 + s.size();
+#endif
         stringCount += 1;
     }
 
@@ -648,7 +747,11 @@ struct DataBuilder {
         *stringOffestP++ = stringOffset;
         *stringLengthP++ = s.size();
         *intP++ = Flag | stringCount;
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
         stringOffset += 1 + s.size() - qptrdiff(sizeof(QByteArrayData));
+#else
+        stringOffset += 1 + s.size();
+#endif
         stringCount += 1;
         intCount += 1;
     }
@@ -661,6 +764,17 @@ struct DataBuilder {
 #endif
         intCount += sizeof... (Ts);
     }
+
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+    template<class T>
+    static constexpr const QtPrivate::QMetaTypeInterface *metaTypeInterface = QtPrivate::qTryMetaTypeInterfaceForType<T, QtPrivate::TypeAndForceComplete<T, std::false_type>>();
+
+    template<class T>
+    constexpr void addMetaType() {
+        *metaTypeP++ = metaTypeInterface<T>;
+        metaTypeCount += 1;
+    }
+#endif
 };
 
 
@@ -672,14 +786,18 @@ constexpr void generateDataPass(State& state) {
     constexpr bool hasNotify = hasNotifySignal<L, T**>();
     constexpr int classInfoOffset = 14;
     constexpr int methodOffset = classInfoOffset + ObjI::classInfoCount * 2;
-    constexpr int propertyOffset = methodOffset + ObjI::methodCount * 5;
-    constexpr int enumOffset = propertyOffset + ObjI::propertyCount * (hasNotify ? 4: 3);
+    constexpr int propertyOffset = methodOffset + ObjI::methodCount * (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) ? 6 : 5);
+    constexpr int enumOffset = propertyOffset + ObjI::propertyCount * (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) ? 5 : (hasNotify ? 4: 3));
     constexpr int constructorOffset = enumOffset + ObjI::enumCount * (QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 5 : 4);
-    constexpr int paramIndex = constructorOffset + ObjI::constructorCount * 5 ;
+    constexpr int paramIndex = constructorOffset + ObjI::constructorCount * (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) ? 6 : 5);
     constexpr int constructorParamIndex = paramIndex + methodsParamOffset<L, T**>();
     constexpr int enumValueOffset = constructorParamIndex + constructorParamOffset<L, T**>();
 
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
     state.addInts(QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 8 : 7); // revision
+#else
+    state.addInts(9); // revision
+#endif
     state.addString(ObjI::name);
     state.addStringUntracked(viewLiteral(""));
     state.addInts(
@@ -694,12 +812,20 @@ constexpr void generateDataPass(State& state) {
     //if (state.intCount != classInfoOffset) throw "offset mismatch!";
     foldState<L, ClassInfoStateTag, T**>(ClassInfoGenerator<State>{state});
 
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+    foldState<L, PropertyStateTag, T**>(PropertyMetaTypeGenerator<State, T>{state});
+#endif
+
     //if (state.intCount != methodOffset) throw "offset mismatch!";
     foldMethods<L, T**>(MethodGenerator<State, T>{state, paramIndex});
 
     //if (state.intCount != propertyOffset) throw "offset mismatch!";
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
     foldState<L, PropertyStateTag, T**>(PropertyGenerator<State, T>{state});
     foldState<L, PropertyStateTag, T**>(NotifySignalGenerator<State, L, T, hasNotify>{state});
+#else
+    foldState<L, PropertyStateTag, T**>(PropertyGenerator<State, L, T>{state});
+#endif
 
     //if (state.intCount != enumOffset) throw "offset mismatch!";
     foldState<L, EnumStateTag, T**>(EnumGenerator<State>{state, enumValueOffset});
@@ -735,10 +861,25 @@ template<class T>
 constexpr LayoutBuilder dataLayout = createLayout<T>();
 #endif
 
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+struct OffsetLenPair {
+    uint offset;
+    uint length;
+};
+#endif
+
 /// Final data holder
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
 template<std::size_t StringSize, std::size_t StringCount, std::size_t IntCount>
+#else
+template<std::size_t StringSize, std::size_t StringCount, std::size_t IntCount>
+#endif
 struct MetaDataHolder {
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
     RawArray<QByteArrayData,StringCount> byteArrays;
+#else
+    RawArray<OffsetLenPair, StringCount+1> stringOffsetLens;
+#endif
     OwnArray<char, StringSize> stringChars;
 #if __cplusplus > 201700L
     const uint* ints;
@@ -751,20 +892,30 @@ struct MetaDataProvider {
     static constexpr auto stringSize = dataLayout<T>.stringSize;
     static constexpr auto stringCount = dataLayout<T>.stringCount;
     static constexpr auto intCount = dataLayout<T>.intCount;
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+    static constexpr auto metaTypeCount = dataLayout<T>.metaTypeCount == 0 ? 1 : dataLayout<T>.metaTypeCount;
+#endif
     using MetaDataType = const MetaDataHolder<stringSize, stringCount, intCount>;
 
     struct Arrays {
 #ifndef Q_CC_MSVC
         constexpr static qptrdiff stringOffset = offsetof(MetaDataType, stringChars);
 #else // offsetof does not work with MSVC
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
         constexpr static qptrdiff stringOffset = sizeof(MetaDataType::byteArrays);
+#else
+        constexpr static qptrdiff stringOffset = sizeof(MetaDataType::stringOffsetLens);
+#endif
 #endif
         RawArray<qptrdiff, stringCount> stringOffsets{};
         RawArray<int, stringCount> stringLengths{};
         RawArray<char, stringSize> stringChars{};
         RawArray<uint, intCount> ints{};
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+        RawArray<const QtPrivate::QMetaTypeInterface *, metaTypeCount> metaTypes{};
+#endif
     };
-#if __cplusplus > 201700L
+#if __cplusplus >= 201700L
     constexpr static Arrays arrays = []() {
         auto r = Arrays{};
         DataBuilder b{r};
@@ -789,10 +940,21 @@ struct MetaDataBuilder<T, index_sequence<Is...>> {
     using P = MetaDataProvider<T>;
     using MetaDataType = typename P::MetaDataType;
 #if __cplusplus >= 201700L
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
     constexpr static MetaDataType meta_data = {
         {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(P::arrays.stringLengths[Is], P::arrays.stringOffsets[Is])...},
         P::arrays.stringChars, P::arrays.ints
     };
+#else
+    constexpr static MetaDataType meta_data = {
+        {
+            OffsetLenPair{static_cast<uint>(P::arrays.stringOffsets[Is]), P::arrays.stringLengths[Is]}...,
+            OffsetLenPair{static_cast<uint>(P::arrays.stringOffsets[sizeof...(Is)-1] + P::arrays.stringLengths[sizeof...(Is)-1]), 0},
+        },
+        P::arrays.stringChars,
+        P::arrays.ints
+    };
+#endif
 #else
     static MetaDataType meta_data;
 #endif
@@ -846,7 +1008,20 @@ struct FriendHelper {
     static constexpr QMetaObject createMetaObject() {
         using MetaData = MetaDataBuilder<T, make_index_sequence<dataLayout<T>.stringCount>>;
 #if __cplusplus > 201700L
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
         return { { parentMetaObject<T>(0), MetaData::meta_data.byteArrays, MetaData::meta_data.ints, T::qt_static_metacall, {}, {} } };
+#else
+        using P = MetaDataProvider<T>;
+        return { {
+            parentMetaObject<T>(0),
+            &MetaData::meta_data.stringOffsetLens[0].offset,
+            MetaData::meta_data.ints,
+            T::qt_static_metacall,
+            nullptr,
+            P::arrays.metaTypes,
+            nullptr,
+        } };
+#endif
 #else
         return { { parentMetaObject<T>(0), MetaData::meta_data.byteArrays, MetaData::meta_data.ints.data, T::qt_static_metacall, {}, {} } };
 #endif
@@ -857,10 +1032,19 @@ struct FriendHelper {
         _id = _o->T::W_BaseType::qt_metacall(_c, _id, _a);
         if (_id < 0)
             return _id;
-        if (_c == QMetaObject::InvokeMetaMethod || _c == QMetaObject::RegisterMethodArgumentMetaType) {
+        if (_c == QMetaObject::InvokeMetaMethod) {
             constexpr int methodCount = ObjI::methodCount;
             if (_id < methodCount)
                 T::qt_static_metacall(_o, _c, _id, _a);
+            _id -= methodCount;
+        } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
+            constexpr int methodCount = ObjI::methodCount;
+            if (_id < methodCount)
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
+                *reinterpret_cast<int *>(_a[0]) = -1;
+#else
+                *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
+#endif
             _id -= methodCount;
         } else if (isPropertyMetacall(_c)) {
             constexpr int propertyCount = ObjI::propertyCount;
@@ -1054,9 +1238,15 @@ QT_WARNING_POP
     static void* qt_metacast_impl(T *o, const char *_clname) {
         if (!_clname)
             return nullptr;
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
         const QByteArrayDataPtr sd = { const_cast<QByteArrayData*>(T::staticMetaObject.d.stringdata) };
         if (_clname == QByteArray(sd))
             return o;
+#else
+        using MetaData = MetaDataBuilder<T, make_index_sequence<dataLayout<T>.stringCount>>;
+        if (!strcmp(_clname, MetaData::meta_data.stringChars.data))
+            return o;
+#endif
         using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
         void *result = {};
         auto l = [&](auto i) {
