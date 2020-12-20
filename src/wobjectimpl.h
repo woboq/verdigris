@@ -869,11 +869,7 @@ struct OffsetLenPair {
 #endif
 
 /// Final data holder
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
 template<std::size_t StringSize, std::size_t StringCount, std::size_t IntCount>
-#else
-template<std::size_t StringSize, std::size_t StringCount, std::size_t IntCount>
-#endif
 struct MetaDataHolder {
 #if QT_VERSION < QT_VERSION_CHECK(6,0,0)
     RawArray<QByteArrayData,StringCount> byteArrays;
