@@ -1028,19 +1028,10 @@ struct FriendHelper {
         _id = _o->T::W_BaseType::qt_metacall(_c, _id, _a);
         if (_id < 0)
             return _id;
-        if (_c == QMetaObject::InvokeMetaMethod) {
+        if (_c == QMetaObject::InvokeMetaMethod || _c == QMetaObject::RegisterMethodArgumentMetaType) {
             constexpr int methodCount = ObjI::methodCount;
             if (_id < methodCount)
                 T::qt_static_metacall(_o, _c, _id, _a);
-            _id -= methodCount;
-        } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-            constexpr int methodCount = ObjI::methodCount;
-            if (_id < methodCount)
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-                *reinterpret_cast<int *>(_a[0]) = -1;
-#else
-                *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-#endif
             _id -= methodCount;
         } else if (isPropertyMetacall(_c)) {
             constexpr int propertyCount = ObjI::propertyCount;
@@ -1090,8 +1081,12 @@ QT_WARNING_POP
             using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
             auto _t = QtPrivate::ConnectionTypes<typename P::Arguments>::types();
             uint arg = *reinterpret_cast<uint*>(_a[1]);
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
             *reinterpret_cast<int*>(_a[0]) = _t && arg < P::ArgumentCount ?
                     _t[arg] : -1;
+#else
+            *reinterpret_cast<QMetaType *>(_a[0]) = _t && arg < P::ArgumentCount ? QMetaType(_t[arg]) : QMetaType();
+#endif
         }
     }
 
