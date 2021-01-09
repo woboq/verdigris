@@ -17,11 +17,17 @@ Project {
         Depends { name: "Qt.test" }
         Depends { name: "signalbug" }
 
+        Properties {
+            condition: qbs.toolchain.contains('msvc')
+            cpp.cxxFlags: base.concat(
+                "/wd4573", // vs2019 warns about static connect/disconnect in lambdas
+                "/wd4340" // vs2019 warns about wrapped enum value
+            )
+        }
+
         Group {
             name: "qt5"
             condition: Qt.core.versionMajor < 6
-            // fileTags: ["unmocable"]
-            // overrideTags: false
             files: [
                 "tst_qobject5.cpp",
             ]
@@ -29,8 +35,6 @@ Project {
         Group {
             name: "qt6"
             condition: Qt.core.versionMajor >= 6
-            // fileTags: ["unmocable"]
-            // overrideTags: false
             files: [
                 "tst_qobject6.cpp",
             ]
