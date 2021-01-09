@@ -3539,13 +3539,21 @@ void tst_QObject::disconnectSelfInSlotAndDeleteAfterEmit()
 void tst_QObject::dumpObjectInfo()
 {
     QObject a, b;
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
     QObject::connect(&a, SIGNAL(destroyed(QObject*)), &b, SLOT(deleteLater()));
     a.disconnect(&b);
+#else
+    QObject::connect(&a, &QObject::destroyed, &b, &QObject::deleteLater);
+#endif
 #if QT_VERSION >= QT_VERSION_CHECK(5, 9, 0)
     QTest::ignoreMessage(QtDebugMsg, "OBJECT QObject::unnamed");
     QTest::ignoreMessage(QtDebugMsg, "  SIGNALS OUT");
     QTest::ignoreMessage(QtDebugMsg, "        signal: destroyed(QObject*)");
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
     QTest::ignoreMessage(QtDebugMsg, "          <Disconnected receiver>");
+#else
+    QTest::ignoreMessage(QtDebugMsg, "          <functor or function pointer>");
+#endif
     QTest::ignoreMessage(QtDebugMsg, "  SIGNALS IN");
     QTest::ignoreMessage(QtDebugMsg, "        <None>");
 #endif
@@ -6987,16 +6995,32 @@ void tst_QObject::connectWarnings()
     ReceiverObject r1;
     r1.reset();
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 1)
     QTest::ignoreMessage(QtWarningMsg, "QObject::connect(SenderObject, ReceiverObject): invalid null parameter");
+#else
+    QTest::ignoreMessage(QtWarningMsg, "QObject::connect(SenderObject, ReceiverObject): invalid nullptr parameter");
+#endif
     connect(static_cast<const SenderObject *>(nullptr), &SubSender::signal1, &r1, &ReceiverObject::slot1);
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 1)
     QTest::ignoreMessage(QtWarningMsg, "QObject::connect(SubSender, Unknown): invalid null parameter");
+#else
+    QTest::ignoreMessage(QtWarningMsg, "QObject::connect(SubSender, Unknown): invalid nullptr parameter");
+#endif
     connect(&sub, &SubSender::signal1, static_cast<ReceiverObject *>(nullptr), &ReceiverObject::slot1);
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 1)
     QTest::ignoreMessage(QtWarningMsg, "QObject::connect(SenderObject, ReceiverObject): invalid null parameter");
+#else
+    QTest::ignoreMessage(QtWarningMsg, "QObject::connect(SenderObject, ReceiverObject): invalid nullptr parameter");
+#endif
     connect(static_cast<const SenderObject *>(nullptr), &SenderObject::signal1, &r1, &ReceiverObject::slot1);
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 1)
     QTest::ignoreMessage(QtWarningMsg, "QObject::connect(SenderObject, Unknown): invalid null parameter");
+#else
+    QTest::ignoreMessage(QtWarningMsg, "QObject::connect(SenderObject, Unknown): invalid nullptr parameter");
+#endif
     connect(&obj, &SenderObject::signal1, static_cast<ReceiverObject *>(nullptr), &ReceiverObject::slot1);
 }
 
