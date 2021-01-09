@@ -123,19 +123,17 @@ constexpr auto fetchExplicitName(const StringView&, int) -> decltype (w_explicit
     return w_explicitObjectName(static_cast<T*>(nullptr));
 }
 
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
 constexpr bool isPropertyMetacall(QMetaObject::Call call) noexcept
 {
-  return (call >= QMetaObject::ReadProperty && call <= QMetaObject::QueryPropertyUser)
-      || call == QMetaObject::RegisterPropertyMetaType;
-}
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+    return (call >= QMetaObject::ReadProperty && call <= QMetaObject::ResetProperty)
+        || call == QMetaObject::RegisterPropertyMetaType || call == QMetaObject::BindableProperty;
 #else
-constexpr bool isPropertyMetacall(QMetaObject::Call call) noexcept
-{
-  return (call >= QMetaObject::ReadProperty && call <= QMetaObject::ResetProperty)
-      || call == QMetaObject::RegisterPropertyMetaType || call == QMetaObject::BindableProperty;
-}
+    return (call >= QMetaObject::ReadProperty && call <= QMetaObject::QueryPropertyUser)
+        || call == QMetaObject::RegisterPropertyMetaType;
 #endif
+}
+
 /// Helper to get information about the notify signal of the property within object T
 template<size_t L, size_t PropIdx, typename T, typename O>
 struct ResolveNotifySignal {
@@ -336,10 +334,10 @@ constexpr void handleType(State& s, StringView v, std::enable_if_t<!MetaTypeIdIs
 }
 #endif
 
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-template<class State, class T>
-#else
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
 template<class State, size_t L, class T>
+#else
+template<class State, class T>
 #endif
 struct PropertyGenerator {
     State& s;
@@ -745,10 +743,10 @@ struct DataBuilder {
         *stringOffestP++ = stringOffset;
         *stringLengthP++ = s.size();
         *intP++ = stringCount;
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-        stringOffset += 1 + s.size() - qptrdiff(sizeof(QByteArrayData));
-#else
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
         stringOffset += 1 + s.size();
+#else
+        stringOffset += 1 + s.size() - qptrdiff(sizeof(QByteArrayData));
 #endif
         stringCount += 1;
         intCount += 1;
@@ -758,10 +756,10 @@ struct DataBuilder {
         *stringCharP++ = '\0';
         *stringOffestP++ = stringOffset;
         *stringLengthP++ = s.size();
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-        stringOffset += 1 + s.size() - qptrdiff(sizeof(QByteArrayData));
-#else
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
         stringOffset += 1 + s.size();
+#else
+        stringOffset += 1 + s.size() - qptrdiff(sizeof(QByteArrayData));
 #endif
         stringCount += 1;
     }
@@ -773,10 +771,10 @@ struct DataBuilder {
         *stringOffestP++ = stringOffset;
         *stringLengthP++ = s.size();
         *intP++ = Flag | stringCount;
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-        stringOffset += 1 + s.size() - qptrdiff(sizeof(QByteArrayData));
-#else
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
         stringOffset += 1 + s.size();
+#else
+        stringOffset += 1 + s.size() - qptrdiff(sizeof(QByteArrayData));
 #endif
         stringCount += 1;
         intCount += 1;
@@ -819,10 +817,10 @@ constexpr void generateDataPass(State& state) {
     constexpr int constructorParamIndex = paramIndex + methodsParamOffset<L, T**>();
     constexpr int enumValueOffset = constructorParamIndex + constructorParamOffset<L, T**>();
 
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-    state.addInts(QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 8 : 7); // revision
-#else
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
     state.addInts(9); // revision
+#else
+    state.addInts(QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 8 : 7); // revision
 #endif
     state.addString(ObjI::name);
     state.addStringUntracked(viewLiteral(""));
@@ -846,11 +844,11 @@ constexpr void generateDataPass(State& state) {
     foldMethods<L, T**>(MethodGenerator<State, T>{state, paramIndex});
 
     //if (state.intCount != propertyOffset) throw "offset mismatch!";
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+    foldState<L, PropertyStateTag, T**>(PropertyGenerator<State, L, T>{state});
+#else
     foldState<L, PropertyStateTag, T**>(PropertyGenerator<State, T>{state});
     foldState<L, PropertyStateTag, T**>(NotifySignalGenerator<State, L, T, hasNotify>{state});
-#else
-    foldState<L, PropertyStateTag, T**>(PropertyGenerator<State, L, T>{state});
 #endif
 
     //if (state.intCount != enumOffset) throw "offset mismatch!";
@@ -897,10 +895,10 @@ struct OffsetLenPair {
 /// Final data holder
 template<std::size_t StringSize, std::size_t StringCount, std::size_t IntCount>
 struct MetaDataHolder {
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-    RawArray<QByteArrayData,StringCount> byteArrays;
-#else
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
     RawArray<OffsetLenPair, StringCount+1> stringOffsetLens;
+#else
+    RawArray<QByteArrayData,StringCount> byteArrays;
 #endif
     OwnArray<char, StringSize> stringChars;
 #if __cplusplus > 201700L
@@ -923,10 +921,10 @@ struct MetaDataProvider {
 #ifndef Q_CC_MSVC
         constexpr static qptrdiff stringOffset = offsetof(MetaDataType, stringChars);
 #else // offsetof does not work with MSVC
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-        constexpr static qptrdiff stringOffset = sizeof(MetaDataType::byteArrays);
-#else
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
         constexpr static qptrdiff stringOffset = sizeof(MetaDataType::stringOffsetLens);
+#else
+        constexpr static qptrdiff stringOffset = sizeof(MetaDataType::byteArrays);
 #endif
 #endif
         RawArray<qptrdiff, stringCount> stringOffsets{};
@@ -937,7 +935,7 @@ struct MetaDataProvider {
         RawArray<const QtPrivate::QMetaTypeInterface *, metaTypeCount> metaTypes{};
 #endif
     };
-#if __cplusplus >= 201700L
+#if __cplusplus > 201700L
     constexpr static Arrays arrays = []() {
         auto r = Arrays{};
         DataBuilder b{r};
@@ -961,13 +959,7 @@ template<class T, std::size_t... Is>
 struct MetaDataBuilder<T, index_sequence<Is...>> {
     using P = MetaDataProvider<T>;
     using MetaDataType = typename P::MetaDataType;
-#if __cplusplus >= 201700L
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-    constexpr static MetaDataType meta_data = {
-        {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(P::arrays.stringLengths[Is], P::arrays.stringOffsets[Is])...},
-        P::arrays.stringChars, P::arrays.ints
-    };
-#else
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
     constexpr static MetaDataType meta_data = {
         {
             OffsetLenPair{static_cast<uint>(P::arrays.stringOffsets[Is]), P::arrays.stringLengths[Is]}...,
@@ -976,18 +968,20 @@ struct MetaDataBuilder<T, index_sequence<Is...>> {
         P::arrays.stringChars,
         P::arrays.ints
     };
-#endif
+#elif __cplusplus > 201700L
+    constexpr static MetaDataType meta_data = {
+        {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(P::arrays.stringLengths[Is], P::arrays.stringOffsets[Is])...},
+        P::arrays.stringChars, P::arrays.ints
+    };
 #else
     static MetaDataType meta_data;
-#endif
 };
-#if __cplusplus < 201700L
 template<class T, std::size_t... Is>
 typename MetaDataBuilder<T, index_sequence<Is...>>::MetaDataType MetaDataBuilder<T, index_sequence<Is...>>::meta_data = {
     {Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(P::arrays.stringLengths[Is], P::arrays.stringOffsets[Is])...},
     {P::arrays.stringChars}, {P::arrays.ints}
-};
 #endif
+};
 
 /// Returns the QMetaObject* of the base type. Use SFINAE to only return it if it exists
 template<typename T>
@@ -1029,10 +1023,7 @@ struct FriendHelper {
     template<typename T>
     static constexpr QMetaObject createMetaObject() {
         using MetaData = MetaDataBuilder<T, make_index_sequence<dataLayout<T>.stringCount>>;
-#if __cplusplus > 201700L
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-        return { { parentMetaObject<T>(0), MetaData::meta_data.byteArrays, MetaData::meta_data.ints, T::qt_static_metacall, {}, {} } };
-#else
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
         using P = MetaDataProvider<T>;
         return { {
             parentMetaObject<T>(0),
@@ -1043,7 +1034,8 @@ struct FriendHelper {
             P::arrays.metaTypes,
             nullptr,
         } };
-#endif
+#elif __cplusplus > 201700L
+        return { { parentMetaObject<T>(0), MetaData::meta_data.byteArrays, MetaData::meta_data.ints, T::qt_static_metacall, {}, {} } };
 #else
         return { { parentMetaObject<T>(0), MetaData::meta_data.byteArrays, MetaData::meta_data.ints.data, T::qt_static_metacall, {}, {} } };
 #endif
@@ -1107,11 +1099,11 @@ QT_WARNING_POP
             using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
             auto _t = QtPrivate::ConnectionTypes<typename P::Arguments>::types();
             uint arg = *reinterpret_cast<uint*>(_a[1]);
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+            *reinterpret_cast<QMetaType *>(_a[0]) = _t && arg < P::ArgumentCount ? QMetaType(_t[arg]) : QMetaType();
+#else
             *reinterpret_cast<int*>(_a[0]) = _t && arg < P::ArgumentCount ?
                     _t[arg] : -1;
-#else
-            *reinterpret_cast<QMetaType *>(_a[0]) = _t && arg < P::ArgumentCount ? QMetaType(_t[arg]) : QMetaType();
 #endif
         }
     }
@@ -1255,13 +1247,13 @@ QT_WARNING_POP
     static void* qt_metacast_impl(T *o, const char *_clname) {
         if (!_clname)
             return nullptr;
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-        const QByteArrayDataPtr sd = { const_cast<QByteArrayData*>(T::staticMetaObject.d.stringdata) };
-        if (_clname == QByteArray(sd))
-            return o;
-#else
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
         using MetaData = MetaDataBuilder<T, make_index_sequence<dataLayout<T>.stringCount>>;
         if (!strcmp(_clname, MetaData::meta_data.stringChars.data))
+            return o;
+#else
+        const QByteArrayDataPtr sd = { const_cast<QByteArrayData*>(T::staticMetaObject.d.stringdata) };
+        if (_clname == QByteArray(sd))
             return o;
 #endif
         using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
