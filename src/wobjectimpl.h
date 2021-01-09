@@ -356,10 +356,36 @@ struct PropertyGenerator {
             | PropertyFlags::Designable;
         s.addInts(Prop::flags | moreFlags | finalFlag | defaultFlags);
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
-        constexpr int signalIndex = ResolveNotifySignal<L, Idx, T, T>::signalIndex();
-        s.addInts(signalIndex, 0); // revision
+        addSignal(prop.notify, index<Idx>);
+        s.addInts(0); // revision
 #endif
     }
+
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+    template<size_t Idx>
+    constexpr void addSignal(Empty, Index<Idx>) {
+        s.addInts(-1);
+    }
+
+    // Signal in the same class
+    template<size_t Idx, typename Func>
+    constexpr void addSignal(Func, Index<Idx>, std::enable_if_t<std::is_same<T, typename QtPrivate::FunctionPointer<Func>::Object>::value, int> = 0) {
+        constexpr int signalIndex = ResolveNotifySignal<L, Idx, T, T>::signalIndex();
+        static_assert(signalIndex >= 0, "NOTIFY signal in parent class not registered as a W_SIGNAL");
+        s.addInts(signalIndex);
+    }
+
+    // Signal in a parent class
+    template<size_t Idx, typename Func>
+    constexpr void addSignal(Func, Index<Idx>, std::enable_if_t<!std::is_same<T, typename QtPrivate::FunctionPointer<Func>::Object>::value, int> = 0) {
+        using O = typename QtPrivate::FunctionPointer<Func>::Object;
+        using OP = O**;
+        constexpr int signalIndex = ResolveNotifySignal<L, Idx, T, O>::signalIndex();
+        static_assert(signalIndex >= 0, "NOTIFY signal in parent class not registered as a W_SIGNAL");
+        constexpr auto sig = w_state(index<signalIndex>, SignalStateTag{}, OP{});
+        s.template addTypeString<IsUnresolvedNotifySignal>(sig.name);
+    }
+#endif
 };
 
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)

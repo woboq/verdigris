@@ -460,6 +460,8 @@ public slots:
     W_SLOT(on_Sender_signalWithParams,(int))
     void on_Sender_signalWithParams(int, QString) { called_slots << 3; }
     W_SLOT(on_Sender_signalWithParams,(int, QString))
+    void on_Sender_signalManyParams() { called_slots << 4; }
+    W_SLOT(on_Sender_signalManyParams,())
     void on_Sender_signalManyParams(int, int, int, QString, bool) { called_slots << 5; }
     W_SLOT(on_Sender_signalManyParams,(int,int,int,QString,bool))
     void on_Sender_signalManyParams(int, int, int, QString, bool, bool) { called_slots << 6;}
@@ -2155,8 +2157,13 @@ void tst_QObject::metamethod()
     QVERIFY((m.attributes() & QMetaMethod::Scriptable));
     QVERIFY((m.attributes() & QMetaMethod::Compatibility));
 
+#if 0 // Verdigris does not support default values with W_INVOKABLE
     m = mobj->method(mobj->indexOfMethod("invoke3()"));
     QVERIFY(m.methodSignature() == "invoke3()");
+#else
+    m = mobj->method(mobj->indexOfMethod("invoke3(int,int)"));
+    QVERIFY(m.methodSignature() == "invoke3(int,int)");
+#endif
     QCOMPARE(m.methodType(), QMetaMethod::Method);
     QCOMPARE(m.access(), QMetaMethod::Private);
     QVERIFY(!(m.attributes() & QMetaMethod::Scriptable));
@@ -2197,9 +2204,13 @@ void tst_QObject::metamethod()
     QCOMPARE(m.parameterNames().count(), 2);
     QCOMPARE(m.parameterTypes().count(), 2);
     QCOMPARE(m.parameterTypes().at(0), QByteArray("int"));
+#if 0 // Verdigris does not support parameterNames()
     QCOMPARE(m.parameterNames().at(0), QByteArray("hinz"));
+#endif
     QCOMPARE(m.parameterTypes().at(1), QByteArray("int"));
+#if 0 // Verdigris does not support parameterNames()
     QCOMPARE(m.parameterNames().at(1), QByteArray("kunz"));
+#endif
 
 }
 
@@ -3108,10 +3119,14 @@ void tst_QObject::recursiveSignalEmission()
 {
 #if !QT_CONFIG(process)
     QSKIP("No qprocess support", SkipAll);
-#else
+#elif !defined(Q_OS_MAC) && !defined(Q_OS_WIN) // because it does not find the executable
     QProcess proc;
     // signalbug helper app should always be next to this test binary
-    const QString path =  QCoreApplication::applicationDirPath() + QDir::separator() + QStringLiteral("signalbug_helper");
+#ifdef W_SIGNALBUG
+    const QString path = QStringLiteral(W_SIGNALBUG);
+#else
+    const QString path = QStringLiteral("signalbug/signalbug");
+#endif
     proc.start(path);
     QVERIFY2(proc.waitForStarted(), qPrintable(QString::fromLatin1("Cannot start '%1': %2").arg(path, proc.errorString())));
     QVERIFY(proc.waitForFinished());
@@ -4098,13 +4113,23 @@ void tst_QObject::qMetaObjectConnect()
     OverloadObject obj1;
     QObject obj2, obj3;
 
+#if 0 // Verdigris does not support optional arguments
     QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(int)) , &r1, slot1Index);
     QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(QObject *, QObject *, QObject *)) ,
                          &r2, slot1Index);
+#else
+    QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(int,int)) , &r1, slot1Index);
+    QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(QObject *, QObject *, QObject *, QObject *)) ,
+                         &r2, slot1Index);
+#endif
 
     QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(QObject *, QObject *, QObject *, QObject *)) ,
                          &r1, slot2Index);
+#if 0 // Verdigris does not support optional arguments
     QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(QObject *)) , &r2, slot2Index);
+#else
+    QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(QObject *, OverloadObject *,QObject *,QObject *)) , &r2, slot2Index);
+#endif
     QMetaObject::connect(&obj1, SIGNAL_INDEX(sig(int, int)) , &r1, slot3Index);
 
     emit obj1.sig(0.5); //connected to nothing
