@@ -78,7 +78,13 @@ public:
     void hello() W_SIGNAL(hello)
 };
 
-template<template<typename> class Container1, template <typename TT> class , template <typename, int > class Container3>
+template<template<typename> class Container1,
+         template <typename TT> class,
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+         template <typename, qsizetype > class Container3>
+#else
+         template <typename, int > class Container3>
+#endif
 class TemplateTemplateParameter : public QObject {
     W_OBJECT(TemplateTemplateParameter)
 public:
@@ -295,7 +301,11 @@ W_OBJECT_IMPL(tst_Templates)
 W_OBJECT_IMPL((TestTemplate<T,I,B,S>), template<typename T, int I, bool B, class S>)
 W_OBJECT_IMPL(TestTemplate2<T>, template<typename T>)
 W_OBJECT_IMPL((FunctionTemplateParameter<O,T1,F1,F2>), template<typename O, typename T1, void (O::*F1)(const T1&), void (O::*F2)(const T1&)>)
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+W_OBJECT_IMPL((TemplateTemplateParameter<C1, C2, C3>), template<template<typename> class C1, template <typename> class C2, template <typename, qsizetype > class C3>)
+#else
 W_OBJECT_IMPL((TemplateTemplateParameter<C1, C2, C3>), template<template<typename> class C1, template <typename> class C2, template <typename, int > class C3>)
+#endif
 W_OBJECT_IMPL((MappedReducedKernel<ReducedResultType, Iterator, MapFunctor, ReduceFunctor, Reducer>), template <typename ReducedResultType, typename Iterator, typename MapFunctor, typename ReduceFunctor, typename Reducer>)
 W_OBJECT_IMPL(TemplateObject<T>, template<typename T>)
 W_GADGET_IMPL(TemplateGadget<T>, template<typename T>)
