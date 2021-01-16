@@ -1,0 +1,115 @@
+name: Windows Tests
+
+on: push
+
+jobs:
+  windows-qbs:
+    name: "${{ matrix.host_system }} Qbs Qt ${{ matrix.qt_version }} ${{ matrix.qt_arch }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host_system: windows-2019
+            vs_profile: MSVC2019-x64
+            qt_version: "5.15.2"
+            qt_arch: win64_msvc2019_64
+
+          - host_system: windows-2019
+            vs_profile: MSVC2019-x64
+            qt_version: "5.14.2"
+            qt_arch: win64_msvc2015_64
+
+          - host_system: windows-2019
+            vs_profile: MSVC2019-x64
+            qt_version: "5.12.9"
+            qt_arch: win64_msvc2017_64
+
+          - host_system: windows-2016
+            vs_profile: MSVC2017-x64
+            qt_version: "5.9.9"
+            qt_arch: win64_msvc2017_64
+
+    runs-on: "${{ matrix.host_system }}"
+    steps:
+      - name: Cache Qt
+        id: cache-qt
+        uses: actions/cache@v1
+        with:
+          path: ../Qt
+          key: QtCache-${{ matrix.qt_version }}-${{ matrix.qt_arch }}
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v2
+        with:
+          version: "${{ matrix.qt_version }}"
+          arch: "${{ matrix.qt_arch }}"
+          cached: ${{ steps.cache-qt.outputs.cache-hit }}
+
+      - name: Install Qbs
+        run: choco install qbs
+
+      - name: Setup Qbs
+        run: |
+          qbs setup-toolchains --detect
+          qbs setup-qt $(cmd /c where qmake) qt
+          qbs config profiles.qt.baseProfile ${{ matrix.vs_profile }}
+          qbs config defaultProfile qt
+          qbs config --list profiles
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - run: >-
+          qbs build
+          --file verdigris.qbs
+          --build-directory ${env:RUNNER_TEMP}\build
+          -p autotest-runner
+
+  windows-qmake:
+    name: "${{ matrix.host_system }} QMake Qt ${{ matrix.qt_version }} ${{ matrix.qt_arch }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host_system: windows-2019
+            cl_version: "14.28"
+            qt_version: "6.0.0"
+            qt_arch: win64_msvc2019_64
+
+          - host_system: windows-2019
+            cl_version: "14.28"
+            qt_version: "5.15.2"
+            qt_arch: win64_msvc2019_64
+
+          - host_system: windows-2019
+            cl_version: "14.28"
+            qt_version: "5.12.9"
+            qt_arch: win64_msvc2017_64
+
+    runs-on: "${{ matrix.host_system }}"
+    steps:
+      - name: Cache Qt
+        id: cache-qt
+        uses: actions/cache@v1
+        with:
+          path: ../Qt
+          key: QtCache-${{ matrix.qt_version }}-${{ matrix.qt_arch }}
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v2
+        with:
+          version: "${{ matrix.qt_version }}"
+          arch: "${{ matrix.qt_arch }}"
+          cached: ${{ steps.cache-qt.outputs.cache-hit }}
+
+      - name: Add msbuild to PATH
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          toolset: '${{ matrix.cl_version }}'
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - run: qmake -r
+      - run: nmake
+      - run: nmake check

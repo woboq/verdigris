@@ -1,0 +1,120 @@
+name: Clang Tests
+
+on: push
+
+jobs:
+  osx-qmake:
+    name: "OSX QMake Qt5 ${{ matrix.std_cpp }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - std_cpp: C++17
+        - std_cpp: C++14
+
+    runs-on: "macos-10.15"
+    env:
+      QMAKESPEC: macx-clang
+    steps:
+      - name: Install Qt
+        run: |
+          HOMEBREW_NO_AUTO_UPDATE=1 brew install qt5
+          brew link qt5 --force
+          which qmake
+          qmake --version
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - run: qmake -r "CONFIG+=${{ matrix.std_cpp }}"
+      - run: make -j
+      - run: make check
+
+  docker-qbs:
+    name: "Docker Qbs ${{ matrix.image }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - image: arbmind/qbs-clang8-qt512:1
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Build & Test
+        run: >-
+          docker run --rm -v ${GITHUB_WORKSPACE}:/build -w /build
+          ${{ matrix.image }}
+          build
+          --file /build/verdigris.qbs
+          --build-directory /tmp/build
+          -p autotest-runner
+
+  linux-qmake:
+    name: "${{ matrix.host_system }} QMake Clang ${{ matrix.clang_version }} Qt ${{ matrix.qt_version }} ${{ matrix.std_cpp }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # note: We now need qt to be compiled with clang!
+          #       QMetaType uses std::function which has different linking on clang!
+          # - host_system: ubuntu-20.04
+          #   clang_version: 10
+          #   qt_version: 6.0.0
+          #   qt_arch: gcc_64
+          #   std_cpp: C++17
+
+          - host_system: ubuntu-20.04
+            clang_version: 10
+            qt_version: 5.15.2
+            qt_arch: gcc_64
+            std_cpp: C++17
+
+          - host_system: ubuntu-16.04
+            clang_version: 8
+            qt_version: 5.12.3
+            qt_arch: gcc_64
+            std_cpp: C++14
+
+          # note: clang claims C++17 but std library is not ready!
+          # - host_system: ubuntu-16.04
+          #   clang_version: "6.0"
+          #   qt_version: 5.9.1
+          #   qt_arch: gcc_64
+          #   std_cpp: C++14
+
+    runs-on: "${{ matrix.host_system }}"
+    env:
+      QMAKESPEC: linux-clang-libc++
+    steps:
+      - name: Cache Qt
+        id: cache-qt
+        uses: actions/cache@v1
+        with:
+          path: ../Qt
+          key: QtCache-${{ matrix.qt_version }}-${{ matrix.qt_arch }}
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v2
+        with:
+          version: "${{ matrix.qt_version }}"
+          arch: "${{ matrix.qt_arch }}"
+          cached: ${{ steps.cache-qt.outputs.cache-hit }}
+
+      - name: Setup Clang
+        run: |
+          find /usr/bin -name "clang++*"
+          echo $(which clang++)
+          echo $(which clang++-${{ matrix.clang_version }})
+          sudo rm /usr/bin/clang++
+          sudo ln -s $(which clang++-${{ matrix.clang_version }}) /usr/bin/clang++
+          clang++ --version
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - run: qmake -r "CONFIG+=${{ matrix.std_cpp }}"
+      - run: make -j
+      - run: make check
