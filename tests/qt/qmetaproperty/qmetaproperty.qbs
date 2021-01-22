@@ -8,7 +8,18 @@ Application {
     Depends { name: "Verdigris" }
     Depends { name: "Qt.test" }
 
-    files: [
-        "tst_qmetaproperty.cpp",
-    ]
+    Group {
+        name: "qt5"
+        condition: Qt.core.versionMajor < 6
+        files: [
+            "tst_qmetaproperty5.cpp",
+        ]
+    }
+    Group {
+        name: "qt6"
+        condition: Qt.core.versionMajor >= 6
+        files: [
+            "tst_qmetaproperty6.cpp",
+        ]
+    }
 }

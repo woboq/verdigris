@@ -59,6 +59,7 @@ private slots:
     DECLARE_TEST(readAndWriteWithLazyRegistration)
     DECLARE_TEST(mapProperty)
     DECLARE_TEST(conversion)
+    DECLARE_TEST(enumsFlags)
 #undef DECLARE_TEST
 
 public:
@@ -136,7 +137,7 @@ public:
     QString m_value;
     void setValue(const QString &value) { m_value = value; }
     QString getValue() { return m_value; }
-    void resetValue() { m_value = QLatin1Literal("reset"); }
+    void resetValue() { m_value = QLatin1String("reset"); }
     W_GADGET(MyGadget)
     W_PROPERTY(QString, value READ getValue WRITE setValue RESET resetValue)
 };
@@ -148,9 +149,10 @@ void tst_QMetaProperty::gadget()
     const QMetaObject *mo = &MyGadget::staticMetaObject;
     QMetaProperty valueProp = mo->property(mo->indexOfProperty("value"));
     QVERIFY(valueProp.isValid());
+    QCOMPARE(valueProp.metaType(), QMetaType::fromType<QString>());
     {
         MyGadget g;
-        QString hello = QLatin1Literal("hello");
+        QString hello = QLatin1String("hello");
         QVERIFY(valueProp.writeOnGadget(&g, hello));
         QCOMPARE(g.m_value, QLatin1String("hello"));
         QCOMPARE(valueProp.readOnGadget(&g), QVariant(hello));
@@ -188,28 +190,58 @@ public:
     {}
 };
 
+class EnumFlagsTester : public QObject
+{
+    W_OBJECT(EnumFlagsTester)
+public:
+    enum TestEnum { e1, e2 };
+    W_ENUM(TestEnum, e1, e2)
+
+    enum TestFlag { flag1 = 0x1, flag2 = 0x2 };
+    W_DECLARE_FLAGS(TestFlags, TestFlag)
+
+public:
+    using QObject::QObject;
+
+    TestEnum enumProperty() const { return m_enum; }
+    void setEnumProperty(TestEnum e) { m_enum = e; }
+
+    TestFlags flagProperty() const { return m_flags; }
+    void setFlagProperty(TestFlags f) { m_flags = f; }
+
+private:
+    W_PROPERTY(TestEnum, enumProperty WRITE setEnumProperty READ enumProperty)
+    W_PROPERTY(TestFlags, flagProperty WRITE setFlagProperty READ flagProperty)
+
+private:
+    TestEnum m_enum = e1;
+    TestFlags m_flags;
+};
+
 W_OBJECT_IMPL(CustomReadObject)
 W_OBJECT_IMPL(CustomWriteObject)
 W_OBJECT_IMPL(CustomWriteObjectChild)
 W_OBJECT_IMPL(TypeLazyRegistration)
+W_OBJECT_IMPL(EnumFlagsTester)
 
+Q_DECLARE_OPERATORS_FOR_FLAGS(EnumFlagsTester::TestFlags)
 
 void tst_QMetaProperty::readAndWriteWithLazyRegistration()
 {
-    QCOMPARE(QMetaType::type("CustomReadObject*"), int(QMetaType::UnknownType));
-    QCOMPARE(QMetaType::type("CustomWriteObject*"), int(QMetaType::UnknownType));
+    QVERIFY(!QMetaType::fromName("CustomReadObject*").isValid());
+    QVERIFY(!QMetaType::fromName("CustomWriteObject*").isValid());
 
     TypeLazyRegistration o;
     QVERIFY(o.property("read").isValid());
-    QVERIFY(QMetaType::type("CustomReadObject*") != QMetaType::UnknownType);
-    QCOMPARE(QMetaType::type("CustomWriteObject*"), int(QMetaType::UnknownType));
+    QVERIFY(QMetaType::fromName("CustomReadObject*").isValid());
+    QVERIFY(!QMetaType::fromName("CustomWriteObject*").isValid());
 
     CustomWriteObjectChild data;
     QVariant value = QVariant::fromValue(&data); // this register CustomWriteObjectChild
     // check if base classes are not registered automatically, otherwise this test would be meaningless
-    QCOMPARE(QMetaType::type("CustomWriteObject*"), int(QMetaType::UnknownType));
+    QVERIFY(!QMetaType::fromName("CustomWriteObject*").isValid());
     QVERIFY(o.setProperty("write", value));
-    QVERIFY(QMetaType::type("CustomWriteObject*") != QMetaType::UnknownType);
+    QVERIFY(QMetaType::fromName("CustomWriteObject*").isValid());
     QCOMPARE(o.property("write").value<CustomWriteObjectChild*>(), &data);
 }
 
@@ -220,7 +252,6 @@ void tst_QMetaProperty::mapProperty()
     QVariant v = property("map");
     QVERIFY(v.isValid());
     QCOMPARE(map, (v.value<QMap<int,int> >()));
-    QCOMPARE(v.typeName(), "QMap<int,int>");
 }
 
 void tst_QMetaProperty::conversion()
@@ -261,7 +292,30 @@ void tst_QMetaProperty::conversion()
     QCOMPARE(custom.str, QString());
     // or reset resetable
     QVERIFY(value7P.write(this, QVariant()));
-    QCOMPARE(value7, QLatin1Literal("reset"));
+    QCOMPARE(value7, QLatin1String("reset"));
+}
+
+void tst_QMetaProperty::enumsFlags()
+{
+    // QTBUG-83689, verify that enumerations and flags can be assigned from int,
+    // which is important for Qt Designer.
+    EnumFlagsTester t;
+
+    auto mo = t.metaObject();
+
+    const int enumIndex = mo->indexOfProperty("enumProperty");
+    QVERIFY(enumIndex >= 0);
+    auto enumProperty = mo->property(enumIndex);
+    QVERIFY(enumProperty.metaType().flags().testFlag(QMetaType::IsEnumeration));
+    QVERIFY(enumProperty.write(&t, QVariant(int(EnumFlagsTester::e2))));
+    QCOMPARE(t.enumProperty(), EnumFlagsTester::e2);
+
+    const int flagsIndex = mo->indexOfProperty("flagProperty");
+    QVERIFY(flagsIndex >= 0);
+    auto flagsProperty = mo->property(flagsIndex);
+    QVERIFY(flagsProperty.metaType().flags().testFlag(QMetaType::IsEnumeration));
+    QVERIFY(flagsProperty.write(&t, QVariant(int(EnumFlagsTester::flag2))));
+    QCOMPARE(t.flagProperty(), EnumFlagsTester::flag2);
 }
 
 QTEST_MAIN(tst_QMetaProperty)

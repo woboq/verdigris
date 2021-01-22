@@ -1,0 +1,65 @@
+name: Gcc Tests
+
+on: push
+
+jobs:
+  linux-qmake:
+    name: "${{ matrix.host_system }} QMake Gcc ${{ matrix.gcc_version }} Qt ${{ matrix.qt_version }} ${{ matrix.std_cpp }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host_system: ubuntu-20.04
+            gcc_version: 10
+            qt_version: 6.0.0
+            qt_arch: gcc_64
+            std_cpp: C++17
+
+          - host_system: ubuntu-20.04
+            gcc_version: 9
+            qt_version: 5.15.2
+            qt_arch: gcc_64
+            std_cpp: C++17
+
+          - host_system: ubuntu-16.04
+            gcc_version: 8
+            qt_version: 5.12.3
+            qt_arch: gcc_64
+            std_cpp: C++14
+
+          - host_system: ubuntu-16.04
+            gcc_version: 7
+            qt_version: 5.9.1
+            qt_arch: gcc_64
+            std_cpp: C++14
+
+    runs-on: "${{ matrix.host_system }}"
+    steps:
+      - name: Cache Qt
+        id: cache-qt
+        uses: actions/cache@v1
+        with:
+          path: ../Qt
+          key: QtCache-${{ matrix.qt_version }}-${{ matrix.qt_arch }}
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v2
+        with:
+          version: "${{ matrix.qt_version }}"
+          arch: "${{ matrix.qt_arch }}"
+          cached: ${{ steps.cache-qt.outputs.cache-hit }}
+
+      - name: Setup Gcc
+        run: |
+          find /usr/bin -name "g++*"
+          echo $(which g++)
+          echo $(which g++-${{ matrix.gcc_version }})
+          sudo update-alternatives --install /usr/bin/g++ g++ $(which g++-${{ matrix.gcc_version }}) 90
+          g++ --version
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - run: qmake -r "CONFIG+=${{ matrix.std_cpp }}"
+      - run: make -j
+      - run: make check

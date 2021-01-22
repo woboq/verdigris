@@ -1,6 +1,6 @@
 import QtQuick 2.2
 import QtQuick.Layouts 1.1
-import QtQuick.Controls 1.2
+import QtQuick.Controls 2.0
 import QtQuick.Window 2.0
 import CppTutorial 1.0
 
@@ -18,14 +18,14 @@ Window {
             Layout.fillWidth: true
             readOnly: true
             placeholderText: "Missing name"
-            text: person.name
+            text: person && person.name
         }
         RowLayout {
             Layout.fillWidth: true
             TextField {
                 Layout.fillWidth: true
                 readOnly: true
-                text: person.birthYear
+                text: person && person.birthYear
             }
             Button {
                 text: "+1"
