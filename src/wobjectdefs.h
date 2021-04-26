@@ -584,6 +584,24 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 } // namespace w_internal
 
 #if defined(Q_CC_MSVC) && !defined(Q_CC_CLANG)
+  #if _MSC_VER >= 1928
+    #if defined(_MSVC_TRADITIONAL) && _MSVC_TRADITIONAL
+      // MSVC in /Zc:preprocessor- mode (default)
+      #define W_CONFORMING_PREPROCESSOR 0
+    #else
+      // MSVC in /Zc:preprocessor mode
+      #define W_CONFORMING_PREPROCESSOR 1
+    #endif
+  #else
+    // Older versions of MSVC without the /Zc:preprocessor flag
+    #define W_CONFORMING_PREPROCESSOR 0
+  #endif
+#else
+  // Other compilers, generally conforming
+  #define W_CONFORMING_PREPROCESSOR 1
+#endif
+
+#if !W_CONFORMING_PREPROCESSOR
 // Workaround for MSVC: expension rules are different so we need some extra macro.
 #define W_MACRO_MSVC_EXPAND(...) __VA_ARGS__
 #define W_MACRO_MSVC_DELAY(X,...) W_MACRO_MSVC_EXPAND(X(__VA_ARGS__))
