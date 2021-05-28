@@ -51,6 +51,8 @@ jobs:
 
       - name: Setup Gcc
         run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-${{ matrix.gcc_version }}
           find /usr/bin -name "g++*"
           echo $(which g++)
           echo $(which g++-${{ matrix.gcc_version }})

@@ -105,6 +105,8 @@ jobs:
 
       - name: Setup Clang
         run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-${{ matrix.clang_version }}
           find /usr/bin -name "clang++*"
           echo $(which clang++)
           echo $(which clang++-${{ matrix.clang_version }})

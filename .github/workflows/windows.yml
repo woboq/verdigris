@@ -72,17 +72,17 @@ jobs:
       matrix:
         include:
           - host_system: windows-2019
-            cl_version: "14.28"
+            cl_version: "14.29"
             qt_version: "6.0.0"
             qt_arch: win64_msvc2019_64
 
           - host_system: windows-2019
-            cl_version: "14.28"
+            cl_version: "14.29"
             qt_version: "5.15.2"
             qt_arch: win64_msvc2019_64
 
           - host_system: windows-2019
-            cl_version: "14.28"
+            cl_version: "14.29"
             qt_version: "5.12.9"
             qt_arch: win64_msvc2017_64
 
