@@ -67,7 +67,7 @@ namespace w_cpp {
 ///     constexpr char text[6] = "Hello"; // if you have a string literal use `viewLiteral` below.
 ///     constexpr auto view = w_cpp::StringView{&text[0], &text[5]};
 ///
-/// \note the end pointer has to point behind the \0
+/// \note the end pointer has to point behind the last character
 using w_internal::StringView;
 
 /// Array of StringView
@@ -120,8 +120,8 @@ constexpr auto makeProperty(StringView name, StringView type) {
 /// * .setIntegralConstant<T>() - set a compile time integral value type as a unique identifier
 /// * .build() - build the final MethodInfo for this signal
 template<typename F>
-constexpr auto makeSignalBuilder(StringView name, F func) {
-    return w_internal::MetaMethodInfoBuilder<F, W_MethodType::Signal.value>{name, func};
+constexpr auto makeSignalBuilder(StringView name, F func) -> w_internal::MetaMethodInfoBuilder<F, W_MethodType::Signal.value> {
+    return {name, func};
 }
 
 /// create a compile time enum description for registraton usage
