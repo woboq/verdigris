@@ -37,6 +37,8 @@ jobs:
       matrix:
         include:
         - image: arbmind/qbs-clang8-qt512:1
+        - image: arbmind/qbs-clang13-qt515:latest
+        - image: arbmind/qbs-clang12-qt62:latest
 
     runs-on: ubuntu-latest
     steps:
@@ -58,13 +60,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # note: We now need qt to be compiled with clang!
-          #       QMetaType uses std::function which has different linking on clang!
-          # - host_system: ubuntu-20.04
-          #   clang_version: 10
-          #   qt_version: 6.0.0
-          #   qt_arch: gcc_64
-          #   std_cpp: C++17
+          - host_system: ubuntu-20.04
+            clang_version: 12
+            qt_version: 6.2.2
+            qt_arch: gcc_64
+            std_cpp: C++20
+
+          - host_system: ubuntu-20.04
+            clang_version: 11
+            qt_version: 6.0.0
+            qt_arch: gcc_64
+            std_cpp: C++17
 
           - host_system: ubuntu-20.04
             clang_version: 10
@@ -80,7 +86,7 @@ jobs:
 
     runs-on: "${{ matrix.host_system }}"
     env:
-      QMAKESPEC: linux-clang-libc++
+      QMAKESPEC: linux-clang
     steps:
       - name: Cache Qt
         id: cache-qt
