@@ -21,13 +21,7 @@ jobs:
             qt_arch: gcc_64
             std_cpp: C++17
 
-          - host_system: ubuntu-16.04
-            gcc_version: 8
-            qt_version: 5.12.3
-            qt_arch: gcc_64
-            std_cpp: C++14
-
-          - host_system: ubuntu-16.04
+          - host_system: ubuntu-18.04
             gcc_version: 7
             qt_version: 5.9.1
             qt_arch: gcc_64
@@ -51,6 +45,8 @@ jobs:
 
       - name: Setup Gcc
         run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-${{ matrix.gcc_version }}
           find /usr/bin -name "g++*"
           echo $(which g++)
           echo $(which g++-${{ matrix.gcc_version }})
