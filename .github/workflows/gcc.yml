@@ -21,13 +21,7 @@ jobs:
             qt_arch: gcc_64
             std_cpp: C++17
 
-          - host_system: ubuntu-16.04
-            gcc_version: 8
-            qt_version: 5.12.3
-            qt_arch: gcc_64
-            std_cpp: C++14
-
-          - host_system: ubuntu-16.04
+          - host_system: ubuntu-18.04
             gcc_version: 7
             qt_version: 5.9.1
             qt_arch: gcc_64

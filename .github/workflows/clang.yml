@@ -72,18 +72,11 @@ jobs:
             qt_arch: gcc_64
             std_cpp: C++17
 
-          - host_system: ubuntu-16.04
-            clang_version: 8
+          - host_system: ubuntu-18.04
+            clang_version: 9
             qt_version: 5.12.3
             qt_arch: gcc_64
             std_cpp: C++14
-
-          # note: clang claims C++17 but std library is not ready!
-          # - host_system: ubuntu-16.04
-          #   clang_version: "6.0"
-          #   qt_version: 5.9.1
-          #   qt_arch: gcc_64
-          #   std_cpp: C++14
 
     runs-on: "${{ matrix.host_system }}"
     env:
