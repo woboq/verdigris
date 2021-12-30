@@ -41,8 +41,9 @@ Project {
                     "-ftemplate-backtrace-limit=0", // do not cut template backtraces
                     "-Wno-gnu-zero-variadic-macro-arguments" // accept this extension
                 )
-                cpp.cxxStandardLibrary: "libc++"
-                cpp.staticLibraries: ["c++", "c++abi"]
+                // note: use qbs build parameters if you need this!
+                // cpp.cxxStandardLibrary: "libc++"
+                // cpp.staticLibraries: ["c++", "c++abi"]
             }
             Properties {
                 condition: qbs.toolchain.contains('gcc')

@@ -1986,7 +1986,11 @@ void tst_QObject::property()
     QVERIFY(mo->indexOfProperty("alpha") != -1);
     property = mo->property(mo->indexOfProperty("alpha"));
     QVERIFY(property.isEnumType());
+#if QT_VERSION < QT_VERSION_CHECK(6, 1, 0)
     QCOMPARE(property.typeName(), "Alpha");
+#else
+    QCOMPARE(property.typeName(), "PropertyObject::Alpha");
+#endif
     QCOMPARE(property.userType(), QMetaType::fromType<PropertyObject::Alpha>().id());
 
     QVariant var = object.property("alpha");
@@ -2068,7 +2072,11 @@ void tst_QObject::property()
     QVERIFY(mo->indexOfProperty("priority") != -1);
     property = mo->property(mo->indexOfProperty("priority"));
     QVERIFY(property.isEnumType());
+#if QT_VERSION < QT_VERSION_CHECK(6, 1, 0)
     QCOMPARE(property.typeName(), "Priority");
+#else
+    QCOMPARE(property.typeName(), "PropertyObject::Priority");
+#endif
     QCOMPARE(property.userType(), QMetaType::fromType<PropertyObject::Priority>().id());
 
     var = object.property("priority");
@@ -2089,7 +2097,11 @@ void tst_QObject::property()
     QVERIFY(mo->indexOfProperty("priority") != -1);
     property = mo->property(mo->indexOfProperty("priority"));
     QVERIFY(property.isEnumType());
+#if QT_VERSION < QT_VERSION_CHECK(6, 1, 0)
     QCOMPARE(property.typeName(), "Priority");
+#else
+    QCOMPARE(property.typeName(), "PropertyObject::Priority");
+#endif
     QCOMPARE(property.type(), QVariant::UserType);
     QCOMPARE(property.userType(), priorityMetaTypeId);
 
