@@ -225,11 +225,12 @@ struct MethodGenerator {
     template<class Method, class Index>
     constexpr void operator() (const Method& method, Index) {
         s.addString(method.name); // name
+        constexpr uint flags = adjustFlags(Method::flags, typename Method::IntegralConstant());
         s.addInts(
             (uint)Method::argCount,
             parameterIndex, //parameters
             1, //tag, always \0
-            adjustFlags(Method::flags, typename Method::IntegralConstant())
+            flags
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
             , s.metaTypeCount
 #endif
@@ -247,7 +248,8 @@ private:
             // Auto-detect the access specifier
             f |= isPublic<T, M>::value ? W_Access::Public.value : isProtected<T,M>::value ? W_Access::Protected.value : W_Access::Private.value;
         }
-        return f & static_cast<uint>(~W_Access::Private.value); // Because QMetaMethod::Private is 0, but not W_Access::Private;
+        f &= static_cast<uint>(~W_Access::Private.value); // Because QMetaMethod::Private is 0, but not W_Access::Private;
+        return f;
     }
 
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
@@ -703,7 +705,7 @@ struct LayoutBuilder {
         intCount += sizeof... (Ts);
     }
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
-    template<class T>
+    template<class T, bool = false>
     constexpr void addMetaType() {
         metaTypeCount += 1;
     }
@@ -790,12 +792,12 @@ struct DataBuilder {
     }
 
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
-    template<class T>
-    static constexpr const QtPrivate::QMetaTypeInterface *metaTypeInterface = QtPrivate::qTryMetaTypeInterfaceForType<T, QtPrivate::TypeAndForceComplete<T, std::false_type>>();
+    template<class T, bool isComplete>
+    static constexpr const QtPrivate::QMetaTypeInterface *metaTypeInterface = QtPrivate::qTryMetaTypeInterfaceForType<T, QtPrivate::TypeAndForceComplete<T, std::integral_constant<bool, isComplete>>>();
 
-    template<class T>
+    template<class T, bool isComplete = false>
     constexpr void addMetaType() {
-        *metaTypeP++ = metaTypeInterface<T>;
+        *metaTypeP++ = metaTypeInterface<T, isComplete>;
         metaTypeCount += 1;
     }
 #endif
@@ -818,7 +820,7 @@ constexpr void generateDataPass(State& state) {
     constexpr int enumValueOffset = constructorParamIndex + constructorParamOffset<L, T**>();
 
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
-    state.addInts(9); // revision
+    state.addInts(QT_VERSION >= QT_VERSION_CHECK(6, 2, 0) ? 10 : 9); // revision
 #else
     state.addInts(QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 8 : 7); // revision
 #endif
@@ -838,6 +840,10 @@ constexpr void generateDataPass(State& state) {
 
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
     foldState<L, PropertyStateTag, T**>(PropertyMetaTypeGenerator<State, T>{state});
+#endif
+
+#if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
+    state.template addMetaType<T, true>();
 #endif
 
     //if (state.intCount != methodOffset) throw "offset mismatch!";
@@ -1018,6 +1024,45 @@ inline auto propReset(F f, O *o) W_RETURN(((o->*f)(),0))
 template <typename... T>
 inline void propReset(T...) {}
 
+#if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
+// note: Qt 6.3 introduced a check here that allows only QObjects - but we need it for Gadgets as well
+template <typename, typename, typename, typename> struct FunctorCall;
+template <size_t... II, typename... SignalArgs, typename R, typename Function>
+struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<SignalArgs...>, R, Function> {
+    static void call(Function f, void **arg) {
+        f((*reinterpret_cast<typename QtPrivate::RemoveRef<SignalArgs>::Type *>(arg[II+1]))...), QtPrivate::ApplyReturnValue<R>(arg[0]);
+    }
+};
+template <size_t... II, typename... SignalArgs, typename R, typename... SlotArgs, typename SlotRet, class Obj>
+struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<SignalArgs...>, R, SlotRet (Obj::*)(SlotArgs...)> {
+    static void call(SlotRet (Obj::*f)(SlotArgs...), Obj *o, void **arg)
+    {
+        (o->*f)((*reinterpret_cast<typename QtPrivate::RemoveRef<SignalArgs>::Type *>(arg[II+1]))...), QtPrivate::ApplyReturnValue<R>(arg[0]);
+    }
+};
+template <size_t... II, typename... SignalArgs, typename R, typename... SlotArgs, typename SlotRet, class Obj>
+struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<SignalArgs...>, R, SlotRet (Obj::*)(SlotArgs...) const> {
+    static void call(SlotRet (Obj::*f)(SlotArgs...) const, Obj *o, void **arg)
+    {
+        (o->*f)((*reinterpret_cast<typename QtPrivate::RemoveRef<SignalArgs>::Type *>(arg[II+1]))...), QtPrivate::ApplyReturnValue<R>(arg[0]);
+    }
+};
+template <size_t... II, typename... SignalArgs, typename R, typename... SlotArgs, typename SlotRet, class Obj>
+struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<SignalArgs...>, R, SlotRet (Obj::*)(SlotArgs...) noexcept> {
+    static void call(SlotRet (Obj::*f)(SlotArgs...) noexcept, Obj *o, void **arg)
+    {
+        (o->*f)((*reinterpret_cast<typename QtPrivate::RemoveRef<SignalArgs>::Type *>(arg[II+1]))...), QtPrivate::ApplyReturnValue<R>(arg[0]);
+    }
+};
+template <size_t... II, typename... SignalArgs, typename R, typename... SlotArgs, typename SlotRet, class Obj>
+struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<SignalArgs...>, R, SlotRet (Obj::*)(SlotArgs...) const noexcept> {
+    static void call(SlotRet (Obj::*f)(SlotArgs...) const noexcept, Obj *o, void **arg)
+    {
+        (o->*f)((*reinterpret_cast<typename QtPrivate::RemoveRef<SignalArgs>::Type *>(arg[II+1]))...), QtPrivate::ApplyReturnValue<R>(arg[0]);
+    }
+};
+#endif
+
 struct FriendHelper {
 
     template<typename T>
@@ -1083,9 +1128,20 @@ QT_WARNING_POP
     static void invokeMethod(T *_o, int _id, void **_a) {
         if (_id == I) {
             using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
-            constexpr auto f = ObjI::method(index<I>).func;
-            using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
-            P::template call<typename P::Arguments, typename P::ReturnType>(f, _o, _a);
+            constexpr auto method = ObjI::method(index<I>);
+            using Func = typename decltype(method)::Func;
+            using FP = QtPrivate::FunctionPointer<Func>;
+#if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
+            if constexpr (FP::IsPointerToMemberFunction) {
+                FunctorCall<typename decltype(method)::ArgSequence, typename FP::Arguments, typename FP::ReturnType, Func>::call(method.func, _o, _a);
+            }
+            else {
+                (void)_o;
+                FunctorCall<typename decltype(method)::ArgSequence, typename FP::Arguments, typename FP::ReturnType, Func>::call(method.func, _a);
+            }
+#else
+            FP::template call<typename FP::Arguments, typename FP::ReturnType>(method.func, _o, _a);
+#endif
         }
     }
 

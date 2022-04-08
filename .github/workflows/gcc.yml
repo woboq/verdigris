@@ -5,6 +5,7 @@ on: push
 jobs:
   linux-qmake:
     name: "${{ matrix.host_system }} QMake Gcc ${{ matrix.gcc_version }} Qt ${{ matrix.qt_version }} ${{ matrix.std_cpp }}"
+    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
@@ -14,24 +15,28 @@ jobs:
             qt_version: 6.2.2
             qt_arch: gcc_64
             std_cpp: C++17
+            experimental: false
 
           - host_system: ubuntu-20.04
             gcc_version: 10
             qt_version: 6.0.0
             qt_arch: gcc_64
             std_cpp: C++17
+            experimental: false
 
           - host_system: ubuntu-20.04
             gcc_version: 9
             qt_version: 5.15.2
             qt_arch: gcc_64
             std_cpp: C++17
+            experimental: false
 
           - host_system: ubuntu-18.04
             gcc_version: 7
             qt_version: 5.9.1
             qt_arch: gcc_64
             std_cpp: C++14
+            experimental: true
 
     runs-on: "${{ matrix.host_system }}"
     steps:

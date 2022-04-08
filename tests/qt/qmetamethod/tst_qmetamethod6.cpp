@@ -55,6 +55,10 @@ private:
     void parameterMetaType(); W_SLOT(parameterMetaType, W_Access::Private)
 
     void parameterTypeName(); W_SLOT(parameterTypeName, W_Access::Private)
+
+#if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
+    void isConst(); W_SLOT(isConst, W_Access::Private)
+#endif
 };
 W_OBJECT_IMPL(tst_QMetaMethod)
 
@@ -94,7 +98,11 @@ public:
     W_CONSTRUCTOR(bool, int, uint, qlonglong, qulonglong, double, long, short, char, ulong, ushort, uchar, float);
     W_CONSTRUCTOR(bool, int);
 
+#if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
+    void voidInvokable() const;
+#else
     void voidInvokable();
+#endif
     W_INVOKABLE(voidInvokable)
     void voidInvokableInt(int voidInvokableIntArg);
     W_INVOKABLE(voidInvokableInt)
@@ -185,7 +193,11 @@ MethodTestObject::MethodTestObject(bool, int, uint, qlonglong, qulonglong,
                                    uchar, float) {}
 MethodTestObject::MethodTestObject(bool, int) {}
 
+#if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
+void MethodTestObject::voidInvokable() const {}
+#else
 void MethodTestObject::voidInvokable() {}
+#endif
 void MethodTestObject::voidInvokableInt(int) {}
 void MethodTestObject::voidInvokableQReal(qreal) {}
 void MethodTestObject::voidInvokableQString(const QString &) {}
@@ -915,5 +927,25 @@ void tst_QMetaMethod::parameterTypeName()
     }
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
+void tst_QMetaMethod::isConst()
+{
+    auto mo = MethodTestObject::staticMetaObject;
+    {
+        const auto normalized = QMetaObject::normalizedSignature("qrealInvokable()");
+        const int idx = mo.indexOfSlot(normalized);
+        QMetaMethod mm = mo.method(idx);
+        QVERIFY(mm.isValid());
+        QCOMPARE(mm.isConst(), false);
+    }
+    {
+        const auto normalized = QMetaObject::normalizedSignature("voidInvokable()");
+        const int idx = mo.indexOfSlot(normalized);
+        QMetaMethod mm = mo.method(idx);
+        QVERIFY(mm.isValid());
+        QCOMPARE(mm.isConst(), true);
+    }
+}
+#endif
 
 QTEST_MAIN(tst_QMetaMethod)

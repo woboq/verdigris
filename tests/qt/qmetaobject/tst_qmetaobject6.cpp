@@ -27,6 +27,10 @@
 ****************************************************************************/
 
 #include <QtTest/QtTest>
+#if QT_VERSION >= QT_VERSION_CHECK(6,1,0)
+#include <QSignalSpy>
+#include <QSortFilterProxyModel>
+#endif
 
 #include <qobject.h>
 #include <qmetaobject.h>
@@ -336,6 +340,10 @@ private slots:
     DECLARE_TEST(propertyConstant)
     DECLARE_TEST(propertyFinal)
 
+#if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
+    DECLARE_TEST(metaType)
+#endif
+
     DECLARE_TEST(stdSet)
     DECLARE_TEST(classInfo)
 
@@ -343,6 +351,11 @@ private slots:
 
     DECLARE_TEST(indexOfMethod_data)
     DECLARE_TEST(indexOfMethod)
+
+#if QT_VERSION >= QT_VERSION_CHECK(6,1,0)
+    DECLARE_TEST(firstMethod_data)
+    DECLARE_TEST(firstMethod)
+#endif
 
     DECLARE_TEST(indexOfMethodPMF)
 
@@ -1718,6 +1731,17 @@ void tst_QMetaObject::propertyFinal()
     QVERIFY(!prop.isFinal());
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
+void tst_QMetaObject::metaType()
+{
+    QCOMPARE(QObject::staticMetaObject.metaType(), QMetaType::fromType<QObject>());
+    QCOMPARE(MyGadget::staticMetaObject.metaType(), QMetaType::fromType<MyGadget>());
+    QCOMPARE(QAbstractProxyModel::staticMetaObject.metaType(), QMetaType::fromType<QAbstractProxyModel>());
+    auto qtNameSpaceMetaType = Qt::staticMetaObject.metaType();
+    QVERIFY2(!qtNameSpaceMetaType.isValid(), qtNameSpaceMetaType.name());
+}
+#endif
+
 class ClassInfoTestObjectA : public QObject
 {
     W_OBJECT(ClassInfoTestObjectA)
@@ -1814,6 +1838,49 @@ void tst_QMetaObject::indexOfMethod()
     QCOMPARE(object->metaObject()->indexOfSlot(name), isSignal ? -1 : idx);
     QCOMPARE(object->metaObject()->indexOfSignal(name), !isSignal ? -1 : idx);
 }
+
+#if QT_VERSION >= QT_VERSION_CHECK(6,1,0)
+class Base : public QObject {
+    W_OBJECT(Base)
+public:
+    int test() {return 0;} W_SLOT(test)
+    int baseOnly() {return 0;} W_SLOT(baseOnly)
+};
+
+class Derived : public Base {
+    W_OBJECT(Derived)
+
+public:
+    int test() {return 1;} W_SLOT(test)
+};
+
+void tst_QMetaObject::firstMethod_data()
+{
+    QTest::addColumn<QByteArray>("name");
+    QTest::addColumn<QMetaMethod>("method");
+
+    const QMetaObject &derived = Derived::staticMetaObject;
+    const QMetaObject &base = Base::staticMetaObject;
+
+    QTest::newRow("own method") << QByteArray("test") << derived.method(derived.indexOfMethod("test()"));
+    QTest::newRow("parent method") << QByteArray("baseOnly") << derived.method(base.indexOfMethod("baseOnly()"));
+    QTest::newRow("invalid") << QByteArray("invalid") << QMetaMethod();
+}
+
+void tst_QMetaObject::firstMethod()
+{
+    QFETCH(QByteArray, name);
+    QFETCH(QMetaMethod, method);
+
+#ifdef QT_BUILD_INTERNAL
+    QMetaMethod firstMethod = QMetaObjectPrivate::firstMethod(&Derived::staticMetaObject, name);
+    QCOMPARE(firstMethod, method);
+#endif
+}
+
+W_OBJECT_IMPL(Base)
+W_OBJECT_IMPL(Derived)
+#endif
 
 void tst_QMetaObject::indexOfMethodPMF()
 {

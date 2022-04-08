@@ -1,4 +1,5 @@
 import qbs
+import qbs.Utilities
 
 Project {
     references: [
@@ -13,8 +14,13 @@ Project {
         Depends { name: "cpp" }
         cpp.defines: base.concat("QT_DISABLE_DEPRECATED_BEFORE=0", "QT_NO_DEBUG")
         Depends { name: "Verdigris" }
+        Depends { name: "Qt.core" }
         Depends { name: "Qt.network" }
         Depends { name: "Qt.test" }
+        Depends {
+            name: "Qt.testlib-private"
+            condition: Utilities.versionCompare(Qt.core.version, "6.2") >= 0
+        }
         Depends { name: "signalbug" }
 
         Properties {
@@ -27,14 +33,14 @@ Project {
 
         Group {
             name: "qt5"
-            condition: Qt.core.versionMajor < 6
+            condition: Qt.core.versionMajor === 5
             files: [
                 "tst_qobject5.cpp",
             ]
         }
         Group {
             name: "qt6"
-            condition: Qt.core.versionMajor >= 6
+            condition: Qt.core.versionMajor === 6
             files: [
                 "tst_qobject6.cpp",
             ]
