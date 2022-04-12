@@ -36,7 +36,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - image: arbmind/qbs-clang-libstdcpp-qt:1.21.0-14-11-6.2.4
+        - image: arbmind/qbs-clang-libstdcpp-qt:1.22.0-14-11-6.3.0
         - image: arbmind/qbs-clang-libstdcpp-qt:1.21.0-13-10-6.2.4
         - image: arbmind/qbs-clang13-qt515:latest
         - image: arbmind/qbs-clang8-qt512:1
@@ -61,6 +61,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - host_system: ubuntu-20.04
+            clang_version: 12
+            qt_version: 6.3.0
+            qt_arch: gcc_64
+            std_cpp: C++20
+
           - host_system: ubuntu-20.04
             clang_version: 12
             qt_version: 6.2.2
