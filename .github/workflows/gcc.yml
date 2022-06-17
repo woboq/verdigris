@@ -53,13 +53,6 @@ jobs:
             std_cpp: C++17
             experimental: false
 
-          - host_system: ubuntu-20.04
-            gcc_version: 9
-            qt_version: 5.15.2
-            qt_arch: gcc_64
-            std_cpp: C++17
-            experimental: false
-
     runs-on: "${{ matrix.host_system }}"
     steps:
       - name: Cache Qt

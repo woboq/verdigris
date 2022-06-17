@@ -17,8 +17,8 @@ jobs:
     steps:
       - name: Install Qt
         run: |
-          HOMEBREW_NO_AUTO_UPDATE=1 brew install qt5
-          brew link qt5 --force
+          HOMEBREW_NO_AUTO_UPDATE=1 brew install qt6
+          brew link qt6 --force
           which qmake
           qmake --version
 
@@ -37,8 +37,6 @@ jobs:
         include:
         - image: arbmind/qbs-clang-libstdcpp-qt:1.22.0-14-11-6.3.0
         - image: arbmind/qbs-clang-libstdcpp-qt:1.21.0-13-10-6.2.4
-        - image: arbmind/qbs-clang13-qt515:latest
-        - image: arbmind/qbs-clang8-qt512:1
 
     runs-on: ubuntu-latest
     steps:
@@ -75,12 +73,6 @@ jobs:
           - host_system: ubuntu-20.04
             clang_version: 11
             qt_version: 6.0.0
-            qt_arch: gcc_64
-            std_cpp: C++17
-
-          - host_system: ubuntu-20.04
-            clang_version: 10
-            qt_version: 5.15.2
             qt_arch: gcc_64
             std_cpp: C++17
 
