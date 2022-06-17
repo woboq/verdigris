@@ -21,7 +21,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-
 #ifndef Q_MOC_RUN // don't define anything when moc is run
 
 #include <QtCore/qobjectdefs.h>
@@ -35,10 +34,10 @@ namespace w_internal {
 using std::index_sequence; // From C++14, make sure to enable the C++14 option in your compiler
 using std::make_index_sequence;
 
-/// integral_constant with an inheritance based fallback
-struct IndexBase {};
-template <size_t> struct Index : IndexBase {};
-template <size_t I> constexpr auto index = Index<I>{};
+/// faster compile time values
+template <size_t> struct I;
+template <size_t i> using Index = const I<i>*;
+template <size_t i> inline constexpr Index<i> index = nullptr;
 
 /// constexpr friendly string_view
 struct StringView {
@@ -626,9 +625,9 @@ namespace w_internal {
 /// This overload is found if no better overload was found.
 /// All overloads are found using ADL in the QObject T
 template<class State, class TPP>
-void w_state(IndexBase, State, TPP);
+void w_state(const void*, State, TPP);
 
-template<size_t L, class State, class TPP, size_t N , size_t M, size_t X = (N+M)/2>
+template<size_t L, class State, class TPP, size_t N, size_t M, size_t X = (N+M)/2>
 constexpr size_t countBetween() {
     using R = decltype(w_state(index<X>, State{}, TPP{}));
     if constexpr (N==X) {
