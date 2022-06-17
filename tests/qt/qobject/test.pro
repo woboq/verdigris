@@ -9,7 +9,7 @@ versionAtLeast(QT_VERSION, 6.2.0) {
 SOURCES = tst_qobject6.cpp
 
 # Force C++17 if available (needed due to P0012R1)
-contains(QT_CONFIG, c++1z): CONFIG += c++1z
+contains(QT_CONFIG, c++20): CONFIG += c++20
 
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0
 
