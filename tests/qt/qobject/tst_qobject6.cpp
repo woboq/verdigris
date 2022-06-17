@@ -8450,8 +8450,12 @@ void tst_QObject::singleShotConnection()
 void tst_QObject::objectNameBinding()
 {
     QObject obj;
+#if defined(Q_OS_WINDOWS) && __has_include(<source_location>) && __cplusplus >= 202002L
+    (void)obj; // Q_CORE_EXPORT QPropertyBindingSourceLocation leads to linker errors
+#else
     QTestPrivate::testReadWritePropertyBasics<QObject, QString>(obj, "test1", "test2",
                                                                 "objectName");
+#endif
 }
 #endif
 #if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
