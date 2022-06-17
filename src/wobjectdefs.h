@@ -37,7 +37,7 @@ using std::make_index_sequence;
 /// faster compile time values
 template <size_t> struct I;
 template <size_t i> using Index = const I<i>*;
-template <size_t i> inline constexpr Index<i> index = nullptr;
+template <size_t i> inline constexpr auto index = Index<i>{};
 
 /// constexpr friendly string_view
 struct StringView {
@@ -654,14 +654,14 @@ constexpr size_t count() {
 template<size_t L, class State, class TPP>
 constexpr auto stateCount = count<L, State, TPP>();
 
-struct SlotStateTag {};
-struct SignalStateTag {};
-struct MethodStateTag {};
-struct ConstructorStateTag {};
-struct PropertyStateTag {};
-struct EnumStateTag {};
-struct ClassInfoStateTag {};
-struct InterfaceStateTag {};
+using SlotStateTag = const struct SlotState*;
+using SignalStateTag = const struct SignalState*;
+using MethodStateTag = const struct MethodState*;
+using ConstructorStateTag = const struct ConstructorState*;
+using PropertyStateTag = const struct PropertyState*;
+using EnumStateTag = const struct EnumState*;
+using ClassInfoStateTag = const struct ClassInfoState*;
+using InterfaceStateTag = const struct InterfaceState*;
 
 } // namespace w_internal
 
