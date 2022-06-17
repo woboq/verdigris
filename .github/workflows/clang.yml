@@ -70,12 +70,6 @@ jobs:
             qt_arch: gcc_64
             std_cpp: C++20
 
-          - host_system: ubuntu-20.04
-            clang_version: 11
-            qt_version: 6.0.0
-            qt_arch: gcc_64
-            std_cpp: C++17
-
     runs-on: "${{ matrix.host_system }}"
     env:
       QMAKESPEC: linux-clang

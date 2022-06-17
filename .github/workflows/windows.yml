@@ -76,11 +76,6 @@ jobs:
             qt_version: "6.2.2"
             qt_arch: win64_msvc2019_64
 
-          - host_system: windows-2019
-            cl_version: "14.29"
-            qt_version: "6.0.0"
-            qt_arch: win64_msvc2019_64
-
     runs-on: "${{ matrix.host_system }}"
     steps:
       - name: Cache Qt
