@@ -64,7 +64,6 @@ public:
         W_CPP_SIGNAL_IMPL(decltype (&tst_CppApi::notifyPropertyChanged<I>), MySignals, I, 0);
     }
 
-#if __cplusplus > 201700L
     template<size_t I>
     static constexpr auto signalName() {
         if constexpr (I == 0) return w_cpp::viewLiteral("nameChanged");
@@ -75,26 +74,9 @@ public:
     struct MySignals {
         constexpr static auto signal = w_cpp::makeSignalBuilder(signalName<I>(), &tst_CppApi::notifyPropertyChanged<I>).build();
     };
-#else
-    template<size_t I>
-    struct MySignals;
-    template<>
-    struct MySignals<0> {
-        constexpr static auto signal = w_cpp::makeSignalBuilder(w_cpp::viewLiteral("nameChanged"), &tst_CppApi::notifyPropertyChanged<0>).build();
-    };
-    template<>
-    struct MySignals<1> {
-        constexpr static auto signal = w_cpp::makeSignalBuilder(w_cpp::viewLiteral("ageChanged"), &tst_CppApi::notifyPropertyChanged<1>).build();
-    };
-    template<>
-    struct MySignals<2> {
-        constexpr static auto signal = w_cpp::makeSignalBuilder(w_cpp::viewLiteral("levelChanged"), &tst_CppApi::notifyPropertyChanged<2>).build();
-    };
-#endif
     W_CPP_SIGNAL(MySignals)
 
 private:
-#if __cplusplus > 201700L
     template<size_t I, class = std::enable_if_t<(I < 2)>>
     struct MyProperties {
         constexpr static auto property = []{
@@ -116,28 +98,6 @@ private:
             }
         }();
     };
-#else
-    template<size_t I>
-    struct MyProperties;
-    template<>
-    struct MyProperties<0> {
-        constexpr static auto property = w_cpp::makeProperty<QString>(w_cpp::viewLiteral("name"), w_cpp::viewLiteral("QString"))
-                .setGetter(&tst_CppApi::getName)
-                .setNotify(&tst_CppApi::notifyPropertyChanged<0>);
-    };
-    template<>
-    struct MyProperties<1> {
-        constexpr static auto property = w_cpp::makeProperty<int>(w_cpp::viewLiteral("age"), w_cpp::viewLiteral("int"))
-                .setMember(&tst_CppApi::m_age)
-                .setNotify(&tst_CppApi::notifyPropertyChanged<1>);
-    };
-    template<>
-    struct MyProperties<2> {
-        constexpr static auto property = w_cpp::makeProperty<Level>(w_cpp::viewLiteral("level"), w_cpp::viewLiteral("Level"))
-                .setGetter(&tst_CppApi::getLevel)
-                .setNotify(&tst_CppApi::notifyPropertyChanged<2>);
-    };
-#endif
     W_CPP_PROPERTY(MyProperties)
 };
 

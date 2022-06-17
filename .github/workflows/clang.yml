@@ -10,7 +10,6 @@ jobs:
       matrix:
         include:
         - std_cpp: C++17
-        - std_cpp: C++14
 
     runs-on: "macos-10.15"
     env:
@@ -84,12 +83,6 @@ jobs:
             qt_version: 5.15.2
             qt_arch: gcc_64
             std_cpp: C++17
-
-          - host_system: ubuntu-18.04
-            clang_version: 9
-            qt_version: 5.12.3
-            qt_arch: gcc_64
-            std_cpp: C++14
 
     runs-on: "${{ matrix.host_system }}"
     env:

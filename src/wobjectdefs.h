@@ -31,49 +31,14 @@
 #define W_VERSION 0x010200
 
 namespace w_internal {
+
 using std::index_sequence; // From C++14, make sure to enable the C++14 option in your compiler
-
-#ifdef W_USE_CUSTOM_MAKE_INDEX_SEQUENCE
-// The default std::make_index_sequence from libstdc++ is recursing O(N) times which is reaching
-// recursion limits level for big strings. This implementation has only O(log N) recursion
-template<size_t... I1, size_t... I2>
-index_sequence<I1... , (I2 +(sizeof...(I1)))...>
-make_index_sequence_helper_merge(index_sequence<I1...>, index_sequence<I2...>);
-
-template<std::size_t N> struct make_index_sequence_helper {
-    using part1 = typename make_index_sequence_helper<(N+1)/2>::result;
-    using part2 = typename make_index_sequence_helper<N/2>::result;
-    using result = decltype(make_index_sequence_helper_merge(part1(), part2()));
-};
-template<> struct make_index_sequence_helper<1> { using result = index_sequence<0>; };
-template<> struct make_index_sequence_helper<0> { using result = index_sequence<>; };
-template<std::size_t N> using make_index_sequence = typename make_index_sequence_helper<N>::result;
-#else
 using std::make_index_sequence;
-#endif
 
 /// integral_constant with an inheritance based fallback
 struct IndexBase {};
 template <size_t> struct Index : IndexBase {};
 template <size_t I> constexpr auto index = Index<I>{};
-
-template<typename... Args> constexpr void ordered(Args...) {}
-template<class T> constexpr void ordered2(std::initializer_list<T>) {}
-
-/// Compute the sum of many integers
-template<typename... Args>
-constexpr int sums(Args... args) {
-#if __cplusplus > 201700L
-    return static_cast<int>((args + ... + 0));
-#else
-    auto r = int{};
-    ordered2<int>({(r += args)...});
-    return r;
-#endif
-}
-// This indirection is required to work around a MSVC bug. (See https://github.com/woboq/verdigris/issues/6 )
-template <int ...args>
-constexpr int summed = sums(args...);
 
 /// constexpr friendly string_view
 struct StringView {
@@ -317,19 +282,19 @@ struct MetaMethodInfo {
 
 // Called from the W_SLOT macro
 template<typename F, typename ParamTypes, int... Flags, typename IntegralConstant>
-constexpr MetaMethodInfo<F, summed<Flags...> | W_MethodType::Slot.value, IntegralConstant, ParamTypes>
+constexpr MetaMethodInfo<F, (Flags + ... + 0) | W_MethodType::Slot.value, IntegralConstant, ParamTypes>
 makeMetaSlotInfo(F f, StringView name, IntegralConstant, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
 { return { f, name, paramTypes, {} }; }
 
 // Called from the W_METHOD macro
 template<typename F, typename ParamTypes, int... Flags, typename IntegralConstant>
-constexpr MetaMethodInfo<F, summed<Flags...> | W_MethodType::Method.value, IntegralConstant, ParamTypes>
+constexpr MetaMethodInfo<F, (Flags + ... + 0) | W_MethodType::Method.value, IntegralConstant, ParamTypes>
 makeMetaMethodInfo(F f, StringView name, IntegralConstant, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
 { return { f, name, paramTypes, {} }; }
 
 // Called from the W_SIGNAL macro
 template<typename F, typename ParamTypes, typename ParamNames, int... Flags, typename IntegralConstant>
-constexpr MetaMethodInfo<F, summed<Flags...> | W_MethodType::Signal.value, IntegralConstant,
+constexpr MetaMethodInfo<F, (Flags + ... + 0) | W_MethodType::Signal.value, IntegralConstant,
                             ParamTypes, ParamNames>
 makeMetaSignalInfo(F f, StringView name, IntegralConstant, const ParamTypes &paramTypes,
                     const ParamNames &paramNames, W_MethodFlags<Flags>...)
@@ -559,40 +524,6 @@ template<typename T> T &getParentObjectHelper(void* (T::*)(const char*));
 // helper class that can access the private member of any class with W_OBJECT
 struct FriendHelper;
 
-inline namespace w_ShouldBeInQt {
-// qOverload is already in Qt 5.7, but we need it with older version.
-// Note that as of Qt 5.11, it is still not enabled with MSVC as Qt relies on feature macro.
-template <typename... Args>
-struct QNonConstOverload
-{
-    template <typename R, typename T>
-    constexpr auto operator()(R (T::*ptr)(Args...)) const
-    { return ptr; }
-};
-template <typename... Args>
-struct QConstOverload
-{
-    template <typename R, typename T>
-    constexpr auto operator()(R (T::*ptr)(Args...) const) const
-    { return ptr; }
-};
-template <typename... Args>
-struct QOverload : QConstOverload<Args...>, QNonConstOverload<Args...>
-{
-    using QConstOverload<Args...>::operator();
-    using QNonConstOverload<Args...>::operator();
-
-    template <typename R>
-    constexpr auto operator()(R (*ptr)(Args...)) const
-    { return ptr; }
-};
-template <typename... Args> constexpr QOverload<Args...> qOverload = {};
-
-#ifndef QT_ANNOTATE_CLASS // Was added in Qt 5.6.1
-#define QT_ANNOTATE_CLASS(...)
-#endif
-} // namespace w_ShouldBeInQt
-
 } // namespace w_internal
 
 #if defined(Q_CC_MSVC) && !defined(Q_CC_CLANG)
@@ -660,7 +591,7 @@ template <typename... Args> constexpr QOverload<Args...> qOverload = {};
 
 #define W_OVERLOAD_RESOLVE(...) W_MACRO_DELAY(W_OVERLOAD_RESOLVE2,W_OVERLOAD_RESOLVE_HELPER __VA_ARGS__,)
 #define W_OVERLOAD_RESOLVE2(A, ...) W_MACRO_DELAY2(W_MACRO_FIRST,W_OVERLOAD_RESOLVE_HELPER_##A)
-#define W_OVERLOAD_RESOLVE_HELPER(...) YES(w_internal::qOverload<__VA_ARGS__>)
+#define W_OVERLOAD_RESOLVE_HELPER(...) YES(qOverload<__VA_ARGS__>)
 #define W_OVERLOAD_RESOLVE_HELPER_YES(...) (__VA_ARGS__)
 #define W_OVERLOAD_RESOLVE_HELPER_W_OVERLOAD_RESOLVE_HELPER ,
 
@@ -697,7 +628,6 @@ namespace w_internal {
 template<class State, class TPP>
 void w_state(IndexBase, State, TPP);
 
-#if __cplusplus > 201700L
 template<size_t L, class State, class TPP, size_t N , size_t M, size_t X = (N+M)/2>
 constexpr size_t countBetween() {
     using R = decltype(w_state(index<X>, State{}, TPP{}));
@@ -724,47 +654,6 @@ constexpr size_t count() {
 
 template<size_t L, class State, class TPP>
 constexpr auto stateCount = count<L, State, TPP>();
-#else
-template<size_t L, class State, class TPP
-          , size_t N, size_t M, size_t X = (N+M)/2
-          , bool noX = std::is_same<void, decltype(w_state(index<X>, State{}, TPP{}))>::value
-          , bool up = N==X>
-struct CountBetween;
-
-template<size_t L, class State, class TPP, size_t N, size_t M, size_t X>
-struct CountBetween<L, State, TPP, N, M, X, true, true> {
-    static constexpr auto value = N;
-};
-template<size_t L, class State, class TPP, size_t N, size_t M, size_t X>
-struct CountBetween<L, State, TPP, N, M, X, false, true> {
-    static constexpr auto value = M;
-};
-template<size_t L, class State, class TPP, size_t N, size_t M, size_t X>
-struct CountBetween<L, State, TPP, N, M, X, true, false> {
-    static constexpr auto value = CountBetween<L, State, TPP, N, X>::value;
-};
-template<size_t L, class State, class TPP, size_t N, size_t M, size_t X>
-struct CountBetween<L, State, TPP, N, M, X, false, false> {
-    static constexpr auto value = CountBetween<L, State, TPP, X, M>::value;
-};
-
-template<size_t L, class State, class TPP
-          , size_t N = 1
-          , bool noX = std::is_same<void, decltype(w_state(index<N>, State{}, TPP{}))>::value>
-struct Count;
-
-template<size_t L, class State, class TPP, size_t N>
-struct Count<L, State, TPP, N, true> {
-    static constexpr auto value = CountBetween<L, State, TPP, N/2, N>::value;
-};
-template<size_t L, class State, class TPP, size_t N>
-struct Count<L, State, TPP, N, false> {
-    static constexpr auto value = Count<L, State, TPP, N*2>::value;
-};
-
-template<size_t L, class State, class TPP>
-constexpr auto stateCount = Count<L, State, TPP>::value;
-#endif
 
 struct SlotStateTag {};
 struct SignalStateTag {};

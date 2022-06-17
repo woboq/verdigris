@@ -2,14 +2,6 @@
 #include "wobjectdefs.h"
 
 namespace w_internal {
-#if __cplusplus <= 201700L
-template<bool... Bs>
-constexpr bool all() {
-    bool b = true;
-    ordered2<bool>({(b = b && Bs)...});
-    return b;
-}
-#endif
 
 template<class F, int Flags, class IC = int, class ParamTypes = w_internal::StringViewArray<>, class ParamNames = w_internal::StringViewArray<>>
 struct MetaMethodInfoBuilder {
@@ -20,31 +12,19 @@ struct MetaMethodInfoBuilder {
     static constexpr int flags = Flags;
     using IntegralConstant = IC;
 
-#if __cplusplus > 201700L
     template<class... Args, class = std::enable_if_t<(std::is_same_v<std::decay_t<Args>, StringView> && ...)>>
-#else
-    template<class... Args, class = std::enable_if_t<w_internal::all<std::is_same<std::decay_t<Args>, StringView>::value...>()>>
-#endif
-    constexpr auto setParamTypes(Args... paramTypes) const
+    constexpr auto setParamTypes(Args... newParamTypes) const
         -> MetaMethodInfoBuilder<F, Flags, IC, w_internal::StringViewArray<sizeof... (Args)>, ParamNames> {
-        return {name, func, {paramTypes...}, paramNames};
+        return {name, func, {newParamTypes...}, paramNames};
     }
-#if __cplusplus > 201700L
     template<class... Args, class = std::enable_if_t<(std::is_same_v<std::decay_t<Args>, StringView> && ...)>>
-#else
-    template<class... Args, class = std::enable_if_t<w_internal::all<std::is_same<std::decay_t<Args>, StringView>::value...>()>>
-#endif
-    constexpr auto setParamNames(Args... paramNames) const
+    constexpr auto setParamNames(Args... newParamNames) const
         -> MetaMethodInfoBuilder<F, Flags, IC, ParamTypes, w_internal::StringViewArray<sizeof... (Args)>> {
-        return {name, func, paramTypes, {paramNames...}};
+        return {name, func, paramTypes, {newParamNames...}};
     }
     template<int... fs>
     constexpr auto addFlags(w_internal::W_MethodFlags<fs>...) const
-#if __cplusplus > 201700L
         -> MetaMethodInfoBuilder<F, (fs | ... | Flags), IC, ParamTypes, ParamNames> {
-#else
-        -> MetaMethodInfoBuilder<F, w_internal::summed<fs ..., Flags>, IC, ParamTypes, ParamNames> {
-#endif
             return {name, func, paramTypes, paramNames};
     }
     template<class IC2>

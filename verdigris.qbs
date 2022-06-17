@@ -23,7 +23,7 @@ Project {
         Export {
             Depends { name: "cpp" }
             Depends { name: "Qt.core" }
-            cpp.cxxLanguageVersion: "c++14"
+            cpp.cxxLanguageVersion: "c++20"
             cpp.includePaths: ['src']
 
             Properties {
@@ -59,7 +59,6 @@ Project {
     Product {
         name: "[Extra Files]"
         files: [
-            ".appveyor.yml",
             ".github/workflows/clang.yml",
             ".github/workflows/gcc.yml",
             ".github/workflows/windows.yml",
