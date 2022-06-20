@@ -5611,7 +5611,7 @@ struct MoveOnly
     explicit MoveOnly(int v = 1) : value(v) {}
     MoveOnly(MoveOnly &&o) : value(o.value) { o.value = -1; }
     MoveOnly &operator=(MoveOnly &&o) { value = o.value; o.value = -1; return *this;  }
-    Q_DISABLE_COPY(MoveOnly);
+    Q_DISABLE_COPY(MoveOnly)
 };
 
 W_REGISTER_ARGTYPE(MoveOnly)
@@ -7798,7 +7798,7 @@ void tst_QObject::functorReferencesConnection()
     }
     {
         struct DestroyEmit {
-            Q_DISABLE_COPY(DestroyEmit);
+            Q_DISABLE_COPY(DestroyEmit)
             explicit DestroyEmit(SenderObject *obj) : obj(obj) {}
             SenderObject *obj;
             ~DestroyEmit() {

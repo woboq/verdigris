@@ -5,11 +5,13 @@ on: [push, pull_request]
 jobs:
   osx-qmake:
     name: "OSX QMake Qt5 ${{ matrix.std_cpp }}"
+    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
         include:
-        - std_cpp: C++17
+        - experimental: true # seems clang version is too old
+          std_cpp: C++20
 
     runs-on: "macos-10.15"
     env:
@@ -58,15 +60,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - host_system: ubuntu-20.04
-            clang_version: 12
+          - host_system: ubuntu-22.04
+            clang_version: 14
             qt_version: 6.3.0
             qt_arch: gcc_64
             std_cpp: C++20
 
-          - host_system: ubuntu-20.04
-            clang_version: 12
-            qt_version: 6.2.2
+          - host_system: ubuntu-22.04
+            clang_version: 13
+            qt_version: 6.2.4
             qt_arch: gcc_64
             std_cpp: C++20
 

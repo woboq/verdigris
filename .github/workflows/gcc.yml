@@ -33,17 +33,17 @@ jobs:
       matrix:
         include:
           - host_system: ubuntu-22.04
-            gcc_version: 11
+            gcc_version: 12
             qt_version: 6.3.0
             qt_arch: gcc_64
-            std_cpp: C++17
+            std_cpp: C++20
             experimental: false
 
-          - host_system: ubuntu-20.04
-            gcc_version: 11
-            qt_version: 6.2.2
+          - host_system: ubuntu-22.04
+            gcc_version: 12
+            qt_version: 6.2.4
             qt_arch: gcc_64
-            std_cpp: C++17
+            std_cpp: C++20
             experimental: false
 
     runs-on: "${{ matrix.host_system }}"

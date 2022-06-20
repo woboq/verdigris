@@ -55,7 +55,7 @@ Project {
                 condition: qbs.toolchain.contains('gcc')
                 cpp.cxxFlags: base.concat(
                     "--pedantic", // best C++ compatibility
-                    "-Wall", "-Wextra", "-Wno-noexcept-type", // enable more warnings
+                    "-Wall", "-Wextra", "-Wno-noexcept-type", "-Wno-address", // enable more warnings
                     "-ftemplate-backtrace-limit=0" // do not cut template backtraces
                 )
             }
