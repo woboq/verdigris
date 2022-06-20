@@ -100,15 +100,15 @@ struct ClassInfoGenerator {
 };
 
 /// auto-detect the access specifiers
-template<class T, class M>
-concept IsPublic = std::is_same_v<void, decltype(T::w_GetAccessSpecifierHelper(M{}))>;
+template<class T, class IC>
+concept IsPublic = std::is_same_v<void, decltype(T::w_GetAccessSpecifierHelper(IC{}))>;
 
-template<class T>
+template<class T, class IC>
 struct Derived : T {
-    template<typename M, typename X = T> using Test = decltype(X::w_GetAccessSpecifierHelper(std::declval<M>()));
+    static constexpr bool w_accessOracle = requires { T::w_GetAccessSpecifierHelper(IC{}); };
 };
-template<class T, class M>
-concept IsProtected = !std::is_final_v<T> && std::is_same_v<void, typename Derived<T>::template Test<M>>;
+template<class T, class IC>
+concept IsProtected = !std::is_final_v<T> && Derived<T, IC>::w_accessOracle;
 
 template<class State, class T>
 struct MethodGenerator {
@@ -141,11 +141,11 @@ private:
     }
 
     template<class Method>
-    constexpr void registerMetaTypes(const Method& method) {
+    constexpr void registerMetaTypes(const Method&) {
         using FP = QtPrivate::FunctionPointer<typename Method::Func>;
         s.template addMetaType<typename FP::ReturnType>();
         using ArgsPtr = typename FP::Arguments*;
-        [this, &method]<class... Args>(QtPrivate::List<Args...>*) {
+        [this]<class... Args>(QtPrivate::List<Args...>*) {
             (s.template addMetaType<Args>(), ...);
         }(ArgsPtr{});
     }
@@ -184,9 +184,10 @@ struct PropertyGenerator {
     constexpr void operator() (const Prop& prop, Index<Idx>) {
         s.addString(prop.name);
         handleType<typename Prop::PropertyType>(s, prop.typeStr);
-        constexpr int moreFlags = (QtPrivate::IsQEnumHelper<typename Prop::PropertyType>::Value ? (0 | PropertyFlags::EnumOrFlag) : 0);
-        constexpr int finalFlag = std::is_final<T>::value ? (0 | PropertyFlags::Final) : 0;
-        constexpr int defaultFlags = (0 | PropertyFlags::Stored | PropertyFlags::Scriptable | PropertyFlags::Designable);
+
+        constexpr int moreFlags = QtPrivate::IsQEnumHelper<typename Prop::PropertyType>::Value ? 0 | PropertyFlags::EnumOrFlag : 0;
+        constexpr int finalFlag = std::is_final<T>::value ? 0 | PropertyFlags::Final : 0;
+        constexpr int defaultFlags = 0 | PropertyFlags::Stored | PropertyFlags::Scriptable | PropertyFlags::Designable;
         s.addInts(Prop::flags | moreFlags | finalFlag | defaultFlags);
         using Notify = decltype(prop.notify);
         if constexpr (std::is_same_v<Notify, Empty>) {
@@ -306,7 +307,7 @@ struct ConstructorParametersGenerator {
     State& s;
 
     template<typename... Args>
-    constexpr void operator() (const MetaConstructorInfo<Args...>& info) {
+    constexpr void operator() (const MetaConstructorInfo<Args...>&) {
         s.addInts(IsUnresolvedType | 1);
         handleArgTypes<Args...>(s, StringViewArray<>{}, make_index_sequence<sizeof...(Args)>{});
         s.addInts(((void)sizeof(Args),1)...); // all the names are 1 (for "\0")

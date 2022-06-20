@@ -702,7 +702,7 @@ void QtTestObject::testLongLong(qint64 ll1, quint64 ll2)
 
 void QtTestObject::testSender()
 {
-    slotResult = QString::asprintf("%p", sender());
+    slotResult = QString::asprintf("%p", static_cast<void*>(sender()));
 }
 
 void QtTestObject::slotWithUnregisteredParameterType(MyUnregisteredType)
@@ -1875,6 +1875,9 @@ void tst_QMetaObject::firstMethod()
 #ifdef QT_BUILD_INTERNAL
     QMetaMethod firstMethod = QMetaObjectPrivate::firstMethod(&Derived::staticMetaObject, name);
     QCOMPARE(firstMethod, method);
+#else
+    Q_UNUSED(name);
+    Q_UNUSED(method);
 #endif
 }
 

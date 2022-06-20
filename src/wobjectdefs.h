@@ -204,25 +204,23 @@ enum class PropertyFlags : int {
     Notify = 0x00400000,
     Revisioned = 0x00800000
 };
-consteval int operator|(int a, PropertyFlags b) { return a | static_cast<int>(b); }
+static constexpr int operator|(int a, PropertyFlags b) { return a | static_cast<int>(b); }
 
 template<int> struct MethodFlagT;
 template<int I> using MethodFlag = const MethodFlagT<I>*;
 template<int I> constexpr int methodFlagValue(MethodFlag<I>) { return I; }
 inline constexpr auto EmptyFlag = MethodFlag<0>{};
 
-// Mirror of QMetaMethod::MethodType
-enum MethodType : int {
+enum : int {
+    // Mirror of QMetaMethod::MethodType
     // From qmetaobject_p.h MethodFlags
     MethodMethod = 0x00,
     MethodSignal = 0x04,
     MethodSlot = 0x08,
     MethodConstructor = 0x0c,
     // MethodTypeMask = 0x0c,
-};
 
-// Mirror of QMetaMethod::Access
-enum Access : int {
+    // Mirror of QMetaMethod::Access
     // From qmetaobject_p.h MethodFlags
     AccessPrivate = 0x1000, // Note: Private has a higher number to differentiate it from the default
     AccessProtected = 0x01,
