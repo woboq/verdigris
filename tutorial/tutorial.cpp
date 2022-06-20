@@ -214,13 +214,13 @@ public:
 
     // Is equivalent to:
     W_PROPERTY(QString, prop2, &PropertyTutorial::value, &PropertyTutorial::setValue,
-               W_Notify, &PropertyTutorial::valueChanged)
+               W_Notify{}, &PropertyTutorial::valueChanged)
     // The setter and getter are matched by signature. add W_Notify before the notify signal
 
     // By member:
     W_PROPERTY(QString, prop3 MEMBER m_value NOTIFY valueChanged)
     //equivalent to
-    W_PROPERTY(QString, prop4, &PropertyTutorial::m_value, W_Notify, &PropertyTutorial::valueChanged)
+    W_PROPERTY(QString, prop4, &PropertyTutorial::m_value, W_Notify{}, &PropertyTutorial::valueChanged)
 
     // Optionally, you can put parentheses around the type, useful if it contains a comma
     QMap<int, int> m_map;

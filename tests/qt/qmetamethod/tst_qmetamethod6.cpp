@@ -40,24 +40,24 @@ class tst_QMetaMethod : public QObject
 
 private:
     void method_data(); W_SLOT(method_data)
-    void method(); W_SLOT(method, W_Access::Private)
+    void method(); W_SLOT(method, W_Access::Private{})
 
-    void invalidMethod(); W_SLOT(invalidMethod, W_Access::Private)
+    void invalidMethod(); W_SLOT(invalidMethod, W_Access::Private{})
 
-    void comparisonOperators(); W_SLOT(comparisonOperators, W_Access::Private)
+    void comparisonOperators(); W_SLOT(comparisonOperators, W_Access::Private{})
 
-    void fromSignal(); W_SLOT(fromSignal, W_Access::Private)
+    void fromSignal(); W_SLOT(fromSignal, W_Access::Private{})
 
-    void gadget(); W_SLOT(gadget, W_Access::Private)
-    void revision(); W_SLOT(revision, W_Access::Private)
+    void gadget(); W_SLOT(gadget, W_Access::Private{})
+    void revision(); W_SLOT(revision, W_Access::Private{})
 
-    void returnMetaType(); W_SLOT(returnMetaType, W_Access::Private)
-    void parameterMetaType(); W_SLOT(parameterMetaType, W_Access::Private)
+    void returnMetaType(); W_SLOT(returnMetaType, W_Access::Private{})
+    void parameterMetaType(); W_SLOT(parameterMetaType, W_Access::Private{})
 
-    void parameterTypeName(); W_SLOT(parameterTypeName, W_Access::Private)
+    void parameterTypeName(); W_SLOT(parameterTypeName, W_Access::Private{})
 
 #if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
-    void isConst(); W_SLOT(isConst, W_Access::Private)
+    void isConst(); W_SLOT(isConst, W_Access::Private{})
 #endif
 };
 W_OBJECT_IMPL(tst_QMetaMethod)

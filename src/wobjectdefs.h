@@ -35,9 +35,9 @@ using std::index_sequence; // From C++14, make sure to enable the C++14 option i
 using std::make_index_sequence;
 
 /// faster compile time values
-template <size_t> struct I;
-template <size_t i> using Index = const I<i>*;
-template <size_t i> inline constexpr auto index = Index<i>{};
+template<size_t> struct I;
+template<size_t i> using Index = const I<i>*;
+template<size_t i> inline constexpr auto index = Index<i>{};
 
 /// constexpr friendly string_view
 struct StringView {
@@ -61,7 +61,6 @@ struct StringViewArray {
 
     constexpr auto operator[] (size_t i) const { return data[i]; }
 };
-
 
 template<size_t SN>
 constexpr auto countParsedLiterals(const char (&s)[SN]) {
@@ -182,7 +181,7 @@ constexpr auto viewScopedLiterals(const char (&s)[SN]) -> StringViewArray<N> {
 //-----------
 
 // From qmetaobject_p.h
-enum class PropertyFlags  {
+enum class PropertyFlags : int {
     Invalid = 0x00000000,
     Readable = 0x00000001,
     Writable = 0x00000002,
@@ -205,39 +204,40 @@ enum class PropertyFlags  {
     Notify = 0x00400000,
     Revisioned = 0x00800000
 };
-constexpr uint operator|(uint a, PropertyFlags b) { return a | uint(b); }
+consteval int operator|(int a, PropertyFlags b) { return a | static_cast<int>(b); }
 
-template <int N> struct W_MethodFlags { static constexpr int value = N; };
-constexpr W_MethodFlags<0> W_EmptyFlag{};
+template<int> struct MethodFlagT;
+template<int I> using MethodFlag = const MethodFlagT<I>*;
+template<int I> constexpr int methodFlagValue(MethodFlag<I>) { return I; }
+inline constexpr auto EmptyFlag = MethodFlag<0>{};
+
+// Mirror of QMetaMethod::MethodType
+enum MethodType : int {
+    // From qmetaobject_p.h MethodFlags
+    MethodMethod = 0x00,
+    MethodSignal = 0x04,
+    MethodSlot = 0x08,
+    MethodConstructor = 0x0c,
+    // MethodTypeMask = 0x0c,
+};
+
+// Mirror of QMetaMethod::Access
+enum Access : int {
+    // From qmetaobject_p.h MethodFlags
+    AccessPrivate = 0x1000, // Note: Private has a higher number to differentiate it from the default
+    AccessProtected = 0x01,
+    AccessPublic = 0x02,
+    AccessMask = 0x03, //mask
+};
 
 } // namespace w_internal
 
-/// Objects that are used as flags in the W_SLOT macro
-
-// Mirror of QMetaMethod::Access
 namespace W_Access {
-    // From qmetaobject_p.h MethodFlags
-    //    AccessPrivate = 0x00,
-    //    AccessProtected = 0x01,
-    //    AccessPublic = 0x02,
-    //    AccessMask = 0x03, //mask
-    constexpr w_internal::W_MethodFlags<0x1000> Private{}; // Note: Private has a higher number to differentiate it from the default
-    constexpr w_internal::W_MethodFlags<0x01> Protected{};
-    constexpr w_internal::W_MethodFlags<0x02> Public{};
-}
 
-// Mirror of QMetaMethod::MethodType
-namespace W_MethodType {
-    // From qmetaobject_p.h MethodFlags
-    //    MethodMethod = 0x00,
-    //    MethodSignal = 0x04,
-    //    MethodSlot = 0x08,
-    //    MethodConstructor = 0x0c,
-    //    MethodTypeMask = 0x0c,
-    constexpr w_internal::W_MethodFlags<0x00> Method{};
-    constexpr w_internal::W_MethodFlags<0x04> Signal{};
-    constexpr w_internal::W_MethodFlags<0x08> Slot{};
-    constexpr w_internal::W_MethodFlags<0x0c> Constructor{};
+using Private = w_internal::MethodFlag<w_internal::AccessPrivate>;
+using Protected = w_internal::MethodFlag<w_internal::AccessProtected>;
+using Public = w_internal::MethodFlag<w_internal::AccessPublic>;
+
 }
 
 // From qmetaobject_p.h MethodFlags
@@ -245,19 +245,19 @@ namespace W_MethodType {
 //    MethodCloned = 0x20,
 //    MethodScriptable = 0x40,
 //    MethodRevisioned = 0x80
-constexpr w_internal::W_MethodFlags<0x10> W_Compat{};
-constexpr w_internal::W_MethodFlags<0x40> W_Scriptable{};
-constexpr struct {} W_Notify{};
-constexpr struct {} W_Reset{};
-constexpr std::integral_constant<int, int(w_internal::PropertyFlags::Constant)> W_Constant{};
-constexpr std::integral_constant<int, int(w_internal::PropertyFlags::Final)> W_Final{};
+using W_Compat = w_internal::MethodFlag<0x10>;
+using W_Scriptable = w_internal::MethodFlag<0x40>;
+using W_Notify = const struct NotifyTag*;
+using W_Reset = const struct ResetTag*;
+using W_Constant = w_internal::MethodFlag<static_cast<int>(w_internal::PropertyFlags::Constant)>;
+using W_Final = w_internal::MethodFlag<static_cast<int>(w_internal::PropertyFlags::Final)>;
 
 namespace w_internal {
 
 #if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
-template <class Func> struct isConstMemberMethod : std::false_type {};
-template <class Ret, class Obj, class...Args> struct isConstMemberMethod<Ret (Obj::*)(Args...) const> : std::true_type {};
-template <class Ret, class Obj, class...Args> struct isConstMemberMethod<Ret (Obj::*)(Args...) const noexcept> : std::true_type {};
+template<class Func> inline constexpr bool is_const_member_method = false;
+template<class Ret, class Obj, class...Args> inline constexpr bool is_const_member_method<Ret (Obj::*)(Args...) const> = true;
+template<class Ret, class Obj, class...Args> inline constexpr bool is_const_member_method<Ret (Obj::*)(Args...) const noexcept> = true;
 #endif
 
 /// Holds information about a method
@@ -269,10 +269,8 @@ struct MetaMethodInfo {
     ParamTypes paramTypes;
     ParamNames paramNames;
     static constexpr int argCount = QtPrivate::FunctionPointer<F>::ArgumentCount;
-    using ArgSequence = make_index_sequence<argCount>;
-    static constexpr auto argSequence = ArgSequence{};
 #if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
-    static constexpr int flags = Flags + (isConstMemberMethod<F>::value ? 0x100 : 0);
+    static constexpr int flags = Flags | (is_const_member_method<F> ? 0x100 : 0);
 #else
     static constexpr int flags = Flags;
 #endif
@@ -281,37 +279,31 @@ struct MetaMethodInfo {
 
 // Called from the W_SLOT macro
 template<typename F, typename ParamTypes, int... Flags, typename IntegralConstant>
-constexpr MetaMethodInfo<F, (Flags + ... + 0) | W_MethodType::Slot.value, IntegralConstant, ParamTypes>
-makeMetaSlotInfo(F f, StringView name, IntegralConstant, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
-{ return { f, name, paramTypes, {} }; }
+constexpr auto makeMetaSlotInfo(F f, StringView name, IntegralConstant, const ParamTypes &paramTypes, MethodFlag<Flags>...)
+    -> MetaMethodInfo<F, (Flags | ... | MethodSlot), IntegralConstant, ParamTypes> { return { f, name, paramTypes, {} }; }
 
 // Called from the W_METHOD macro
 template<typename F, typename ParamTypes, int... Flags, typename IntegralConstant>
-constexpr MetaMethodInfo<F, (Flags + ... + 0) | W_MethodType::Method.value, IntegralConstant, ParamTypes>
-makeMetaMethodInfo(F f, StringView name, IntegralConstant, const ParamTypes &paramTypes, W_MethodFlags<Flags>...)
-{ return { f, name, paramTypes, {} }; }
+constexpr auto makeMetaMethodInfo(F f, StringView name, IntegralConstant, const ParamTypes &paramTypes, MethodFlag<Flags>...)
+    -> MetaMethodInfo<F, (Flags | ... | MethodMethod), IntegralConstant, ParamTypes> { return { f, name, paramTypes, {} }; }
 
 // Called from the W_SIGNAL macro
 template<typename F, typename ParamTypes, typename ParamNames, int... Flags, typename IntegralConstant>
-constexpr MetaMethodInfo<F, (Flags + ... + 0) | W_MethodType::Signal.value, IntegralConstant,
-                            ParamTypes, ParamNames>
-makeMetaSignalInfo(F f, StringView name, IntegralConstant, const ParamTypes &paramTypes,
-                    const ParamNames &paramNames, W_MethodFlags<Flags>...)
-{ return { f, name, paramTypes, paramNames }; }
+constexpr auto makeMetaSignalInfo(F f, StringView name, IntegralConstant, const ParamTypes &paramTypes,
+                                  const ParamNames &paramNames, MethodFlag<Flags>...)
+    -> MetaMethodInfo<F, (Flags | ... | MethodSignal), IntegralConstant, ParamTypes, ParamNames> { return { f, name, paramTypes, paramNames }; }
 
 /// Holds information about a constructor
 template<typename... Args>
 struct MetaConstructorInfo {
-    static constexpr std::size_t argCount = sizeof...(Args);
-    static constexpr auto argSequence = make_index_sequence<argCount>{};
-    static constexpr int flags = W_MethodType::Constructor.value | W_Access::Public.value;
+    static constexpr size_t argCount = sizeof...(Args);
+    static constexpr int flags = MethodConstructor | AccessPublic;
     using IntegralConstant = void*; // Used to detect the access specifier, but it is always public, so no need for this
     StringView name;
 };
 // called from the W_CONSTRUCTOR macro
 template<typename...  Args>
-constexpr MetaConstructorInfo<Args...> makeMetaConstructorInfo(StringView name)
-{ return { name }; }
+constexpr auto makeMetaConstructorInfo(StringView name) -> MetaConstructorInfo<Args...> { return { name }; }
 
 struct Empty{
     constexpr bool operator!=(std::nullptr_t) const { return false; }
@@ -319,7 +311,7 @@ struct Empty{
 
 /// Holds information about a property
 template<typename Type, typename Getter = Empty, typename Setter = Empty,
-          typename Member = Empty, typename Notify = Empty, typename Reset = Empty, int Flags = 0>
+         typename Member = Empty, typename Notify = Empty, typename Reset = Empty, int Flags = 0>
 struct MetaPropertyInfo {
     using PropertyType = Type;
     StringView name;
@@ -331,86 +323,82 @@ struct MetaPropertyInfo {
     Reset reset;
     static constexpr uint flags = Flags;
 
-    template <typename S> constexpr auto setGetter(const S&s) const {
-        return MetaPropertyInfo<Type, S, Setter, Member, Notify, Reset,
-                                Flags | PropertyFlags::Readable>
-        {name, typeStr, s, setter, member, notify, reset};
+    template <typename S> constexpr auto setGetter(const S&s) const
+        -> MetaPropertyInfo<Type, S, Setter, Member, Notify, Reset, Flags | PropertyFlags::Readable> {
+        return {name, typeStr, s, setter, member, notify, reset};
     }
-    template <typename S> constexpr auto setSetter(const S&s) const {
-        return MetaPropertyInfo<Type, Getter, S, Member, Notify, Reset,
-                                Flags | PropertyFlags::Writable>
-        {name, typeStr, getter, s, member, notify, reset};
+    template <typename S> constexpr auto setSetter(const S&s) const
+        -> MetaPropertyInfo<Type, Getter, S, Member, Notify, Reset, Flags | PropertyFlags::Writable> {
+        return {name, typeStr, getter, s, member, notify, reset};
     }
-    template <typename S> constexpr auto setMember(const S&s) const {
-        return MetaPropertyInfo<Type, Getter, Setter, S, Notify, Reset,
-                                Flags | PropertyFlags::Writable | PropertyFlags::Readable>
-        {name, typeStr, getter, setter, s, notify, reset};
+    template <typename S> constexpr auto setMember(const S&s) const
+        -> MetaPropertyInfo<Type, Getter, Setter, S, Notify, Reset, Flags | PropertyFlags::Writable | PropertyFlags::Readable> {
+        return {name, typeStr, getter, setter, s, notify, reset};
     }
-    template <typename S> constexpr auto setNotify(const S&s) const {
-        return MetaPropertyInfo<Type, Getter, Setter, Member, S, Reset,
-                                Flags | PropertyFlags::Notify>
-        { name, typeStr, getter, setter, member, s, reset};
+    template <typename S> constexpr auto setNotify(const S&s) const
+        -> MetaPropertyInfo<Type, Getter, Setter, Member, S, Reset, Flags | PropertyFlags::Notify> {
+        return { name, typeStr, getter, setter, member, s, reset};
     }
-    template <typename S> constexpr auto setReset(const S&s) const {
-        return MetaPropertyInfo<Type, Getter, Setter, Member, Notify, S,
-                                Flags | PropertyFlags::Resettable>
-        { name, typeStr, getter, setter, member, notify, s};
+    template <typename S> constexpr auto setReset(const S&s) const
+        -> MetaPropertyInfo<Type, Getter, Setter, Member, Notify, S, Flags | PropertyFlags::Resettable> {
+        return { name, typeStr, getter, setter, member, notify, s};
     }
-    template <int Flag> constexpr auto addFlag() const {
-        return MetaPropertyInfo<Type, Getter, Setter, Member, Notify, Reset,
-                                Flags | Flag>
-        { name, typeStr, getter, setter, member, notify, reset};
+    template <int Flag> constexpr auto addFlag() const
+        -> MetaPropertyInfo<Type, Getter, Setter, Member, Notify, Reset, Flags | Flag> {
+        return { name, typeStr, getter, setter, member, notify, reset};
     }
 };
 
 /// Parse a property and fill a MetaPropertyInfo (called from W_PROPERTY macro)
 // base case
-template <typename PropInfo> constexpr auto parseProperty(const PropInfo &p) { return p; }
+template<typename PropInfo>
+constexpr auto parseProperty(const PropInfo &p) -> PropInfo { return p; }
 // setter
-template <typename PropInfo, typename Obj, typename Arg, typename Ret, typename... Tail>
-constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)(Arg), Tail... t)
-{ return parseProperty(p.setSetter(s) , t...); }
+template<typename PropInfo, typename Obj, typename Arg, typename Ret, typename... Tail>
+constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)(Arg), Tail... t) {
+    return parseProperty(p.setSetter(s) , t...);
+}
 #if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510
-template <typename PropInfo, typename Obj, typename Arg, typename Ret, typename... Tail>
+template<typename PropInfo, typename Obj, typename Arg, typename Ret, typename... Tail>
 constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)(Arg) noexcept, Tail... t)
 { return parseProperty(p.setSetter(s) , t...); }
 #endif
 // getter
-template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
+template<typename PropInfo, typename Obj, typename Ret, typename... Tail>
 constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)(), Tail... t)
 { return parseProperty(p.setGetter(s), t...); }
-template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
+template<typename PropInfo, typename Obj, typename Ret, typename... Tail>
 constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)() const, Tail... t)
 { return parseProperty(p.setGetter(s), t...); }
 #if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510
-template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
+template<typename PropInfo, typename Obj, typename Ret, typename... Tail>
 constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)() noexcept, Tail... t)
 { return parseProperty(p.setGetter(s), t...); }
-template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
+template<typename PropInfo, typename Obj, typename Ret, typename... Tail>
 constexpr auto parseProperty(const PropInfo &p, Ret (Obj::*s)() const noexcept, Tail... t)
 { return parseProperty(p.setGetter(s), t...); }
 #endif
 // member
-template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
+template<typename PropInfo, typename Obj, typename Ret, typename... Tail>
 constexpr auto parseProperty(const PropInfo &p, Ret Obj::*s, Tail... t)
-{ return parseProperty(p.setMember(s) ,t...); }
+{ return parseProperty(p.setMember(s), t...); }
 // notify
-template <typename PropInfo, typename F, typename... Tail>
-constexpr auto parseProperty(const PropInfo &p, decltype(W_Notify), F f, Tail... t)
-{ return parseProperty(p.setNotify(f) ,t...); }
+template<typename PropInfo, typename F, typename... Tail>
+constexpr auto parseProperty(const PropInfo &p, W_Notify, F f, Tail... t)
+{ return parseProperty(p.setNotify(f), t...); }
 // reset
-template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
-constexpr auto parseProperty(const PropInfo &p, decltype(W_Reset), Ret (Obj::*s)(), Tail... t)
-{ return parseProperty(p.setReset(s) ,t...); }
+template<typename PropInfo, typename Obj, typename Ret, typename... Tail>
+constexpr auto parseProperty(const PropInfo &p, W_Reset, Ret (Obj::*s)(), Tail... t)
+{ return parseProperty(p.setReset(s), t...); }
 #if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510
-template <typename PropInfo, typename Obj, typename Ret, typename... Tail>
-constexpr auto parseProperty(const PropInfo &p, decltype(W_Reset), Ret (Obj::*s)() noexcept, Tail... t)
-{ return parseProperty(p.setReset(s) ,t...); }
+template<typename PropInfo, typename Obj, typename Ret, typename... Tail>
+constexpr auto parseProperty(const PropInfo &p, W_Reset, Ret (Obj::*s)() noexcept, Tail... t)
+{ return parseProperty(p.setReset(s), t...); }
 #endif
-// other flags flags
-template <typename PropInfo, int Flag, typename... Tail>
-constexpr auto parseProperty(const PropInfo &p, std::integral_constant<int, Flag>, Tail... t)
-{ return parseProperty(p.template addFlag<Flag>() ,t...); }
+// method flag
+template<typename PropInfo, int Flag, typename... Tail>
+constexpr auto parseProperty(const PropInfo &p, MethodFlag<Flag>, Tail... t)
+{ return parseProperty(p.template addFlag<Flag>(), t...); }
 
 template<typename T, typename ... Args>
 constexpr auto makeMetaPropertyInfo(StringView name, StringView type, Args... args) {
@@ -624,35 +612,35 @@ namespace w_internal {
 /// We store state in overloads for this method.
 /// This overload is found if no better overload was found.
 /// All overloads are found using ADL in the QObject T
-template<class State, class TPP>
-void w_state(const void*, State, TPP);
+template<size_t L, class State, class TPP, size_t N>
+concept HasState = requires { L >= 0; w_state(index<N>, State{}, TPP{}); };
 
 template<size_t L, class State, class TPP, size_t N, size_t M, size_t X = (N+M)/2>
-constexpr size_t countBetween() {
-    using R = decltype(w_state(index<X>, State{}, TPP{}));
+consteval size_t stateCountBetween() {
     if constexpr (N==X) {
-        return std::is_same_v<void, R> ? N : M;
+        if constexpr (HasState<L, State, TPP, X>) {
+            return M;
+        }
+        else {
+            return N;
+        }
     }
-    else if constexpr (std::is_same_v<void, R>) {
-        return countBetween<L, State, TPP, N, X>();
+    else if constexpr (HasState<L, State, TPP, X>) {
+        return stateCountBetween<L, State, TPP, X, M>();
     }
     else {
-        return countBetween<L, State, TPP, X, M>();
+        return stateCountBetween<L, State, TPP, N, X>();
     }
 }
 template<size_t L, class State, class TPP, size_t N = 1>
-constexpr size_t count() {
-    using R = decltype(w_state(index<N>, State{}, TPP{}));
-    if constexpr (std::is_same_v<void, R>) {
-        return countBetween<L, State, TPP, N/2, N>();
+consteval size_t stateCount() {
+    if constexpr (HasState<L, State, TPP, N>) {
+        return stateCount<L, State, TPP, N*2>();
     }
     else {
-        return count<L, State, TPP, N*2>();
+        return stateCountBetween<L, State, TPP, N/2, N>();
     }
 }
-
-template<size_t L, class State, class TPP>
-constexpr auto stateCount = count<L, State, TPP>();
 
 using SlotStateTag = const struct SlotState*;
 using SignalStateTag = const struct SignalState*;
@@ -674,10 +662,10 @@ using InterfaceStateTag = const struct InterfaceState*;
         struct W_MetaObjectCreatorHelper;
 
 #define W_STATE_APPEND(STATE, ...) \
-    friend constexpr auto w_state(w_internal::Index<w_internal::stateCount<__COUNTER__, w_internal::STATE##Tag, W_ThisType**>>, \
+    friend constexpr auto w_state(w_internal::Index<w_internal::stateCount<__COUNTER__, w_internal::STATE##Tag, W_ThisType**>()>, \
             w_internal::STATE##Tag, W_ThisType**) W_RETURN((__VA_ARGS__))
 #define W_STATE_APPEND_NS(STATE, ...) \
-    static constexpr auto w_state(w_internal::Index<w_internal::stateCount<__COUNTER__, w_internal::STATE##Tag, W_ThisType**>>, \
+    static constexpr auto w_state(w_internal::Index<w_internal::stateCount<__COUNTER__, w_internal::STATE##Tag, W_ThisType**>()>, \
             w_internal::STATE##Tag, W_ThisType**) W_RETURN((__VA_ARGS__))
 
 // public macros
@@ -724,10 +712,10 @@ using InterfaceStateTag = const struct InterfaceState*;
 /// need to be within parentheses (even if there is 0 or 1 argument).
 ///
 /// The W_SLOT macro can have flags:
-/// - Specifying the the access:  W_Access::Protected, W_Access::Private
-///   or W_Access::Public. (By default, it is auto-detected from the location of this macro.)
+/// - Specifying the the access: W_Access::Protected{}, W_Access::Private{}
+///   or W_Access::Public{}. (By default, it is auto-detected from the location of this macro.)
 /// - W_Compat: for deprecated methods (equivalent of Q_MOC_COMPAT)
-#define W_SLOT(...) W_MACRO_MSVC_EXPAND(W_SLOT2(__VA_ARGS__, w_internal::W_EmptyFlag))
+#define W_SLOT(...) W_MACRO_MSVC_EXPAND(W_SLOT2(__VA_ARGS__, w_internal::EmptyFlag))
 #define W_SLOT2(NAME, ...) \
     W_STATE_APPEND(SlotState, w_internal::makeMetaSlotInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::viewLiteral(#NAME),  \
@@ -738,7 +726,7 @@ using InterfaceStateTag = const struct InterfaceState*;
 
 /// \macro W_INVOKABLE( <slot name> [, (<parameters types>) ]  [, <flags>]* )
 /// Exactly like W_SLOT but for Q_INVOKABLE methods.
-#define W_INVOKABLE(...) W_MACRO_MSVC_EXPAND(W_INVOKABLE2(__VA_ARGS__, w_internal::W_EmptyFlag))
+#define W_INVOKABLE(...) W_MACRO_MSVC_EXPAND(W_INVOKABLE2(__VA_ARGS__, w_internal::EmptyFlag))
 #define W_INVOKABLE2(NAME, ...) \
     W_STATE_APPEND(MethodState, w_internal::makeMetaMethodInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::viewLiteral(#NAME),  \
@@ -767,7 +755,7 @@ using InterfaceStateTag = const struct InterfaceState*;
         return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
     } \
     static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = \
-        w_internal::stateCount<__COUNTER__, w_internal::SignalStateTag, W_ThisType**>; \
+        w_internal::stateCount<__COUNTER__, w_internal::SignalStateTag, W_ThisType**>(); \
     friend constexpr auto w_state(w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>, w_internal::SignalStateTag, W_ThisType**) \
         W_RETURN(w_internal::makeMetaSignalInfo( \
                 W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::viewLiteral(#NAME), \
@@ -784,12 +772,12 @@ using InterfaceStateTag = const struct InterfaceState*;
         return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>{this}(W_OVERLOAD_REMOVE(__VA_ARGS__)); \
     } \
     static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__) = \
-        w_internal::stateCount<__COUNTER__, w_internal::SignalStateTag, W_ThisType**>; \
+        w_internal::stateCount<__COUNTER__, w_internal::SignalStateTag, W_ThisType**>(); \
     friend constexpr auto w_state(w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>, w_internal::SignalStateTag, W_ThisType**) \
         W_RETURN(w_internal::makeMetaSignalInfo( \
                 W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::viewLiteral(#NAME), \
                 W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
-                W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat)) \
+        W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat{})) \
     static inline void w_GetAccessSpecifierHelper(W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)) {}
 
 /// \macro W_CONSTRUCTOR(<parameter types>)
@@ -823,11 +811,11 @@ using InterfaceStateTag = const struct InterfaceState*;
 
 #define W_WRITE , &W_ThisType::
 #define W_READ , &W_ThisType::
-#define W_NOTIFY , W_Notify, &W_ThisType::
-#define W_RESET , W_Reset, &W_ThisType::
+#define W_NOTIFY , W_Notify{}, &W_ThisType::
+#define W_RESET , W_Reset{}, &W_ThisType::
 #define W_MEMBER , &W_ThisType::
-#define W_CONSTANT , W_Constant
-#define W_FINAL , W_Final
+#define W_CONSTANT , W_Constant{}
+#define W_FINAL , W_Final{}
 
 #ifndef W_NO_PROPERTY_MACRO
 #define WRITE     W_WRITE

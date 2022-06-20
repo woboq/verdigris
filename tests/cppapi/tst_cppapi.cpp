@@ -42,12 +42,12 @@ class tst_CppApi : public QObject
 
 private slots:
     void enumBase();
-    W_SLOT(enumBase, W_Access::Private)
+    W_SLOT(enumBase, W_Access::Private{})
 
     void firstTest();
-    W_SLOT(firstTest, W_Access::Private)
+    W_SLOT(firstTest, W_Access::Private{})
     void notifyTest();
-    W_SLOT(notifyTest, W_Access::Private)
+    W_SLOT(notifyTest, W_Access::Private{})
 
 private:
     QString m_name{};
@@ -70,14 +70,14 @@ public:
         else if constexpr (I == 1) return w_cpp::viewLiteral("ageChanged");
         else if constexpr (I == 2) return w_cpp::viewLiteral("levelChanged");
     }
-    template<size_t I, class = std::enable_if_t<(I < 3)>>
+    template<size_t I> requires(I < 3)
     struct MySignals {
         constexpr static auto signal = w_cpp::makeSignalBuilder(signalName<I>(), &tst_CppApi::notifyPropertyChanged<I>).build();
     };
     W_CPP_SIGNAL(MySignals)
 
 private:
-    template<size_t I, class = std::enable_if_t<(I < 2)>>
+    template<size_t I> requires(I < 2)
     struct MyProperties {
         constexpr static auto property = []{
             using namespace w_cpp;

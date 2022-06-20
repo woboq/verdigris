@@ -90,8 +90,6 @@ public:
     void slot7(); W_SLOT(slot7)
     void slot8(); W_SLOT(slot8)
     void slot9(); W_SLOT(slot9)
-
 };
-
 
 #endif // OBJECT_H

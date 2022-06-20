@@ -20,6 +20,7 @@
  *  License along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
+#ifndef Q_MOC_RUN // don't define anything when moc is run
 
 #include "wobjectdefs.h"
 #include <QtCore/qobject.h>
@@ -36,28 +37,22 @@ namespace w_internal {
 enum : uint { IsUnresolvedType = 0x80000000, IsUnresolvedNotifySignal = 0x70000000 };
 
 /// all details about a class T
-template<class T, class Name, size_t L = 1024*1024*1024>
+template<class T, size_t L = 1024*1024*1024>
 struct ObjectInfo {
     using Type = T;
     static constexpr auto counter = L;
-    static constexpr auto name = StringView{Name::value};
 
-    static constexpr int signalCount = stateCount<L, SignalStateTag, T**>;
-    static constexpr int slotCount = stateCount<L, SlotStateTag, T**>;
-    static constexpr int methodCount = signalCount + slotCount + stateCount<L, MethodStateTag, T**>;
-    static constexpr int constructorCount = stateCount<L, ConstructorStateTag, T**>;
-    static constexpr int propertyCount = stateCount<L, PropertyStateTag, T**>;
-    static constexpr int enumCount = stateCount<L, EnumStateTag, T**>;
-    static constexpr int classInfoCount = stateCount<L, ClassInfoStateTag, T**>;
-    static constexpr int interfaceCount = stateCount<L, InterfaceStateTag, T**>;
-
-    static constexpr auto methodSequence = make_index_sequence<methodCount>{};
-    static constexpr auto constructorSequence = make_index_sequence<constructorCount>{};
-    static constexpr auto propertySequence = make_index_sequence<propertyCount>{};
-    static constexpr auto interfaceSequence = make_index_sequence<interfaceCount>{};
+    static constexpr int signalCount = stateCount<L, SignalStateTag, T**>();
+    static constexpr int slotCount = stateCount<L, SlotStateTag, T**>();
+    static constexpr int methodCount = signalCount + slotCount + stateCount<L, MethodStateTag, T**>();
+    static constexpr int constructorCount = stateCount<L, ConstructorStateTag, T**>();
+    static constexpr int propertyCount = stateCount<L, PropertyStateTag, T**>();
+    static constexpr int enumCount = stateCount<L, EnumStateTag, T**>();
+    static constexpr int classInfoCount = stateCount<L, ClassInfoStateTag, T**>();
+    static constexpr int interfaceCount = stateCount<L, InterfaceStateTag, T**>();
 
     template<size_t Idx>
-    static constexpr auto method(Index<Idx>) {
+    static consteval auto method(Index<Idx>) {
         using TPP = T**;
         if constexpr (Idx < signalCount) return w_state(index<Idx>, SignalStateTag{}, TPP{});
         else if constexpr (Idx - signalCount < slotCount) return w_state(index<Idx - signalCount>, SlotStateTag{}, TPP{});
@@ -65,82 +60,40 @@ struct ObjectInfo {
     }
 };
 
-template<class F, size_t... Is>
-constexpr void fold(index_sequence<Is...>, F&& f) {
-    (void)f;
-    (f(index<Is>), ...);
-}
-
-template <size_t L, class State, class TPP, class F>
-constexpr void foldState(F&& f) {
-    fold(make_index_sequence<stateCount<L, State, TPP>>{}, [&](auto i) { f(w_state(i, State{}, TPP{}), i); });
-}
-
-template <size_t L, class T, class F>
-constexpr void foldMethods(F&& f) {
-    foldState<L, SignalStateTag, T>(f);
-    foldState<L, SlotStateTag, T>(f);
-    foldState<L, MethodStateTag, T>(f);
-}
-
-template<class T>
-constexpr auto fetchExplicitName(const StringView& defaultName, ...) {
-    return defaultName;
-}
-
-template<class T>
-constexpr auto fetchExplicitName(const StringView&, int) -> decltype (w_explicitObjectName(static_cast<T*>(nullptr))) {
-    return w_explicitObjectName(static_cast<T*>(nullptr));
-}
-
 constexpr bool isPropertyMetacall(QMetaObject::Call call) noexcept
 {
     return (call >= QMetaObject::ReadProperty && call <= QMetaObject::ResetProperty)
         || call == QMetaObject::RegisterPropertyMetaType || call == QMetaObject::BindableProperty;
 }
 
+template<class OPP, size_t SigIdx, auto notify>
+concept IsNotifySignal = w_state(index<SigIdx>, SignalStateTag{}, OPP{}).func == notify;
+
 /// Helper to get information about the notify signal of the property within object T
-template<size_t L, size_t PropIdx, typename T, typename O>
-struct ResolveNotifySignal {
-private:
-    using TP = T**;
-    using OP = O**;
-    static constexpr auto prop = w_state(index<PropIdx>, PropertyStateTag{}, TP{});
-
-    template<size_t SigIdx, bool Eq = w_state(index<SigIdx>, SignalStateTag{}, OP{}).func == prop.notify>
-    static constexpr auto match(int) { return Eq; }
-    template<size_t SigIdx>
-    static constexpr auto match(float) { return false; }
-
-    template<size_t... Is>
-    static constexpr int indexFold(index_sequence<Is...>) {
+template<size_t L, size_t PropIdx, typename TPP, typename OPP>
+consteval int resolveNotifySignal() {
+    return []<size_t... Is>(const index_sequence<Is...>&) -> int {
         int r = -1;
-        ((match<Is>(0) ? r = (int)Is : 0), ...);
+        constexpr auto notify = w_state(index<PropIdx>, PropertyStateTag{}, TPP{}).notify;
+        ((IsNotifySignal<OPP, Is, notify> ? r = (int)Is : 0), ...);
         return r;
-    }
-public:
-    static constexpr int signalIndex() {
-        return indexFold(make_index_sequence<stateCount<L, SignalStateTag, O**>>{});
-    }
-};
+    }(make_index_sequence<stateCount<L, SignalStateTag, OPP>()>{});
+}
 
 /// returns true if the object T has at least one property with a notify signal
 template <size_t L, typename TPP>
-constexpr bool hasNotifySignal() {
-    auto r = bool{};
-    foldState<L, PropertyStateTag, TPP>([&](auto p, auto) {
-        r = r || !std::is_same<decltype(p.notify), std::nullptr_t>::value;
-    });
-    return r;
+consteval bool hasNotifySignal() {
+    return []<size_t... Is>(const index_sequence<Is...>&) -> bool {
+        return (false || ... || w_state(index<Is>, (PropertyStateTag{}, TPP{}).notify != nullptr));
+    }(make_index_sequence<stateCount<L, PropertyStateTag, TPP>()>{});
 }
 
 template<class State>
 struct ClassInfoGenerator {
     State& s;
-    constexpr ClassInfoGenerator(State& s) : s(s) {}
 
-    template<class ClassInfo, class Index>
-    constexpr void operator() (const ClassInfo& ci, Index) {
+    template<class ClassInfo>
+    constexpr void operator() (const ClassInfo& ci) {
         s.addString(ci.first);
         s.addString(ci.second);
     }
@@ -148,26 +101,22 @@ struct ClassInfoGenerator {
 
 /// auto-detect the access specifiers
 template<class T, class M>
-auto test_public(int) -> std::enable_if_t<std::is_same<void, decltype(T::w_GetAccessSpecifierHelper(M{}))>::value, std::true_type>;
-template<class T, class M>
-auto test_public(float) -> std::false_type;
-template<class T, class M>
-using isPublic = decltype(test_public<T, M>(0));
+concept IsPublic = std::is_same_v<void, decltype(T::w_GetAccessSpecifierHelper(M{}))>;
 
-template <typename T, typename M, typename = void> struct isProtected : std::false_type {};
-template <typename T, typename = std::enable_if_t<!std::is_final<T>::value>>
-struct Derived : T { template<typename M, typename X = T> static decltype(X::w_GetAccessSpecifierHelper(std::declval<M>())) test(M); };
-template <typename T, typename M> struct isProtected<T, M, decltype(Derived<T>::test(std::declval<M>()))> : std::true_type {};
+template<class T>
+struct Derived : T {
+    template<typename M, typename X = T> using Test = decltype(X::w_GetAccessSpecifierHelper(std::declval<M>()));
+};
+template<class T, class M>
+concept IsProtected = !std::is_final_v<T> && std::is_same_v<void, typename Derived<T>::template Test<M>>;
 
 template<class State, class T>
 struct MethodGenerator {
     State& s;
     int parameterIndex;
-    MethodGenerator(const MethodGenerator&) = delete;
-    constexpr MethodGenerator(State& s, int pi) : s(s), parameterIndex(pi) {}
 
-    template<class Method, class Index>
-    constexpr void operator() (const Method& method, Index) {
+    template<class Method>
+    constexpr void operator() (const Method& method) {
         s.addString(method.name); // name
         constexpr uint flags = adjustFlags(Method::flags, typename Method::IntegralConstant());
         s.addInts(
@@ -183,61 +132,31 @@ struct MethodGenerator {
 private:
     template<typename M>
     static constexpr uint adjustFlags(uint f, M) {
-        if (!(f & (W_Access::Protected.value | W_Access::Private.value | W_Access::Public.value))) {
+        if (!(f & (AccessProtected | AccessPrivate | AccessPublic))) {
             // Auto-detect the access specifier
-            f |= isPublic<T, M>::value ? W_Access::Public.value : isProtected<T,M>::value ? W_Access::Protected.value : W_Access::Private.value;
+            f |= IsPublic<T, M> ? AccessPublic : IsProtected<T, M> ? AccessProtected : AccessPrivate;
         }
-        f &= static_cast<uint>(~W_Access::Private.value); // Because QMetaMethod::Private is 0, but not W_Access::Private;
+        f &= static_cast<uint>(~AccessPrivate); // Because QMetaMethod::Private is 0, but not AccessPrivate;
         return f;
     }
 
     template<class Method>
     constexpr void registerMetaTypes(const Method& method) {
-        generateSingleMethodParameter(method.func);
+        using FP = QtPrivate::FunctionPointer<typename Method::Func>;
+        s.template addMetaType<typename FP::ReturnType>();
+        using ArgsPtr = typename FP::Arguments*;
+        [this, &method]<class... Args>(QtPrivate::List<Args...>*) {
+            (s.template addMetaType<Args>(), ...);
+        }(ArgsPtr{});
     }
     template<class... Args>
     constexpr void registerMetaTypes(const MetaConstructorInfo<Args...>&) {
         (s.template addMetaType<Args>(), ...);
     }
-
-    // non-const function
-    template<typename Obj, typename Ret, typename... Args>
-    constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...)) {
-        s.template addMetaType<Ret>();
-        (s.template addMetaType<Args>(), ...);
-    }
-    template<typename Obj, typename Ret, typename... Args>
-    constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...) noexcept) {
-        s.template addMetaType<Ret>();
-        (s.template addMetaType<Args>(), ...);
-    }
-    template<typename Obj, typename Ret, typename... Args>
-    // const function
-    constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...) const) {
-        s.template addMetaType<Ret>();
-        (s.template addMetaType<Args>(), ...);
-    }
-    template<typename Obj, typename Ret, typename... Args>
-    constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...) const noexcept) {
-        s.template addMetaType<Ret>();
-        (s.template addMetaType<Args>(), ...);
-    }
-    // static member functions
-    template<typename Ret, typename... Args>
-    constexpr void generateSingleMethodParameter(Ret (*)(Args...)) {
-        s.template addMetaType<Ret>();
-        (s.template addMetaType<Args>(), ...);
-    }
-    template<typename Ret, typename... Args>
-    constexpr void generateSingleMethodParameter(Ret (*)(Args...) noexcept) {
-        s.template addMetaType<Ret>();
-        (s.template addMetaType<Args>(), ...);
-    }
 };
 
 /// compute if type T is a builtin QMetaType
-template <typename T, typename = void> struct MetaTypeIdIsBuiltIn : std::false_type {};
-template <typename T> struct MetaTypeIdIsBuiltIn<T, typename std::enable_if<QMetaTypeId2<T>::IsBuiltIn>::type> : std::true_type{};
+template<class T> concept BuiltinMetaTypeId = bool{QMetaTypeId2<T>::IsBuiltIn};
 
 /// Helper to generate the type information of type 'T':
 /// If T is a builtin QMetaType, its meta type id need to be added in the state.
@@ -245,7 +164,7 @@ template <typename T> struct MetaTypeIdIsBuiltIn<T, typename std::enable_if<QMet
 template<typename T, typename State, typename TypeStr = int>
 constexpr void handleType(State& s, TypeStr v = {}) {
     (void)v;
-    if constexpr (MetaTypeIdIsBuiltIn<T>::value) {
+    if constexpr (BuiltinMetaTypeId<T>) {
         s.addInts(QMetaTypeId2<T>::MetaType);
     }
     else if constexpr (std::is_same_v<std::decay_t<TypeStr>, StringView>) {
@@ -260,95 +179,43 @@ constexpr void handleType(State& s, TypeStr v = {}) {
 template<class State, size_t L, class T>
 struct PropertyGenerator {
     State& s;
-    constexpr PropertyGenerator(State& s) : s(s) {}
 
     template<class Prop, size_t Idx>
     constexpr void operator() (const Prop& prop, Index<Idx>) {
         s.addString(prop.name);
         handleType<typename Prop::PropertyType>(s, prop.typeStr);
-        constexpr uint moreFlags = (QtPrivate::IsQEnumHelper<typename Prop::PropertyType>::Value
-                                        ? uint(PropertyFlags::EnumOrFlag) : 0);
-        constexpr uint finalFlag = std::is_final<T>::value ? 0 | PropertyFlags::Final : 0;
-        constexpr uint defaultFlags = 0 | PropertyFlags::Stored | PropertyFlags::Scriptable
-            | PropertyFlags::Designable;
+        constexpr int moreFlags = (QtPrivate::IsQEnumHelper<typename Prop::PropertyType>::Value ? (0 | PropertyFlags::EnumOrFlag) : 0);
+        constexpr int finalFlag = std::is_final<T>::value ? (0 | PropertyFlags::Final) : 0;
+        constexpr int defaultFlags = (0 | PropertyFlags::Stored | PropertyFlags::Scriptable | PropertyFlags::Designable);
         s.addInts(Prop::flags | moreFlags | finalFlag | defaultFlags);
-        addSignal(prop.notify, index<Idx>);
+        using Notify = decltype(prop.notify);
+        if constexpr (std::is_same_v<Notify, Empty>) {
+            s.addInts(-1);
+        }
+        else {
+            using O = typename QtPrivate::FunctionPointer<Notify>::Object;
+            constexpr int signalIndex = resolveNotifySignal<L, Idx, T**, O**>();
+            static_assert(signalIndex >= 0, "NOTIFY signal in parent class not registered as a W_SIGNAL");
+            if constexpr (std::is_same_v<T, O>) {
+                s.addInts(signalIndex); // // Signal in the same class
+            }
+            else {
+                using OPP = O**;
+                constexpr auto sig = w_state(index<signalIndex>, SignalStateTag{}, OPP{});
+                s.template addTypeString<IsUnresolvedNotifySignal>(sig.name);
+            }
+        }
         s.addInts(0); // revision
-    }
-
-    template<size_t Idx>
-    constexpr void addSignal(Empty, Index<Idx>) {
-        s.addInts(-1);
-    }
-
-    // Signal in the same class
-    template<size_t Idx, typename Func>
-    constexpr void addSignal(Func, Index<Idx>, std::enable_if_t<std::is_same<T, typename QtPrivate::FunctionPointer<Func>::Object>::value, int> = 0) {
-        constexpr int signalIndex = ResolveNotifySignal<L, Idx, T, T>::signalIndex();
-        static_assert(signalIndex >= 0, "NOTIFY signal in parent class not registered as a W_SIGNAL");
-        s.addInts(signalIndex);
-    }
-
-    // Signal in a parent class
-    template<size_t Idx, typename Func>
-    constexpr void addSignal(Func, Index<Idx>, std::enable_if_t<!std::is_same<T, typename QtPrivate::FunctionPointer<Func>::Object>::value, int> = 0) {
-        using O = typename QtPrivate::FunctionPointer<Func>::Object;
-        using OP = O**;
-        constexpr int signalIndex = ResolveNotifySignal<L, Idx, T, O>::signalIndex();
-        static_assert(signalIndex >= 0, "NOTIFY signal in parent class not registered as a W_SIGNAL");
-        constexpr auto sig = w_state(index<signalIndex>, SignalStateTag{}, OP{});
-        s.template addTypeString<IsUnresolvedNotifySignal>(sig.name);
     }
 };
 
 template<class State, class T>
 struct PropertyMetaTypeGenerator {
     State& s;
-    constexpr PropertyMetaTypeGenerator(State& s) : s(s) {}
 
-    template<class Prop, class I>
-    constexpr void operator() (const Prop&, I) {
+    template<class Prop>
+    constexpr void operator() (const Prop&) {
         s.template addMetaType<typename Prop::PropertyType>();
-    }
-};
-
-template<class State, size_t L, class T, bool hasNotify>
-struct NotifySignalGenerator {
-    State& s;
-    constexpr NotifySignalGenerator(State& s) : s(s) {}
-
-    template<class Prop, size_t Idx>
-    constexpr void operator() (const Prop& prop, Index<Idx>) {
-        if constexpr (hasNotify) {
-            process(prop.notify, index<Idx>);
-        }
-    }
-
-private:
-    template<size_t Idx>
-    constexpr void process(Empty, Index<Idx>) {
-        s.addInts(0);
-    }
-
-    // Signal in the same class
-    template<size_t Idx, typename Func>
-    constexpr void process(Func, Index<Idx>, std::enable_if_t<std::is_same<T, typename QtPrivate::FunctionPointer<Func>::Object>::value, int> = 0) {
-        constexpr int signalIndex = ResolveNotifySignal<L, Idx, T, T>::signalIndex();
-        static_assert(signalIndex >= 0, "NOTIFY signal in parent class not registered as a W_SIGNAL");
-        s.addInts(signalIndex);
-    }
-
-    // Signal in a parent class
-    template<size_t Idx, typename Func>
-    constexpr void process(Func, Index<Idx>, std::enable_if_t<!std::is_same<T, typename QtPrivate::FunctionPointer<Func>::Object>::value, int> = 0) {
-        using O = typename QtPrivate::FunctionPointer<Func>::Object;
-        using OP = O**;
-        constexpr int signalIndex = ResolveNotifySignal<L, Idx, T, O>::signalIndex();
-        static_assert(signalIndex >= 0, "NOTIFY signal in parent class not registered as a W_SIGNAL");
-        static_assert(signalIndex < 0 || QT_VERSION >= QT_VERSION_CHECK(5, 10, 0),
-                      "NOTIFY signal in parent class requires Qt 5.10");
-        constexpr auto sig = w_state(index<signalIndex>, SignalStateTag{}, OP{});
-        s.template addTypeString<IsUnresolvedNotifySignal>(sig.name);
     }
 };
 
@@ -356,11 +223,9 @@ template<class State>
 struct EnumGenerator {
     State& s;
     int dataIndex{};
-    EnumGenerator(const EnumGenerator&) = delete;
-    constexpr EnumGenerator(State& s, int di) : s(s), dataIndex(di) {}
 
-    template<class Enum, class Index>
-    constexpr void operator() (const Enum& e, Index) {
+    template<class Enum>
+    constexpr void operator() (const Enum& e) {
         auto nameIndex = s.stringCount; // required for MSVC-2019
         (void)nameIndex;
         s.addString(e.name); // name
@@ -376,10 +241,9 @@ struct EnumGenerator {
 template<class State>
 struct EnumValuesGenerator {
     State& s;
-    constexpr EnumValuesGenerator(State& s) : s(s) {}
 
-    template<class Enum, class Index>
-    constexpr void operator() (const Enum& e, Index) {
+    template<class Enum>
+    constexpr void operator() (const Enum& e) {
         generateAll(typename Enum::Values{}, e.names, Enum::sequence);
     }
 
@@ -410,7 +274,7 @@ constexpr void handleArgType(State& ss, const TypeName& typeName) {
     handleType<Type>(ss, typeName2);
 }
 template<class... Args, class State, class TypeNames, size_t... Is>
-constexpr void handleArgTypes(State& ss, const TypeNames& typeNames, index_sequence<Is...>) {
+constexpr void handleArgTypes(State& ss, const TypeNames& typeNames, const index_sequence<Is...>&) {
     (handleArgType<Args>(ss, stringFetch<Is>(typeNames)), ...);
 }
 
@@ -424,69 +288,27 @@ constexpr void handleArgNames(State& ss, const StringViewArray<NameCount>& param
 template<class State>
 struct MethodParametersGenerator {
     State& s;
-    constexpr MethodParametersGenerator(State& s) : s(s) {}
-    template<class Method, class Index>
-    constexpr void operator() (const Method& method, Index) {
-        generateSingleMethodParameter(method.func, method);
-    }
 
-private:
-    // non-const function
-    template<typename Method, typename Obj, typename Ret, typename... Args>
-    constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...), const Method &method) {
-        handleType<Ret>(s);
-        handleArgTypes<Args...>(s, method.paramTypes, Method::argSequence);
+    template<class Method>
+    constexpr void operator() (const Method& method) {
+        using FP = QtPrivate::FunctionPointer<typename Method::Func>;
+        handleType<typename FP::ReturnType>(s);
+        using ArgsPtr = typename FP::Arguments*;
+        [this, &method]<class... Args>(QtPrivate::List<Args...>*) {
+            handleArgTypes<Args...>(s, method.paramTypes, make_index_sequence<sizeof...(Args)>{});
+        }(ArgsPtr{});
         handleArgNames<Method::argCount>(s, method.paramNames);
     }
-#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510
-    template<typename Method, typename Obj, typename Ret, typename... Args>
-    constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...) noexcept, const Method &method) {
-        handleType<Ret>(s);
-        handleArgTypes<Args...>(s, method.paramTypes, Method::argSequence);
-        handleArgNames<Method::argCount>(s, method.paramNames);
-    }
-#endif
-    template<typename Method, typename Obj, typename Ret, typename... Args>
-    // const function
-    constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...) const, const Method &method) {
-        handleType<Ret>(s);
-        handleArgTypes<Args...>(s, method.paramTypes, Method::argSequence);
-        handleArgNames<Method::argCount>(s, method.paramNames);
-    }
-#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510
-    template<typename Method, typename Obj, typename Ret, typename... Args>
-    constexpr void generateSingleMethodParameter(Ret (Obj::*)(Args...) const noexcept, const Method &method) {
-        handleType<Ret>(s);
-        handleArgTypes<Args...>(s, method.paramTypes, Method::argSequence);
-        handleArgNames<Method::argCount>(s, method.paramNames);
-    }
-#endif
-    // static member functions
-    template<typename Method, typename Ret, typename... Args>
-    constexpr void generateSingleMethodParameter(Ret (*)(Args...), const Method &method) {
-        handleType<Ret>(s);
-        handleArgTypes<Args...>(s, method.paramTypes, Method::argSequence);
-        handleArgNames<Method::argCount>(s, method.paramNames);
-    }
-#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510
-    template<typename Method, typename Ret, typename... Args>
-    constexpr void generateSingleMethodParameter(Ret (*)(Args...) noexcept, const Method &method) {
-        handleType<Ret>(s);
-        handleArgTypes<Args...>(s, method.paramTypes, Method::argSequence);
-        handleArgNames<Method::argCount>(s, method.paramNames);
-    }
-#endif
 };
 
 template<class State>
 struct ConstructorParametersGenerator {
     State& s;
-    constexpr ConstructorParametersGenerator(State& s) : s(s) {}
 
-    template<typename... Args, class Index>
-    constexpr void operator() (const MetaConstructorInfo<Args...>& info, Index) {
+    template<typename... Args>
+    constexpr void operator() (const MetaConstructorInfo<Args...>& info) {
         s.addInts(IsUnresolvedType | 1);
-        handleArgTypes<Args...>(s, StringViewArray<>{}, info.argSequence);
+        handleArgTypes<Args...>(s, StringViewArray<>{}, make_index_sequence<sizeof...(Args)>{});
         s.addInts(((void)sizeof(Args),1)...); // all the names are 1 (for "\0")
     }
 };
@@ -494,26 +316,21 @@ struct ConstructorParametersGenerator {
 /// Given method, a binary::tree containing information about methods or constructor,
 /// return the amount of item it will add in the int array.
 template<size_t L, class T>
-constexpr int methodsParamOffset() {
-    auto sum = int{};
-    foldMethods<L, T>([&](auto m, auto) { sum += int(1 + m.argCount * 2); });
-    return sum;
+consteval int methodsParamOffset() {
+    return []<size_t... Is>(const index_sequence<Is...>&) -> int {
+        return (0 + ... + int(1 + ObjectInfo<T, L>::method(index<Is>).argCount * 2));
+    }(make_index_sequence<ObjectInfo<T, L>::methodCount>{});
 }
+
 template<size_t L, class T>
-constexpr int constructorParamOffset() {
-    auto sum = int{};
-    foldState<L, ConstructorStateTag, T>([&](auto m, auto) { sum += int(1 + m.argCount * 2); });
-    return sum;
+consteval int constructorParamOffset() {
+    using TPP = T**;
+    return []<size_t... Is>(const index_sequence<Is...>&) -> int {
+        return (0 + ... + int(1 + w_state(index<Is>, ConstructorStateTag{}, TPP{}).argCount * 2));
+    }(make_index_sequence<ObjectInfo<T, L>::constructorCount>{});
 }
 
 template<class T, size_t N> using RawArray = T[N];
-template<class T, size_t N> struct OwnArray {
-    RawArray<T, N> data{};
-    constexpr OwnArray(const T (&s)[N]) {
-        auto p = data;
-        for (auto c : s) *p++ = c;
-    }
-};
 
 struct LayoutBuilder {
     size_t stringSize{};
@@ -545,44 +362,48 @@ struct LayoutBuilder {
         metaTypeCount += 1;
     }
 };
+
+template<class T>
+concept IsCompleteType = sizeof(T) >= 0;
+
+struct OffsetLenPair {
+    uint offset{};
+    uint length{};
+};
+template<class MetaData, size_t initStringOffset>
 struct DataBuilder {
     char* stringCharP{};
-    qptrdiff* stringOffestP{};
-    int* stringLengthP{};
+    OffsetLenPair* offsetLenPairP{};
     uint* intP{};
     const QtPrivate::QMetaTypeInterface** metaTypeP{};
     uint stringCount{};
     uint intCount{};
-    qptrdiff stringOffset{};
     uint metaTypeCount{};
 
-    constexpr DataBuilder() = default;
-    DataBuilder(const DataBuilder&) = delete;
-    template<class Holder>
-    constexpr DataBuilder(Holder& r)
+    constexpr DataBuilder(MetaData& r)
         : stringCharP(r.stringChars)
-        , stringOffestP(r.stringOffsets)
-        , stringLengthP(r.stringLengths)
-        , intP(r.ints)
-        , metaTypeP(r.metaTypes)
-        , stringOffset(r.stringOffset) {}
+        , offsetLenPairP(r.stringOffsetLens)
+        , intP(r.data)
+        , metaTypeP(r.metaTypes) {
+        offsetLenPairP->offset = initStringOffset; // offset + len==0 mark the end
+    }
 
     constexpr void addString(const StringView& s) {
         for (auto c : s) *stringCharP++ = c;
         *stringCharP++ = '\0';
-        *stringOffestP++ = stringOffset;
-        *stringLengthP++ = s.size();
+        offsetLenPairP->length = s.size();
+        offsetLenPairP[1].offset = offsetLenPairP->offset + 1 + s.size();
+        ++offsetLenPairP;
         *intP++ = stringCount;
-        stringOffset += 1 + s.size();
         stringCount += 1;
         intCount += 1;
     }
     constexpr void addStringUntracked(const StringView& s) {
         for (auto c : s) *stringCharP++ = c;
         *stringCharP++ = '\0';
-        *stringOffestP++ = stringOffset;
-        *stringLengthP++ = s.size();
-        stringOffset += 1 + s.size();
+        offsetLenPairP->length = s.size();
+        offsetLenPairP[1].offset = offsetLenPairP->offset + 1 + s.size();
+        ++offsetLenPairP;
         stringCount += 1;
     }
 
@@ -590,10 +411,10 @@ struct DataBuilder {
     constexpr void addTypeString(const StringView& s) {
         for (auto c : s) *stringCharP++ = c;
         *stringCharP++ = '\0';
-        *stringOffestP++ = stringOffset;
-        *stringLengthP++ = s.size();
+        offsetLenPairP->length = s.size();
+        offsetLenPairP[1].offset = offsetLenPairP->offset + 1 + s.size();
+        ++offsetLenPairP;
         *intP++ = Flag | stringCount;
-        stringOffset += 1 + s.size();
         stringCount += 1;
         intCount += 1;
     }
@@ -603,21 +424,31 @@ struct DataBuilder {
         intCount += sizeof... (Ts);
     }
 
-    template<class T, bool isComplete>
-    static constexpr const QtPrivate::QMetaTypeInterface *metaTypeInterface = QtPrivate::qTryMetaTypeInterfaceForType<T, QtPrivate::TypeAndForceComplete<T, std::integral_constant<bool, isComplete>>>();
-
-    template<class T, bool isComplete = false>
+    template<class T, bool forceComplete = false>
     constexpr void addMetaType() {
-        *metaTypeP++ = metaTypeInterface<T, isComplete>;
+        // mirrors behaviour of QtPrivate::qTryMetaTypeInterfaceForType (qmetatype.h)
+        // - but uses C++20 to be faster
+        if constexpr (forceComplete || IsCompleteType<QtPrivate::qRemovePointerLike_t<std::remove_cvref_t<T>>>) {
+            *metaTypeP++ = &QtPrivate::QMetaTypeInterfaceWrapper<std::remove_cvref_t<T>>::metaType;
+        }
+        else {
+            *metaTypeP++ = nullptr;
+        }
         metaTypeCount += 1;
     }
 };
 
+template<class TP>
+concept HasExplicitName = requires(StringView result) {
+    result = StringView{w_explicitObjectName(TP{})};
+};
 
 /// fold ObjectInfo into State
-template<typename T, typename State>
-constexpr void generateDataPass(State& state) {
-    using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
+template<class T, class Result, class Builder>
+consteval auto generateDataPass() -> Result {
+    auto result = Result{};
+    Builder builder {result};
+    using ObjI = ObjectInfo<T>;
     constexpr size_t L = ObjI::counter;
     constexpr bool hasNotify = hasNotifySignal<L, T**>();
     constexpr int classInfoOffset = 14;
@@ -626,13 +457,19 @@ constexpr void generateDataPass(State& state) {
     constexpr int enumOffset = propertyOffset + ObjI::propertyCount * (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) ? 5 : (hasNotify ? 4: 3));
     constexpr int constructorOffset = enumOffset + ObjI::enumCount * (QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 5 : 4);
     constexpr int paramIndex = constructorOffset + ObjI::constructorCount * (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) ? 6 : 5);
-    constexpr int constructorParamIndex = paramIndex + methodsParamOffset<L, T**>();
-    constexpr int enumValueOffset = constructorParamIndex + constructorParamOffset<L, T**>();
+    constexpr int constructorParamIndex = paramIndex + methodsParamOffset<L, T>();
+    constexpr int enumValueOffset = constructorParamIndex + constructorParamOffset<L, T>();
 
-    state.addInts(QT_VERSION >= QT_VERSION_CHECK(6, 2, 0) ? 10 : 9); // revision
-    state.addString(ObjI::name);
-    state.addStringUntracked(viewLiteral(""));
-    state.addInts(
+    builder.addInts(QT_VERSION >= QT_VERSION_CHECK(6, 2, 0) ? 10 : 9); // revision
+    using TP = T*;
+    if constexpr (HasExplicitName<TP>) {
+        builder.addString(w_explicitObjectName(TP{}));
+    }
+    else {
+        builder.addString(T::W_MetaObjectCreatorHelper::fullName);
+    }
+    builder.addStringUntracked(viewLiteral(""));
+    builder.addInts(
         ObjI::classInfoCount, classInfoOffset, // classinfo
         ObjI::methodCount, methodOffset, // methods
         ObjI::propertyCount, propertyOffset, // properties
@@ -641,192 +478,147 @@ constexpr void generateDataPass(State& state) {
         0x4 /* PropertyAccessInStaticMetaCall */,   // flags
         ObjI::signalCount);
 
+    using TPP = T**;
+    constexpr auto fold = []<class State>(State, auto&& f) {
+        [&f]<size_t... Is>(const index_sequence<Is...>&) {
+            (f(w_state(index<Is>, State{}, TPP{})), ...);
+        }(make_index_sequence<stateCount<L, State, TPP>()>{});
+    };
+    constexpr auto foldIndex = []<class State>(State, auto&& f) {
+        [&f]<size_t... Is>(const index_sequence<Is...>&) {
+            (f(w_state(index<Is>, State{}, TPP{}), index<Is>), ...);
+        }(make_index_sequence<stateCount<L, State, TPP>()>{});
+    };
+    constexpr auto foldMethods = [](auto&& f) {
+        [&f]<size_t... Is>(const index_sequence<Is...>&) {
+            (f(ObjI::method(index<Is>)), ...);
+        }(make_index_sequence<ObjI::methodCount>{});
+    };
+
     //if (state.intCount != classInfoOffset) throw "offset mismatch!";
-    foldState<L, ClassInfoStateTag, T**>(ClassInfoGenerator<State>{state});
-    foldState<L, PropertyStateTag, T**>(PropertyMetaTypeGenerator<State, T>{state});
+    fold(ClassInfoStateTag{}, ClassInfoGenerator<Builder>{builder});
+    fold(PropertyStateTag{}, PropertyMetaTypeGenerator<Builder, T>{builder});
 
 #if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
-    state.template addMetaType<T, true>();
+    builder.template addMetaType<T, true>();
 #endif
 
     //if (state.intCount != methodOffset) throw "offset mismatch!";
-    foldMethods<L, T**>(MethodGenerator<State, T>{state, paramIndex});
+    foldMethods(MethodGenerator<Builder, T>{builder, paramIndex});
 
     //if (state.intCount != propertyOffset) throw "offset mismatch!";
-    foldState<L, PropertyStateTag, T**>(PropertyGenerator<State, L, T>{state});
+    foldIndex(PropertyStateTag{}, PropertyGenerator<Builder, L, T>{builder});
 
     //if (state.intCount != enumOffset) throw "offset mismatch!";
-    foldState<L, EnumStateTag, T**>(EnumGenerator<State>{state, enumValueOffset});
+    fold(EnumStateTag{}, EnumGenerator<Builder>{builder, enumValueOffset});
 
     //if (state.intCount != constructorOffset) throw "offset mismatch!";
-    foldState<L, ConstructorStateTag, T**>(MethodGenerator<State, T>{state, constructorParamIndex});
+    fold(ConstructorStateTag{}, MethodGenerator<Builder, T>{builder, constructorParamIndex});
 
     //if (state.intCount != paramIndex) throw "offset mismatch!";
-    foldMethods<L, T**>(MethodParametersGenerator<State>{state});
+    foldMethods(MethodParametersGenerator<Builder>{builder});
 
     //if (state.intCount != constructorParamIndex) throw "offset mismatch!";
-    foldState<L, ConstructorStateTag, T**>(ConstructorParametersGenerator<State>{state});
+    fold(ConstructorStateTag{}, ConstructorParametersGenerator<Builder>{builder});
 
     //if (state.intCount != enumValueOffset) throw "offset mismatch!";
-    foldState<L, EnumStateTag, T**>(EnumValuesGenerator<State>{state});
+    fold(EnumStateTag{}, EnumValuesGenerator<Builder>{builder});
+
+    return result;
 }
 
-template<class T>
-constexpr LayoutBuilder dataLayout = [](){
-    auto r = LayoutBuilder{};
-    generateDataPass<T>(r);
-    return r;
-}();
-
-struct OffsetLenPair {
-    uint offset;
-    uint length;
-};
-
 /// Final data holder
-template<std::size_t StringSize, std::size_t StringCount, std::size_t IntCount>
-struct MetaDataHolder {
-    RawArray<OffsetLenPair, StringCount+1> stringOffsetLens;
-    OwnArray<char, StringSize> stringChars;
-    const uint* ints;
+template<class T>
+static constexpr auto buildMetaData() {
+    constexpr auto dataLayout = generateDataPass<T, LayoutBuilder, LayoutBuilder&>();
+    constexpr auto metaTypeCount = dataLayout.metaTypeCount == 0 ? 1 : dataLayout.metaTypeCount;
+    struct MetaData {
+        RawArray<OffsetLenPair, dataLayout.stringCount+1> stringOffsetLens;
+        RawArray<char, dataLayout.stringSize> stringChars;
+        RawArray<uint, dataLayout.intCount> data;
+        RawArray<const QtPrivate::QMetaTypeInterface*, metaTypeCount> metaTypes;
+    };
+#ifndef Q_CC_MSVC
+    constexpr qptrdiff stringOffset = offsetof(MetaData, stringChars);
+#else // offsetof does not work with MSVC
+    constexpr qptrdiff stringOffset = sizeof(MetaData::stringOffsetLens);
+#endif
+
+    constexpr auto result = generateDataPass<T, MetaData, DataBuilder<MetaData, stringOffset>>();
+    return result;
 };
 template<class T>
-struct MetaDataProvider {
-    static constexpr auto stringSize = dataLayout<T>.stringSize;
-    static constexpr auto stringCount = dataLayout<T>.stringCount;
-    static constexpr auto intCount = dataLayout<T>.intCount;
-    static constexpr auto metaTypeCount = dataLayout<T>.metaTypeCount == 0 ? 1 : dataLayout<T>.metaTypeCount;
-    using MetaDataType = const MetaDataHolder<stringSize, stringCount, intCount>;
+static constexpr auto metaData = buildMetaData<T>();
 
-    struct Arrays {
-#ifndef Q_CC_MSVC
-        constexpr static qptrdiff stringOffset = offsetof(MetaDataType, stringChars);
-#else // offsetof does not work with MSVC
-        constexpr static qptrdiff stringOffset = sizeof(MetaDataType::stringOffsetLens);
-#endif
-        RawArray<qptrdiff, stringCount> stringOffsets{};
-        RawArray<int, stringCount> stringLengths{};
-        RawArray<char, stringSize> stringChars{};
-        RawArray<uint, intCount> ints{};
-        RawArray<const QtPrivate::QMetaTypeInterface *, metaTypeCount> metaTypes{};
-    };
-    constexpr static Arrays arrays = []() {
-        auto r = Arrays{};
-        DataBuilder b{r};
-        generateDataPass<T>(b);
-        return r;
-    }();
-};
-
-template<class T, class IS>
-struct MetaDataBuilder;
-template<class T, std::size_t... Is>
-struct MetaDataBuilder<T, index_sequence<Is...>> {
-    using P = MetaDataProvider<T>;
-    using MetaDataType = typename P::MetaDataType;
-    constexpr static MetaDataType meta_data = {
-        {
-            OffsetLenPair{static_cast<uint>(P::arrays.stringOffsets[Is]), P::arrays.stringLengths[Is]}...,
-            OffsetLenPair{static_cast<uint>(P::arrays.stringOffsets[sizeof...(Is)-1] + P::arrays.stringLengths[sizeof...(Is)-1]), 0},
-        },
-        P::arrays.stringChars,
-        P::arrays.ints
-    };
-};
-
-/// Returns the QMetaObject* of the base type. Use SFINAE to only return it if it exists
+/// Returns the QMetaObject* of the base type
 template<typename T>
-static constexpr auto parentMetaObject(int) W_RETURN(&T::W_BaseType::staticMetaObject)
+concept WithParentMetaObject = requires(const QMetaObject* result) {
+    result = &T::W_BaseType::staticMetaObject;
+};
 template<typename T>
-static constexpr const QMetaObject *parentMetaObject(...) { return nullptr; }
-
-// Bunch of helpers for propertyOperation
-// this uses SFINAE of the return value to work either with F a pointer to member, or to member function
-// or nullptr.
-template <typename F, typename O, typename T>
-inline auto propSet(F f, O *o, const T &t) W_RETURN(((o->*f)(t),0))
-template <typename F, typename O, typename T>
-inline auto propSet(F f, O *o, const T &t) W_RETURN(o->*f = t)
-template <typename O, typename T>
-inline void propSet(Empty, O *, const T &) {}
-
-template <typename F, typename O, typename T>
-inline auto propGet(F f, O *o, T &t) W_RETURN(t = (o->*f)())
-template <typename F, typename O, typename T>
-inline auto propGet(F f, O *o, T &t) W_RETURN(t = o->*f)
-template <typename O, typename T>
-inline void propGet(Empty, O *, T &) {}
-
-template <typename F, typename M, typename O>
-inline auto propNotify(F f, M m, O *o) W_RETURN(((o->*f)(o->*m),0))
-template <typename F, typename M, typename O>
-inline auto propNotify(F f, M, O *o) W_RETURN(((o->*f)(),0))
-template <typename... T>
-inline void propNotify(T...) {}
-
-template <typename F, typename O>
-inline auto propReset(F f, O *o) W_RETURN(((o->*f)(),0))
-template <typename... T>
-inline void propReset(T...) {}
+static consteval const QMetaObject *parentMetaObject() {
+    if constexpr (WithParentMetaObject<T>) {
+        return &T::W_BaseType::staticMetaObject;
+    }
+    else {
+        return nullptr;
+    }
+}
 
 #if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
 // note: Qt 6.3 introduced a check here that allows only QObjects - but we need it for Gadgets as well
 template <typename, typename, typename, typename> struct FunctorCall;
-template <size_t... II, typename... SignalArgs, typename R, typename Function>
-struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<SignalArgs...>, R, Function> {
+template <size_t... II, typename... Args, typename R, typename Function>
+struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<Args...>, R, Function> {
     static void call(Function f, void **arg) {
-        f((*reinterpret_cast<typename QtPrivate::RemoveRef<SignalArgs>::Type *>(arg[II+1]))...), QtPrivate::ApplyReturnValue<R>(arg[0]);
+        f((*reinterpret_cast<std::remove_reference_t<Args>*>(arg[II+1]))...), QtPrivate::ApplyReturnValue<R>(arg[0]);
     }
 };
-template <size_t... II, typename... SignalArgs, typename R, typename... SlotArgs, typename SlotRet, class Obj>
-struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<SignalArgs...>, R, SlotRet (Obj::*)(SlotArgs...)> {
-    static void call(SlotRet (Obj::*f)(SlotArgs...), Obj *o, void **arg)
-    {
-        (o->*f)((*reinterpret_cast<typename QtPrivate::RemoveRef<SignalArgs>::Type *>(arg[II+1]))...), QtPrivate::ApplyReturnValue<R>(arg[0]);
+template <size_t... II, typename... Args, typename R, typename... SlotArgs, typename SlotRet, class Obj>
+struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<Args...>, R, SlotRet (Obj::*)(SlotArgs...)> {
+    static void call(SlotRet (Obj::*f)(SlotArgs...), Obj *o, void **arg) {
+        (o->*f)((*reinterpret_cast<std::remove_reference_t<Args>*>(arg[II+1]))...), QtPrivate::ApplyReturnValue<R>(arg[0]);
     }
 };
-template <size_t... II, typename... SignalArgs, typename R, typename... SlotArgs, typename SlotRet, class Obj>
-struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<SignalArgs...>, R, SlotRet (Obj::*)(SlotArgs...) const> {
-    static void call(SlotRet (Obj::*f)(SlotArgs...) const, Obj *o, void **arg)
-    {
-        (o->*f)((*reinterpret_cast<typename QtPrivate::RemoveRef<SignalArgs>::Type *>(arg[II+1]))...), QtPrivate::ApplyReturnValue<R>(arg[0]);
+template <size_t... II, typename... Args, typename R, typename... SlotArgs, typename SlotRet, class Obj>
+struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<Args...>, R, SlotRet (Obj::*)(SlotArgs...) const> {
+    static void call(SlotRet (Obj::*f)(SlotArgs...) const, Obj *o, void **arg) {
+        (o->*f)((*reinterpret_cast<std::remove_reference_t<Args>*>(arg[II+1]))...), QtPrivate::ApplyReturnValue<R>(arg[0]);
     }
 };
-template <size_t... II, typename... SignalArgs, typename R, typename... SlotArgs, typename SlotRet, class Obj>
-struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<SignalArgs...>, R, SlotRet (Obj::*)(SlotArgs...) noexcept> {
-    static void call(SlotRet (Obj::*f)(SlotArgs...) noexcept, Obj *o, void **arg)
-    {
-        (o->*f)((*reinterpret_cast<typename QtPrivate::RemoveRef<SignalArgs>::Type *>(arg[II+1]))...), QtPrivate::ApplyReturnValue<R>(arg[0]);
+template <size_t... II, typename... Args, typename R, typename... SlotArgs, typename SlotRet, class Obj>
+struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<Args...>, R, SlotRet (Obj::*)(SlotArgs...) noexcept> {
+    static void call(SlotRet (Obj::*f)(SlotArgs...) noexcept, Obj *o, void **arg) {
+        (o->*f)((*reinterpret_cast<std::remove_reference_t<Args>*>(arg[II+1]))...), QtPrivate::ApplyReturnValue<R>(arg[0]);
     }
 };
-template <size_t... II, typename... SignalArgs, typename R, typename... SlotArgs, typename SlotRet, class Obj>
-struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<SignalArgs...>, R, SlotRet (Obj::*)(SlotArgs...) const noexcept> {
-    static void call(SlotRet (Obj::*f)(SlotArgs...) const noexcept, Obj *o, void **arg)
-    {
-        (o->*f)((*reinterpret_cast<typename QtPrivate::RemoveRef<SignalArgs>::Type *>(arg[II+1]))...), QtPrivate::ApplyReturnValue<R>(arg[0]);
+template <size_t... II, typename... Args, typename R, typename... SlotArgs, typename SlotRet, class Obj>
+struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<Args...>, R, SlotRet (Obj::*)(SlotArgs...) const noexcept> {
+    static void call(SlotRet (Obj::*f)(SlotArgs...) const noexcept, Obj *o, void **arg) {
+        (o->*f)((*reinterpret_cast<std::remove_reference_t<Args>*>(arg[II+1]))...), QtPrivate::ApplyReturnValue<R>(arg[0]);
     }
 };
 #endif
 
-struct FriendHelper {
+template<size_t N, class TPP>
+using InterfacePtr = decltype(w_state(index<N>, InterfaceStateTag{}, TPP{}));
 
+struct FriendHelper {
     template<typename T>
-    static constexpr QMetaObject createMetaObject() {
-        using MetaData = MetaDataBuilder<T, make_index_sequence<dataLayout<T>.stringCount>>;
-        using P = MetaDataProvider<T>;
+    static consteval QMetaObject createMetaObject() {
         return { {
-            parentMetaObject<T>(0),
-            &MetaData::meta_data.stringOffsetLens[0].offset,
-            MetaData::meta_data.ints,
-            T::qt_static_metacall,
-            nullptr,
-            P::arrays.metaTypes,
-            nullptr,
+            .superdata = parentMetaObject<T>(),
+            .stringdata = &metaData<T>.stringOffsetLens[0].offset,
+            .data = metaData<T>.data,
+            .static_metacall = T::qt_static_metacall,
+            .relatedMetaObjects = nullptr,
+            .metaTypes = metaData<T>.metaTypes,
+            .extradata = nullptr,
         } };
     }
 
     template<typename T> static int qt_metacall_impl(T *_o, QMetaObject::Call _c, int _id, void** _a) {
-        using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
+        using ObjI = ObjectInfo<T>;
         _id = _o->T::W_BaseType::qt_metacall(_c, _id, _a);
         if (_id < 0)
             return _id;
@@ -851,10 +643,8 @@ QT_WARNING_DISABLE_GCC("-Waddress")
     /// Returns I if the argument is equal to the pointer to member function of the signal of index 'I'
     template<typename T, int I>
     static int indexOfMethod(void **func) {
-        using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
-        constexpr auto m = ObjI::method(index<I>);
-        if ((m.flags & 0xc) == W_MethodType::Signal.value
-            && m.func == *reinterpret_cast<decltype(m.func)*>(func))
+        constexpr auto m = ObjectInfo<T>::method(index<I>);
+        if ((m.flags & 0xc) == MethodSignal && m.func == *reinterpret_cast<decltype(m.func)*>(func))
             return I;
         return -1;
     }
@@ -862,70 +652,100 @@ QT_WARNING_POP
 
     /// Helper for implementation of qt_static_metacall for QMetaObject::InvokeMetaMethod
     /// T is the class, and I is the index of a method.
-    /// Invoke the method with index I if id == I.
-    template <typename T, int I>
-    static void invokeMethod(T *_o, int _id, void **_a) {
-        if (_id == I) {
-            using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
-            constexpr auto method = ObjI::method(index<I>);
-            using Func = typename decltype(method)::Func;
-            using FP = QtPrivate::FunctionPointer<Func>;
+    template <class T, int I>
+    static void invokeMethod(T *_o, void **_a) {
+        constexpr auto method = ObjectInfo<T>::method(index<I>);
+        using Func = typename decltype(method)::Func;
+        using FP = QtPrivate::FunctionPointer<Func>;
 #if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
-            if constexpr (FP::IsPointerToMemberFunction) {
-                FunctorCall<typename decltype(method)::ArgSequence, typename FP::Arguments, typename FP::ReturnType, Func>::call(method.func, _o, _a);
-            }
-            else {
-                (void)_o;
-                FunctorCall<typename decltype(method)::ArgSequence, typename FP::Arguments, typename FP::ReturnType, Func>::call(method.func, _a);
-            }
-#else
-            FP::template call<typename FP::Arguments, typename FP::ReturnType>(method.func, _o, _a);
-#endif
+        if constexpr (FP::IsPointerToMemberFunction) {
+            FunctorCall<make_index_sequence<method.argCount>, typename FP::Arguments, typename FP::ReturnType, Func>::call(method.func, _o, _a);
         }
+        else {
+            (void)_o;
+            FunctorCall<make_index_sequence<method.argCount>, typename FP::Arguments, typename FP::ReturnType, Func>::call(method.func, _a);
+        }
+#else
+        FP::template call<typename FP::Arguments, typename FP::ReturnType>(method.func, _o, _a);
+#endif
     }
 
     /// Helper for implementation of qt_static_metacall for QMetaObject::RegisterMethodArgumentMetaType
     /// T is the class, and I is the index of a method.
     template <typename T, int I>
-    static void registerMethodArgumentType(int _id, void **_a) {
-        if (_id == I) {
-            using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
-            constexpr auto f = ObjI::method(index<I>).func;
-            using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
-            auto _t = QtPrivate::ConnectionTypes<typename P::Arguments>::types();
-            uint arg = *reinterpret_cast<uint*>(_a[1]);
-            *reinterpret_cast<QMetaType *>(_a[0]) = _t && arg < P::ArgumentCount ? QMetaType(_t[arg]) : QMetaType();
-        }
+    static void registerMethodArgumentType(void **_a) {
+        constexpr auto f = ObjectInfo<T>::method(index<I>).func;
+        using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
+        auto _t = QtPrivate::ConnectionTypes<typename P::Arguments>::types();
+        uint arg = *reinterpret_cast<uint*>(_a[1]);
+        *reinterpret_cast<QMetaType *>(_a[0]) = _t && arg < P::ArgumentCount ? QMetaType(_t[arg]) : QMetaType();
     }
 
     /// Helper for implementation of qt_static_metacall for any of the operations in a property
     /// T is the class, and I is the index of a property.
     template<typename T, int I>
-    static void propertyOperation(T *_o, QMetaObject::Call _c, int _id, void **_a) {
-        if (_id != I)
-            return;
+    static void propertyOperation(T *_o, QMetaObject::Call _c, void **_a) {
         using TPP = T**;
         constexpr auto p = w_state(index<I>, PropertyStateTag{}, TPP{});
         using Type = typename decltype(p)::PropertyType;
         switch(+_c) {
         case QMetaObject::ReadProperty:
-            if W_IF_CONSTEXPR (p.getter != nullptr) {
-                propGet(p.getter, _o, *reinterpret_cast<Type*>(_a[0]));
-            } else if W_IF_CONSTEXPR (p.member != nullptr) {
-                propGet(p.member, _o, *reinterpret_cast<Type*>(_a[0]));
+            if constexpr (p.getter != nullptr) {
+                auto& t = *reinterpret_cast<Type*>(_a[0]);
+                if constexpr (requires { t = (_o->*p.getter)(); }) {
+                    t = (_o->*p.getter)();
+                }
+                else {
+                    throw "wrong getter!";
+                }
+            } else if constexpr (p.member != nullptr) {
+                auto& t = *reinterpret_cast<Type*>(_a[0]);
+                if constexpr (requires { t = _o->*p.member; }) {
+                    t = _o->*p.member;
+                }
+                else {
+                    throw "wrong member!";
+                }
             }
             break;
         case QMetaObject::WriteProperty:
-            if W_IF_CONSTEXPR (p.setter != nullptr) {
-                propSet(p.setter, _o, *reinterpret_cast<Type*>(_a[0]));
-            } else if W_IF_CONSTEXPR (p.member != nullptr) {
-                propSet(p.member, _o, *reinterpret_cast<Type*>(_a[0]));
-                propNotify(p.notify, p.member, _o);
+            if constexpr (p.setter != nullptr) {
+                const auto& t = *reinterpret_cast<Type*>(_a[0]);
+                if constexpr (requires { (_o->*p.setter)(t); }) {
+                    (_o->*p.setter)(t);
+                }
+                else {
+                    throw "wrong setter!";
+                }
+            } else if constexpr (p.member != nullptr) {
+                const auto& t = *reinterpret_cast<Type*>(_a[0]);
+                if constexpr (requires { _o->*p.member = t; }) {
+                    _o->*p.member = t;
+                }
+                else {
+                    throw "wrong member!";
+                }
+                if constexpr (p.notify != nullptr) {
+                    if constexpr (requires { (_o->*p.notify)(_o->*p.member); }) {
+                        (_o->*p.notify)(_o->*p.member);
+                    }
+                    else if constexpr (requires { (_o->*p.notify)(); }) {
+                        (_o->*p.notify)();
+                    }
+                    else {
+                        throw "wrong notify!";
+                    }
+                }
             }
             break;
         case QMetaObject::ResetProperty:
-            if W_IF_CONSTEXPR (p.reset != nullptr) {
-                propReset(p.reset, _o);
+            if constexpr (p.reset != nullptr) {
+                if constexpr (requires { (_o->*p.reset)(); }) {
+                    (_o->*p.reset)();
+                }
+                else {
+                    throw "wrong reset!";
+                }
             }
             break;
         case QMetaObject::RegisterPropertyMetaType:
@@ -935,63 +755,38 @@ QT_WARNING_POP
 
     /// Helper for implementation of qt_static_metacall for QMetaObject::CreateInstance
     /// T is the class, and I is the index of a constructor.
-    template<typename T, class... Args, std::size_t... I>
-    static void createInstanceImpl(void **_a, const MetaConstructorInfo<Args...>&, index_sequence<I...>) {
-        *reinterpret_cast<T**>(_a[0]) =
-            new T(*reinterpret_cast<std::remove_reference_t<Args> *>(_a[I+1])...);
-    }
     template<typename T, int I>
-    static void createInstance(int _id, void** _a) {
-        if (_id == I) {
-            using TPP = T**;
-            constexpr auto m = w_state(index<I>, ConstructorStateTag{}, TPP{});
-            createInstanceImpl<T>(_a, m, m.argSequence);
-        }
+    static void createInstance(void** _a) {
+        using TPP = T**;
+        constexpr auto m = w_state(index<I>, ConstructorStateTag{}, TPP{});
+        [&]<class... Args, size_t... Is>(const MetaConstructorInfo<Args...>&, const index_sequence<Is...>&) {
+            *reinterpret_cast<T**>(_a[0]) =
+                new T(*reinterpret_cast<std::remove_reference_t<Args> *>(_a[Is+1])...);
+        }(m, make_index_sequence<m.argCount>{});
     }
 
-    /// Implementation of qt_static_metacall for W_OBJECT_IMPL which should be called with
-    /// std::index_sequence for the amount of method, constructor, and properties.
-    template<typename T, size_t...MethI, size_t ...ConsI, size_t...PropI>
-    static void qt_static_metacall_impl2(QObject *_o, QMetaObject::Call _c, int _id, void** _a,
-                            std::index_sequence<MethI...>, std::index_sequence<ConsI...>, std::index_sequence<PropI...>) {
+    template<typename T, class O> requires(std::is_same_v<T, O> || (std::is_same_v<QObject, O> && std::is_base_of_v<QObject, T>))
+    static void qt_static_metacall_impl(O *_o, QMetaObject::Call _c, int _id, void** _a) {
         Q_UNUSED(_id) Q_UNUSED(_o) Q_UNUSED(_a)
-        if (_c == QMetaObject::InvokeMetaMethod) {
-            Q_ASSERT(T::staticMetaObject.cast(_o));
-            (invokeMethod<T, MethI>(reinterpret_cast<T*>(_o), _id, _a),...);
-        } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-            (registerMethodArgumentType<T,MethI>(_id, _a),...);
-        } else if (_c == QMetaObject::IndexOfMethod) {
-            *reinterpret_cast<int *>(_a[0]) = ((1+indexOfMethod<T,MethI>(reinterpret_cast<void **>(_a[1]))) + ... + 0)-1;
-        } else if (_c == QMetaObject::CreateInstance) {
-            (createInstance<T, ConsI>(_id, _a),...);
-        } else if (isPropertyMetacall(_c)) {
-            (propertyOperation<T,PropI>(static_cast<T*>(_o), _c, _id, _a),...);
-        }
-    }
-
-    // Same for W_GADGET
-    template<typename T, size_t...MethI, size_t ...ConsI, size_t...PropI>
-    static void qt_static_metacall_impl2(T *_o, QMetaObject::Call _c, int _id, void** _a,
-                            std::index_sequence<MethI...>, std::index_sequence<ConsI...>, std::index_sequence<PropI...>) {
-        Q_UNUSED(_id) Q_UNUSED(_o) Q_UNUSED(_a)
-        if (_c == QMetaObject::InvokeMetaMethod) {
-            (invokeMethod<T, MethI>(_o, _id, _a),...);
-        } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-            (registerMethodArgumentType<T,MethI>(_id, _a),...);
-        } else if (_c == QMetaObject::IndexOfMethod) {
-            Q_ASSERT_X(false, "qt_static_metacall", "IndexOfMethod called on a Q_GADGET");
-        } else if (_c == QMetaObject::CreateInstance) {
-            (createInstance<T, ConsI>(_id, _a),...);
-        } else if (isPropertyMetacall(_c)) {
-            (propertyOperation<T,PropI>(_o, _c, _id, _a),...);
-        }
-    }
-
-    template<typename T, typename... Ts>
-    static void qt_static_metacall_impl(Ts &&... args) {
-        using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
-        return qt_static_metacall_impl2<T>(std::forward<Ts>(args)...,
-                                           ObjI::methodSequence, ObjI::constructorSequence, ObjI::propertySequence);
+        using ObjI = ObjectInfo<T>;
+        [&]<size_t...MethI, size_t ...ConsI, size_t...PropI>(const std::index_sequence<MethI...>&, const std::index_sequence<ConsI...>&, const std::index_sequence<PropI...>&) {
+            if (_c == QMetaObject::InvokeMetaMethod) {
+                ((_id == MethI ? invokeMethod<T, MethI>(static_cast<T*>(_o), _a) : (void)0),...);
+            } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
+                ((_id == MethI ? registerMethodArgumentType<T,MethI>(_a) : (void)0),...);
+            } else if (_c == QMetaObject::IndexOfMethod) {
+                if constexpr (std::is_same_v<QObject, O>) {
+                    *reinterpret_cast<int *>(_a[0]) = ((1+indexOfMethod<T, MethI>(reinterpret_cast<void **>(_a[1]))) + ... + 0)-1;
+                }
+                else {
+                    Q_ASSERT_X(false, "qt_static_metacall", "IndexOfMethod called on a Q_GADGET");
+                }
+            } else if (_c == QMetaObject::CreateInstance) {
+                ((_id == ConsI ? createInstance<T, ConsI>(_a) : (void)0),...);
+            } else if (isPropertyMetacall(_c)) {
+                ((_id == PropI ? propertyOperation<T, PropI>(static_cast<T*>(_o), _c, _a) : (void)0),...);
+            }
+        }(make_index_sequence<ObjI::methodCount>{}, make_index_sequence<ObjI::constructorCount>{}, make_index_sequence<ObjI::propertyCount>{});
     }
 
     /// implementation of qt_metacast
@@ -999,19 +794,14 @@ QT_WARNING_POP
     static void* qt_metacast_impl(T *o, const char *_clname) {
         if (!_clname)
             return nullptr;
-        using MetaData = MetaDataBuilder<T, make_index_sequence<dataLayout<T>.stringCount>>;
-        if (!strcmp(_clname, MetaData::meta_data.stringChars.data))
+        if (!strcmp(_clname, metaData<T>.stringChars))
             return o;
-        using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
         void *result = {};
-        auto l = [&](auto i) {
-            using TPP = T**;
-            using Interface = decltype(w_state(i, InterfaceStateTag{}, TPP{}));
-            const char *iid = qobject_interface_iid<Interface>();
-            if (iid && !strcmp(_clname, iid))
-                result = static_cast<Interface>(o);
-        };
-        fold(ObjI::interfaceSequence, l);
+        [&]<size_t...Is>(const std::index_sequence<Is...>&) {
+            (((qobject_interface_iid<InterfacePtr<Is, T**>>()
+                    && 0 == strcmp(_clname, qobject_interface_iid<InterfacePtr<Is, T**>>())) ?
+                        (void)(result = static_cast<InterfacePtr<Is, T**>>(o)) : (void)0), ...);
+        }(make_index_sequence<ObjectInfo<T>::interfaceCount>{});
         if (!result) return o->T::W_BaseType::qt_metacast(_clname);
         return result;
     }
@@ -1019,10 +809,6 @@ QT_WARNING_POP
 }; // FriendHelper
 
 } // namespace w_internal
-
-#ifndef QT_INIT_METAOBJECT // Defined in qglobal.h since Qt 5.10
-#define QT_INIT_METAOBJECT
-#endif
 
 // W_OBJECT_IMPL was designed to take advantage of the GNU extension that ... can have zero arguments.
 // So we need to work around that to extract the template stuff which may not exist or be composed
@@ -1040,13 +826,9 @@ QT_WARNING_POP
 
 #define W_OBJECT_IMPL_COMMON(INLINE, ...) \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) struct W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_MetaObjectCreatorHelper { \
-        struct Name { \
-            static constexpr auto defaultName = w_internal::viewLiteral(W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))); \
-            static constexpr auto value = w_internal::fetchExplicitName<typename W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>(defaultName, 0); \
-        }; \
-        using ObjectInfo = w_internal::ObjectInfo<typename W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType, Name>; \
+        static constexpr auto fullName = w_internal::viewLiteral(W_MACRO_STRIGNIFY(W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__))); \
     }; \
-    W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) INLINE const QT_INIT_METAOBJECT QMetaObject W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::staticMetaObject = \
+    W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) INLINE const QMetaObject W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::staticMetaObject = \
         w_internal::FriendHelper::createMetaObject<typename W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::W_ThisType>();
 
 /// \macro W_OBJECT_IMPL(TYPE [, TEMPLATE_STUFF])
@@ -1112,3 +894,12 @@ QT_WARNING_POP
 /// (Requires support for c++17 inline variables)
 #define W_NAMESPACE_IMPL_INLINE(...) \
     W_OBJECT_IMPL_COMMON(inline, __VA_ARGS__)
+
+#else // Q_MOC_RUN
+#define W_OBJECT_IMPL(...)
+#define W_GADGET_IMPL(...)
+#define W_NAMESPACE_IMPL(...)
+#define W_OBJECT_IMPL_INLINE(...)
+#define W_GADGET_IMPL_INLINE(...)
+#define W_NAMESPACE_IMPL_INLINE(...)
+#endif

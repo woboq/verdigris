@@ -33,47 +33,47 @@ class tst_Basic : public QObject
 
 private slots:
     void firstTest();
-    W_SLOT(firstTest, W_Access::Private)
+    W_SLOT(firstTest, W_Access::Private{})
 
     void signalSlot_data();
-    W_SLOT(signalSlot_data, W_Access::Private)
+    W_SLOT(signalSlot_data, W_Access::Private{})
     void signalSlot();
-    W_SLOT(signalSlot, W_Access::Private)
+    W_SLOT(signalSlot, W_Access::Private{})
 
     void property_data();
-    W_SLOT(property_data, W_Access::Private)
+    W_SLOT(property_data, W_Access::Private{})
     void property();
-    W_SLOT(property, W_Access::Private)
+    W_SLOT(property, W_Access::Private{})
 
     void signalArgs();
-    W_SLOT(signalArgs, W_Access::Private)
+    W_SLOT(signalArgs, W_Access::Private{})
 
     void overloadForm();
-    W_SLOT(overloadForm,(), W_Access::Private)
+    W_SLOT(overloadForm,(), W_Access::Private{})
 
     void enumBase();
-    W_SLOT(enumBase, W_Access::Private)
+    W_SLOT(enumBase, W_Access::Private{})
 
     void subObject();
-    W_SLOT(subObject, W_Access::Private)
+    W_SLOT(subObject, W_Access::Private{})
 
     void abstractParent();
-    W_SLOT(abstractParent, W_Access::Private)
+    W_SLOT(abstractParent, W_Access::Private{})
 
     void testQNamespace();
-    W_SLOT(testQNamespace, W_Access::Private)
+    W_SLOT(testQNamespace, W_Access::Private{})
 
     void testAccess();
-    W_SLOT(testAccess, W_Access::Private)
+    W_SLOT(testAccess, W_Access::Private{})
 
     void testAnotherTU();
-    W_SLOT(testAnotherTU, W_Access::Private)
+    W_SLOT(testAnotherTU, W_Access::Private{})
 
     void testFinal();
-    W_SLOT(testFinal, W_Access::Private)
+    W_SLOT(testFinal, W_Access::Private{})
 
     void overloadedAddressOperator();
-    W_SLOT(overloadedAddressOperator, W_Access::Private)
+    W_SLOT(overloadedAddressOperator, W_Access::Private{})
 };
 
 #include <wobjectimpl.h>
@@ -346,16 +346,16 @@ struct TestAccess : QObject  {
 public:
     void publicSlot(){} W_SLOT(publicSlot)
     void publicMethod(){} W_INVOKABLE(publicMethod)
-    void forcePrivateSlot(){} W_SLOT(forcePrivateSlot, W_Access::Private)
-    void forcePrivateMethod(){} W_INVOKABLE(forcePrivateMethod, W_Access::Private)
+    void forcePrivateSlot(){} W_SLOT(forcePrivateSlot, W_Access::Private{})
+    void forcePrivateMethod(){} W_INVOKABLE(forcePrivateMethod, W_Access::Private{})
 protected:
     void protectedSlot(){} W_SLOT(protectedSlot)
     void protectedMethod(){} W_INVOKABLE(protectedMethod)
 private:
     void privateSlot(){} W_SLOT(privateSlot)
     void privateMethod(){} W_INVOKABLE(privateMethod)
-    void forcePublicSlot(){} W_SLOT(forcePublicSlot, W_Access::Public)
-    void forcePublicMethod(){} W_INVOKABLE(forcePublicMethod, W_Access::Public)
+    void forcePublicSlot(){} W_SLOT(forcePublicSlot, W_Access::Public{})
+    void forcePublicMethod(){} W_INVOKABLE(forcePublicMethod, W_Access::Public{})
 };
 W_OBJECT_IMPL(TestAccess)
 

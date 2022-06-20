@@ -84,7 +84,7 @@ private:
     // Register a property changed signal for all properties
     // Verdigris increments I starting with 0 until this template is invalid.
     // So you should limit the instantiation to the number of Properties.
-    template<size_t I, class = std::enable_if_t<(I < sizeof...(Properties))>>
+    template<size_t I> requires(I < sizeof...(Properties))
     struct PropertyChangedSignals {
         using Property = PropertyAt<I>;
         constexpr static auto signalName = getPropertyChangedName(Wrap<Property>{});
@@ -115,7 +115,7 @@ private:
 
     // Finally you have everything to register all your properties
     // Again Verdigris increments I starting with 0 until this template is no longer valid.
-    template<size_t I, class = std::enable_if_t<(I < sizeof...(Properties))>>
+    template<size_t I> requires(I < sizeof...(Properties))
     struct RegisterProperties {
         using Property = PropertyAt<I>;
         constexpr static auto name = getPropertyName(Wrap<Property>{});

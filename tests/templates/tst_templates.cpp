@@ -26,15 +26,15 @@ class tst_Templates : public QObject
 private slots:
 
     // from https://codereview.qt-project.org/49864/
-    void templatesMethod_data(); W_SLOT(templatesMethod_data, W_Access::Private)
-    void templatesMethod(); W_SLOT(templatesMethod, W_Access::Private)
+    void templatesMethod_data(); W_SLOT(templatesMethod_data, W_Access::Private{})
+    void templatesMethod(); W_SLOT(templatesMethod, W_Access::Private{})
 
     // from https://codereview.qt-project.org/49866/
-    void connectTemplate();  W_SLOT(connectTemplate, W_Access::Private)
+    void connectTemplate();  W_SLOT(connectTemplate, W_Access::Private{})
 
-    void gadget(); W_SLOT(gadget, W_Access::Private)
+    void gadget(); W_SLOT(gadget, W_Access::Private{})
 
-    void smartPointer(); W_SLOT(smartPointer, W_Access::Private)
+    void smartPointer(); W_SLOT(smartPointer, W_Access::Private{})
 };
 
 

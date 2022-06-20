@@ -14,6 +14,12 @@ Project {
     Product {
         name: "Verdigris"
 
+        Depends { name: "cpp" }
+        Depends { name: "Qt.core" }
+        Qt.core.enableMoc: false
+        cpp.cxxLanguageVersion: "c++20"
+        cpp.includePaths: ['src']
+
         files: [
             "src/wobjectcpp.h",
             "src/wobjectdefs.h",

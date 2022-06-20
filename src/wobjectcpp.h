@@ -1,4 +1,6 @@
 #pragma once
+#ifndef Q_MOC_RUN // don't define anything when moc is run
+
 #include "wobjectdefs.h"
 
 namespace w_internal {
@@ -9,21 +11,21 @@ struct MetaMethodInfoBuilder {
     F func;
     ParamTypes paramTypes{};
     ParamNames paramNames{};
-    static constexpr int flags = Flags;
+    // static constexpr int flags = Flags;
     using IntegralConstant = IC;
 
-    template<class... Args, class = std::enable_if_t<(std::is_same_v<std::decay_t<Args>, StringView> && ...)>>
+    template<class... Args> requires((std::is_same_v<std::decay_t<Args>, StringView> && ...))
     constexpr auto setParamTypes(Args... newParamTypes) const
         -> MetaMethodInfoBuilder<F, Flags, IC, w_internal::StringViewArray<sizeof... (Args)>, ParamNames> {
         return {name, func, {newParamTypes...}, paramNames};
     }
-    template<class... Args, class = std::enable_if_t<(std::is_same_v<std::decay_t<Args>, StringView> && ...)>>
+    template<class... Args> requires((std::is_same_v<std::decay_t<Args>, StringView> && ...))
     constexpr auto setParamNames(Args... newParamNames) const
         -> MetaMethodInfoBuilder<F, Flags, IC, ParamTypes, w_internal::StringViewArray<sizeof... (Args)>> {
         return {name, func, paramTypes, {newParamNames...}};
     }
     template<int... fs>
-    constexpr auto addFlags(w_internal::W_MethodFlags<fs>...) const
+    constexpr auto addFlags(w_internal::MethodFlag<fs>...) const
         -> MetaMethodInfoBuilder<F, (fs | ... | Flags), IC, ParamTypes, ParamNames> {
             return {name, func, paramTypes, paramNames};
     }
@@ -100,7 +102,7 @@ constexpr auto makeProperty(StringView name, StringView type) {
 /// * .setIntegralConstant<T>() - set a compile time integral value type as a unique identifier
 /// * .build() - build the final MethodInfo for this signal
 template<typename F>
-constexpr auto makeSignalBuilder(StringView name, F func) -> w_internal::MetaMethodInfoBuilder<F, W_MethodType::Signal.value> {
+constexpr auto makeSignalBuilder(StringView name, F func) -> w_internal::MetaMethodInfoBuilder<F, w_internal::MethodSignal> {
     return {name, func};
 }
 
@@ -148,7 +150,7 @@ constexpr auto makeFlagInfo(StringView name, StringView enumAliasName, w_interna
 ///
 /// \note you have to ensure that the struct is only valid for some `I`s.
 #define W_CPP_PROPERTY(a) \
-    static constexpr size_t W_MACRO_CONCAT(a,_O) = w_internal::stateCount<__COUNTER__, w_internal::PropertyStateTag, W_ThisType**>; \
+    static constexpr size_t W_MACRO_CONCAT(a,_O) = w_internal::stateCount<__COUNTER__, w_internal::PropertyStateTag, W_ThisType**>(); \
     template<size_t I> \
     friend constexpr auto w_state(w_internal::Index<I>, w_internal::PropertyStateTag, W_ThisType**) W_RETURN((a<I-W_MACRO_CONCAT(a,_O)>::property))
 
@@ -166,7 +168,7 @@ constexpr auto makeFlagInfo(StringView name, StringView enumAliasName, w_interna
 ///
 /// \note you have to ensure that the struct is only valid for some `I`s.
 #define W_CPP_SIGNAL(a) \
-    static constexpr size_t W_MACRO_CONCAT(a,_O) = w_internal::stateCount<__COUNTER__, w_internal::SignalStateTag, W_ThisType**>; \
+    static constexpr size_t W_MACRO_CONCAT(a,_O) = w_internal::stateCount<__COUNTER__, w_internal::SignalStateTag, W_ThisType**>(); \
     template<size_t I> \
     friend constexpr auto w_state(w_internal::Index<I>, w_internal::SignalStateTag, W_ThisType**) W_RETURN((a<I-W_MACRO_CONCAT(a,_O)>::signal))
 
@@ -248,3 +250,14 @@ constexpr auto makeFlagInfo(StringView name, StringView enumAliasName, w_interna
 #define W_CPP_FLAG_NS(type, a) \
     W_STATE_APPEND_NS(EnumState, a<type>::flagInfo) \
     Q_FLAG_NS(type)
+
+#else // Q_MOC_RUN
+// just to avoid parse errors when moc is run over things that it should ignore
+#define W_CPP_PROPERTY(a)
+#define W_CPP_SIGNAL(a)
+#define W_CPP_SIGNAL_IMPL(type, a, i, ...)
+#define W_CPP_ENUM(type, a)
+#define W_CPP_ENUM_NS(type, a)
+#define W_CPP_FLAG(type, a)
+#define W_CPP_FLAG_NS(type, a)
+#endif
