@@ -5,36 +5,31 @@
 
 namespace w_internal {
 
-template<class F, int Flags, class IC = int, class ParamTypes = w_internal::StringViewArray<>, class ParamNames = w_internal::StringViewArray<>>
+template<class F, int Flags, class ParamTypes = w_internal::StringViewArray<>, class ParamNames = w_internal::StringViewArray<>>
 struct MetaMethodInfoBuilder {
     StringView name;
     F func;
     ParamTypes paramTypes{};
     ParamNames paramNames{};
     // static constexpr int flags = Flags;
-    using IntegralConstant = IC;
 
     template<class... Args> requires((std::is_same_v<std::decay_t<Args>, StringView> && ...))
     constexpr auto setParamTypes(Args... newParamTypes) const
-        -> MetaMethodInfoBuilder<F, Flags, IC, w_internal::StringViewArray<sizeof... (Args)>, ParamNames> {
+        -> MetaMethodInfoBuilder<F, Flags, w_internal::StringViewArray<sizeof... (Args)>, ParamNames> {
         return {name, func, {newParamTypes...}, paramNames};
     }
     template<class... Args> requires((std::is_same_v<std::decay_t<Args>, StringView> && ...))
     constexpr auto setParamNames(Args... newParamNames) const
-        -> MetaMethodInfoBuilder<F, Flags, IC, ParamTypes, w_internal::StringViewArray<sizeof... (Args)>> {
+        -> MetaMethodInfoBuilder<F, Flags, ParamTypes, w_internal::StringViewArray<sizeof... (Args)>> {
         return {name, func, paramTypes, {newParamNames...}};
     }
     template<int... fs>
     constexpr auto addFlags(w_internal::MethodFlag<fs>...) const
-        -> MetaMethodInfoBuilder<F, (fs | ... | Flags), IC, ParamTypes, ParamNames> {
+        -> MetaMethodInfoBuilder<F, (fs | ... | Flags), ParamTypes, ParamNames> {
             return {name, func, paramTypes, paramNames};
     }
-    template<class IC2>
-    constexpr auto setIntegralConstant() const -> MetaMethodInfoBuilder<F, Flags, IC2, ParamTypes, ParamNames> {
-        return {name, func, paramTypes, paramNames};
-    }
 
-    constexpr auto build() const -> w_internal::MetaMethodInfo<F, Flags, IC, ParamTypes, ParamNames> {
+    constexpr auto build() const -> w_internal::MetaMethodInfo<F, Flags, ParamTypes, ParamNames> {
         return {func, name, paramTypes, paramNames};
     }
 };
@@ -99,7 +94,6 @@ constexpr auto makeProperty(StringView name, StringView type) {
 /// * .setParamNames(StringView...) - set the names for all the function parameters (optional)
 /// * .setParamTypes(StringView...) - set the names of for all parameter types
 /// * .addFlag(Flags...) - add some methods flags
-/// * .setIntegralConstant<T>() - set a compile time integral value type as a unique identifier
 /// * .build() - build the final MethodInfo for this signal
 template<typename F>
 constexpr auto makeSignalBuilder(StringView name, F func) -> w_internal::MetaMethodInfoBuilder<F, w_internal::MethodSignal> {

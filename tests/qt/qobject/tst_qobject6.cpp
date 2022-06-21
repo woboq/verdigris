@@ -2654,21 +2654,21 @@ public slots:
     W_SLOT(constEnumPointerConstPointerSlot)
 
     void uintSlot(uint) {}
-    W_SLOT(uintSlot);
+    W_SLOT(uintSlot)
     void unsignedintSlot(unsigned int) {}
-    W_SLOT(unsignedintSlot);
+    W_SLOT(unsignedintSlot)
     void unsignedSlot(unsigned) {}
-    W_SLOT(unsignedSlot);
+    W_SLOT(unsignedSlot)
     void unsignedlongSlot(unsigned long) {}
-    W_SLOT(unsignedlongSlot);
+    W_SLOT(unsignedlongSlot)
     void unsignedlonglongSlot(quint64) {}
-    W_SLOT(unsignedlonglongSlot);
+    W_SLOT(unsignedlonglongSlot)
     void unsignedlongintSlot(unsigned long int) {}
-    W_SLOT(unsignedlongintSlot);
+    W_SLOT(unsignedlongintSlot)
     void unsignedshortSlot(unsigned short) {}
-    W_SLOT(unsignedshortSlot);
+    W_SLOT(unsignedshortSlot)
     void unsignedcharSlot(unsigned char) {}
-    W_SLOT(unsignedcharSlot);
+    W_SLOT(unsignedcharSlot)
 
     void typeRefSlot(Template<Class &> &) {}
     W_SLOT(typeRefSlot)
@@ -5024,13 +5024,13 @@ class LotsOfSignalsAndSlots: public QObject
         W_SLOT(slot_vPFvvE,(fptr))
 
         void const_slot_v() const {}
-        W_SLOT(const_slot_v);
+        W_SLOT(const_slot_v)
         void const_slot_v_noexcept() const Q_DECL_NOTHROW {}
-        W_SLOT(const_slot_v_noexcept);
+        W_SLOT(const_slot_v_noexcept)
         void const_slot_vi(int) const {}
-        W_SLOT(const_slot_vi);
+        W_SLOT(const_slot_vi)
         void const_slot_vi_noexcept(int) Q_DECL_NOTHROW {}
-        W_SLOT(const_slot_vi_noexcept);
+        W_SLOT(const_slot_vi_noexcept)
 
         static void static_slot_v() {}
         W_SLOT(static_slot_v)

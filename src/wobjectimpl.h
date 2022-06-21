@@ -115,43 +115,47 @@ struct MethodGenerator {
     State& s;
     int parameterIndex;
 
-    template<class Method>
-    constexpr void operator() (const Method& method) {
+    template<class Value, class Method>
+    constexpr void genMethod(const Method& method) {
+        using FP = QtPrivate::FunctionPointer<typename Method::Func>;
         s.addString(method.name); // name
-        constexpr uint flags = adjustFlags(Method::flags, typename Method::IntegralConstant());
+        constexpr uint flags = adjustFlags<Value>(Method::flags);
         s.addInts(
-            (uint)Method::argCount,
+            (uint)FP::ArgumentCount,
             parameterIndex, //parameters
             1, //tag, always \0
             flags,
             s.metaTypeCount);
-        parameterIndex += 1 + Method::argCount * 2;
-        registerMetaTypes(method);
-    }
-
-private:
-    template<typename M>
-    static constexpr uint adjustFlags(uint f, M) {
-        if (!(f & (AccessProtected | AccessPrivate | AccessPublic))) {
-            // Auto-detect the access specifier
-            f |= IsPublic<T, M> ? AccessPublic : IsProtected<T, M> ? AccessProtected : AccessPrivate;
-        }
-        f &= static_cast<uint>(~AccessPrivate); // Because QMetaMethod::Private is 0, but not AccessPrivate;
-        return f;
-    }
-
-    template<class Method>
-    constexpr void registerMetaTypes(const Method&) {
-        using FP = QtPrivate::FunctionPointer<typename Method::Func>;
+        parameterIndex += 1 + FP::ArgumentCount * 2;
         s.template addMetaType<typename FP::ReturnType>();
         using ArgsPtr = typename FP::Arguments*;
         [this]<class... Args>(QtPrivate::List<Args...>*) {
             (s.template addMetaType<Args>(), ...);
         }(ArgsPtr{});
     }
+
     template<class... Args>
-    constexpr void registerMetaTypes(const MetaConstructorInfo<Args...>&) {
+    constexpr void operator() (const MetaConstructorInfo<Args...>& method) {
+        s.addString(method.name); // name
+        s.addInts(
+            (uint)sizeof...(Args),
+            parameterIndex, //parameters
+            1, //tag, always \0
+            MethodConstructor | AccessPublic,
+            s.metaTypeCount);
+        parameterIndex += 1 + sizeof...(Args) * 2;
         (s.template addMetaType<Args>(), ...);
+    }
+
+private:
+    template<class Value>
+    static constexpr uint adjustFlags(uint f) {
+        if (!(f & (AccessProtected | AccessPrivate | AccessPublic))) {
+            // Auto-detect the access specifier
+            f |= IsPublic<T, Value> ? AccessPublic : IsProtected<T, Value> ? AccessProtected : AccessPrivate;
+        }
+        f &= static_cast<uint>(~AccessPrivate); // Because QMetaMethod::Private is 0, but not AccessPrivate;
+        return f;
     }
 };
 
@@ -298,7 +302,7 @@ struct MethodParametersGenerator {
         [this, &method]<class... Args>(QtPrivate::List<Args...>*) {
             handleArgTypes<Args...>(s, method.paramTypes, make_index_sequence<sizeof...(Args)>{});
         }(ArgsPtr{});
-        handleArgNames<Method::argCount>(s, method.paramNames);
+        handleArgNames<FP::ArgumentCount>(s, method.paramNames);
     }
 };
 
@@ -319,7 +323,7 @@ struct ConstructorParametersGenerator {
 template<size_t L, class T>
 consteval int methodsParamOffset() {
     return []<size_t... Is>(const index_sequence<Is...>&) -> int {
-        return (0 + ... + int(1 + ObjectInfo<T, L>::method(index<Is>).argCount * 2));
+        return (0 + ... + int(1 + QtPrivate::FunctionPointer<decltype(ObjectInfo<T, L>::method(index<Is>).func)>::ArgumentCount * 2));
     }(make_index_sequence<ObjectInfo<T, L>::methodCount>{});
 }
 
@@ -490,9 +494,14 @@ consteval auto generateDataPass() -> Result {
             (f(w_state(index<Is>, State{}, TPP{}), index<Is>), ...);
         }(make_index_sequence<stateCount<L, State, TPP>()>{});
     };
-    constexpr auto foldMethods = [](auto&& f) {
+    constexpr auto foldMethod = [](auto&& f) {
         [&f]<size_t... Is>(const index_sequence<Is...>&) {
             (f(ObjI::method(index<Is>)), ...);
+        }(make_index_sequence<ObjI::methodCount>{});
+    };
+    constexpr auto foldMethodFunc = [](auto&& f) {
+        [&f]<size_t... Is>(const index_sequence<Is...>&) {
+            (f.template genMethod<AutoValue<ObjI::method(index<Is>).func>>(ObjI::method(index<Is>)), ...);
         }(make_index_sequence<ObjI::methodCount>{});
     };
 
@@ -505,7 +514,7 @@ consteval auto generateDataPass() -> Result {
 #endif
 
     //if (state.intCount != methodOffset) throw "offset mismatch!";
-    foldMethods(MethodGenerator<Builder, T>{builder, paramIndex});
+    foldMethodFunc(MethodGenerator<Builder, T>{builder, paramIndex});
 
     //if (state.intCount != propertyOffset) throw "offset mismatch!";
     foldIndex(PropertyStateTag{}, PropertyGenerator<Builder, L, T>{builder});
@@ -517,7 +526,7 @@ consteval auto generateDataPass() -> Result {
     fold(ConstructorStateTag{}, MethodGenerator<Builder, T>{builder, constructorParamIndex});
 
     //if (state.intCount != paramIndex) throw "offset mismatch!";
-    foldMethods(MethodParametersGenerator<Builder>{builder});
+    foldMethod(MethodParametersGenerator<Builder>{builder});
 
     //if (state.intCount != constructorParamIndex) throw "offset mismatch!";
     fold(ConstructorStateTag{}, ConstructorParametersGenerator<Builder>{builder});
@@ -655,16 +664,16 @@ QT_WARNING_POP
     /// T is the class, and I is the index of a method.
     template <class T, int I>
     static void invokeMethod(T *_o, void **_a) {
-        constexpr auto method = ObjectInfo<T>::method(index<I>);
+        static constexpr auto method = ObjectInfo<T>::method(index<I>);
         using Func = typename decltype(method)::Func;
         using FP = QtPrivate::FunctionPointer<Func>;
 #if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
         if constexpr (FP::IsPointerToMemberFunction) {
-            FunctorCall<make_index_sequence<method.argCount>, typename FP::Arguments, typename FP::ReturnType, Func>::call(method.func, _o, _a);
+            FunctorCall<make_index_sequence<FP::ArgumentCount>, typename FP::Arguments, typename FP::ReturnType, Func>::call(method.func, _o, _a);
         }
         else {
             (void)_o;
-            FunctorCall<make_index_sequence<method.argCount>, typename FP::Arguments, typename FP::ReturnType, Func>::call(method.func, _a);
+            FunctorCall<make_index_sequence<FP::ArgumentCount>, typename FP::Arguments, typename FP::ReturnType, Func>::call(method.func, _a);
         }
 #else
         FP::template call<typename FP::Arguments, typename FP::ReturnType>(method.func, _o, _a);

@@ -31,7 +31,7 @@
 
 namespace w_internal {
 
-using std::index_sequence; // From C++14, make sure to enable the C++14 option in your compiler
+using std::index_sequence;
 using std::make_index_sequence;
 
 /// faster compile time values
@@ -259,44 +259,40 @@ template<class Ret, class Obj, class...Args> inline constexpr bool is_const_memb
 #endif
 
 /// Holds information about a method
-template<typename F, int Flags, typename IC, typename ParamTypes, typename ParamNames = StringViewArray<>>
+template<typename F, int Flags, typename ParamTypes, typename ParamNames = StringViewArray<>>
 struct MetaMethodInfo {
     using Func = F;
     Func func;
     StringView name;
     ParamTypes paramTypes;
     ParamNames paramNames;
-    static constexpr int argCount = QtPrivate::FunctionPointer<F>::ArgumentCount;
 #if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
     static constexpr int flags = Flags | (is_const_member_method<F> ? 0x100 : 0);
 #else
     static constexpr int flags = Flags;
 #endif
-    using IntegralConstant = IC;
 };
 
 // Called from the W_SLOT macro
-template<typename F, typename ParamTypes, int... Flags, typename IntegralConstant>
-constexpr auto makeMetaSlotInfo(F f, StringView name, IntegralConstant, const ParamTypes &paramTypes, MethodFlag<Flags>...)
-    -> MetaMethodInfo<F, (Flags | ... | MethodSlot), IntegralConstant, ParamTypes> { return { f, name, paramTypes, {} }; }
+template<typename F, typename ParamTypes, int... Flags>
+constexpr auto makeMetaSlotInfo(F f, StringView name, const ParamTypes &paramTypes, MethodFlag<Flags>...)
+    -> MetaMethodInfo<F, (Flags | ... | MethodSlot), ParamTypes> { return { f, name, paramTypes, {} }; }
 
 // Called from the W_METHOD macro
-template<typename F, typename ParamTypes, int... Flags, typename IntegralConstant>
-constexpr auto makeMetaMethodInfo(F f, StringView name, IntegralConstant, const ParamTypes &paramTypes, MethodFlag<Flags>...)
-    -> MetaMethodInfo<F, (Flags | ... | MethodMethod), IntegralConstant, ParamTypes> { return { f, name, paramTypes, {} }; }
+template<typename F, typename ParamTypes, int... Flags>
+constexpr auto makeMetaMethodInfo(F f, StringView name, const ParamTypes &paramTypes, MethodFlag<Flags>...)
+    -> MetaMethodInfo<F, (Flags | ... | MethodMethod), ParamTypes> { return { f, name, paramTypes, {} }; }
 
 // Called from the W_SIGNAL macro
-template<typename F, typename ParamTypes, typename ParamNames, int... Flags, typename IntegralConstant>
-constexpr auto makeMetaSignalInfo(F f, StringView name, IntegralConstant, const ParamTypes &paramTypes,
+template<typename F, typename ParamTypes, typename ParamNames, int... Flags>
+constexpr auto makeMetaSignalInfo(F f, StringView name, const ParamTypes &paramTypes,
                                   const ParamNames &paramNames, MethodFlag<Flags>...)
-    -> MetaMethodInfo<F, (Flags | ... | MethodSignal), IntegralConstant, ParamTypes, ParamNames> { return { f, name, paramTypes, paramNames }; }
+    -> MetaMethodInfo<F, (Flags | ... | MethodSignal), ParamTypes, ParamNames> { return { f, name, paramTypes, paramNames }; }
 
 /// Holds information about a constructor
 template<typename... Args>
 struct MetaConstructorInfo {
     static constexpr size_t argCount = sizeof...(Args);
-    static constexpr int flags = MethodConstructor | AccessPublic;
-    using IntegralConstant = void*; // Used to detect the access specifier, but it is always public, so no need for this
     StringView name;
 };
 // called from the W_CONSTRUCTOR macro
@@ -590,20 +586,8 @@ struct FriendHelper;
 
 #define W_RETURN(R) -> decltype(R) { return R; }
 
-#ifndef Q_CC_MSVC
-//Define a unique integral_constant type for a given function pointer
-#define W_INTEGRAL_CONSTANT_HELPER(NAME, ...) std::integral_constant<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)), &W_ThisType::NAME>
-#else
-// On MSVC 2017 we trying to get a function pointer in the type cause compiler internal error, so use a simple hash function
-namespace w_internal {
-constexpr auto simple_hash(char const *p) {
-    unsigned long long h = *p;
-    while (*p++) h = ((h >> 8)*37ull)  ^ *p ^ ((h & 0xff) << 56) ;
-    return h;
-}
-} // namespace w_internal
-#define W_INTEGRAL_CONSTANT_HELPER(NAME, ...) std::integral_constant<unsigned long long, w_internal::simple_hash(#NAME #__VA_ARGS__)>
-#endif
+template<auto> struct AutoT;
+template<auto V> using AutoValue = AutoT<V>*;
 
 namespace w_internal {
 
@@ -717,10 +701,9 @@ using InterfaceStateTag = const struct InterfaceState*;
 #define W_SLOT2(NAME, ...) \
     W_STATE_APPEND(SlotState, w_internal::makeMetaSlotInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::viewLiteral(#NAME),  \
-            W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__))) \
-    static inline void w_GetAccessSpecifierHelper(W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)) {}
+    static void w_GetAccessSpecifierHelper(AutoValue<W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)>);
 
 /// \macro W_INVOKABLE( <slot name> [, (<parameters types>) ]  [, <flags>]* )
 /// Exactly like W_SLOT but for Q_INVOKABLE methods.
@@ -728,10 +711,9 @@ using InterfaceStateTag = const struct InterfaceState*;
 #define W_INVOKABLE2(NAME, ...) \
     W_STATE_APPEND(MethodState, w_internal::makeMetaMethodInfo( \
             W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::viewLiteral(#NAME),  \
-            W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), \
             W_OVERLOAD_REMOVE(__VA_ARGS__))) \
-    static inline void w_GetAccessSpecifierHelper(W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)) {}
+    static void w_GetAccessSpecifierHelper(AutoValue<W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)>);
 
 /// <signal signature>
 /// \macro W_SIGNAL(<signal name> [, (<parameter types>) ] , <parameter names> )
@@ -757,9 +739,8 @@ using InterfaceStateTag = const struct InterfaceState*;
     friend constexpr auto w_state(w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>, w_internal::SignalStateTag, W_ThisType**) \
         W_RETURN(w_internal::makeMetaSignalInfo( \
                 W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::viewLiteral(#NAME), \
-                W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
                 W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))) \
-    static inline void w_GetAccessSpecifierHelper(W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)) {}
+    static void w_GetAccessSpecifierHelper(AutoValue<W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)>);
 
 /// \macro W_SIGNAL_COMPAT
 /// Same as W_SIGNAL, but set the W_Compat flag
@@ -774,9 +755,8 @@ using InterfaceStateTag = const struct InterfaceState*;
     friend constexpr auto w_state(w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME,__LINE__)>, w_internal::SignalStateTag, W_ThisType**) \
         W_RETURN(w_internal::makeMetaSignalInfo( \
                 W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME), w_internal::viewLiteral(#NAME), \
-                W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)(), \
-        W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat{})) \
-    static inline void w_GetAccessSpecifierHelper(W_INTEGRAL_CONSTANT_HELPER(NAME, __VA_ARGS__)) {}
+                W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)), W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)), W_Compat{})) \
+    static void w_GetAccessSpecifierHelper(AutoValue<W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME)>);
 
 /// \macro W_CONSTRUCTOR(<parameter types>)
 /// Declares that this class can be constructed with this list of argument.
