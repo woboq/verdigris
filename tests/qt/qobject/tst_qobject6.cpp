@@ -76,117 +76,117 @@ class tst_QObject : public QObject
 {
     W_OBJECT(tst_QObject)
 private slots:
-    void disconnect(); W_SLOT(disconnect, W_Access::Private{})
-    void connectSlotsByName(); W_SLOT(connectSlotsByName, W_Access::Private{})
-    void connectSignalsToSignalsWithDefaultArguments(); W_SLOT(connectSignalsToSignalsWithDefaultArguments, W_Access::Private{})
-    void receivers(); W_SLOT(receivers, W_Access::Private{})
-    void normalize(); W_SLOT(normalize, W_Access::Private{})
-    void qobject_castTemplate(); W_SLOT(qobject_castTemplate, W_Access::Private{})
-    void findChildren(); W_SLOT(findChildren, W_Access::Private{})
-    void connectDisconnectNotify_data(); W_SLOT(connectDisconnectNotify_data, W_Access::Private{})
-    void connectDisconnectNotify(); W_SLOT(connectDisconnectNotify, W_Access::Private{})
-    void connectDisconnectNotifyPMF(); W_SLOT(connectDisconnectNotifyPMF, W_Access::Private{})
-    void disconnectNotify_receiverDestroyed(); W_SLOT(disconnectNotify_receiverDestroyed, W_Access::Private{})
-    void disconnectNotify_metaObjConnection(); W_SLOT(disconnectNotify_metaObjConnection, W_Access::Private{})
-    void connectNotify_connectSlotsByName(); W_SLOT(connectNotify_connectSlotsByName, W_Access::Private{})
-    void connectDisconnectNotify_shadowing(); W_SLOT(connectDisconnectNotify_shadowing, W_Access::Private{})
-    void connectReferenceToIncompleteTypes(); W_SLOT(connectReferenceToIncompleteTypes, W_Access::Private{})
-    void emitInDefinedOrder(); W_SLOT(emitInDefinedOrder, W_Access::Private{})
-    void customTypes(); W_SLOT(customTypes, W_Access::Private{})
-    void streamCustomTypes(); W_SLOT(streamCustomTypes, W_Access::Private{})
-    void metamethod(); W_SLOT(metamethod, W_Access::Private{})
-    void namespaces(); W_SLOT(namespaces, W_Access::Private{})
-    void threadSignalEmissionCrash(); W_SLOT(threadSignalEmissionCrash, W_Access::Private{})
-    void thread(); W_SLOT(thread, W_Access::Private{})
-    void thread0(); W_SLOT(thread0, W_Access::Private{})
-    void moveToThread(); W_SLOT(moveToThread, W_Access::Private{})
-    void senderTest(); W_SLOT(senderTest, W_Access::Private{})
-    void declareInterface(); W_SLOT(declareInterface, W_Access::Private{})
-    void qpointerResetBeforeDestroyedSignal(); W_SLOT(qpointerResetBeforeDestroyedSignal, W_Access::Private{})
-    void childDeletesItsSibling(); W_SLOT(childDeletesItsSibling, W_Access::Private{})
-    void dynamicProperties(); W_SLOT(dynamicProperties, W_Access::Private{})
-    void floatProperty(); W_SLOT(floatProperty, W_Access::Private{})
-    void qrealProperty(); W_SLOT(qrealProperty, W_Access::Private{})
-    void property(); W_SLOT(property, W_Access::Private{})
-    void recursiveSignalEmission(); W_SLOT(recursiveSignalEmission, W_Access::Private{})
-    void signalBlocking(); W_SLOT(signalBlocking, W_Access::Private{})
-    void blockingQueuedConnection(); W_SLOT(blockingQueuedConnection, W_Access::Private{})
-    void childEvents(); W_SLOT(childEvents, W_Access::Private{})
-    void installEventFilter(); W_SLOT(installEventFilter, W_Access::Private{})
-    void deleteSelfInSlot(); W_SLOT(deleteSelfInSlot, W_Access::Private{})
-    void disconnectSelfInSlotAndDeleteAfterEmit(); W_SLOT(disconnectSelfInSlotAndDeleteAfterEmit, W_Access::Private{})
-    void dumpObjectInfo(); W_SLOT(dumpObjectInfo, W_Access::Private{})
+    void disconnect(); W_SLOT(disconnect, W_Access::Private{});
+    void connectSlotsByName(); W_SLOT(connectSlotsByName, W_Access::Private{});
+    void connectSignalsToSignalsWithDefaultArguments(); W_SLOT(connectSignalsToSignalsWithDefaultArguments, W_Access::Private{});
+    void receivers(); W_SLOT(receivers, W_Access::Private{});
+    void normalize(); W_SLOT(normalize, W_Access::Private{});
+    void qobject_castTemplate(); W_SLOT(qobject_castTemplate, W_Access::Private{});
+    void findChildren(); W_SLOT(findChildren, W_Access::Private{});
+    void connectDisconnectNotify_data(); W_SLOT(connectDisconnectNotify_data, W_Access::Private{});
+    void connectDisconnectNotify(); W_SLOT(connectDisconnectNotify, W_Access::Private{});
+    void connectDisconnectNotifyPMF(); W_SLOT(connectDisconnectNotifyPMF, W_Access::Private{});
+    void disconnectNotify_receiverDestroyed(); W_SLOT(disconnectNotify_receiverDestroyed, W_Access::Private{});
+    void disconnectNotify_metaObjConnection(); W_SLOT(disconnectNotify_metaObjConnection, W_Access::Private{});
+    void connectNotify_connectSlotsByName(); W_SLOT(connectNotify_connectSlotsByName, W_Access::Private{});
+    void connectDisconnectNotify_shadowing(); W_SLOT(connectDisconnectNotify_shadowing, W_Access::Private{});
+    void connectReferenceToIncompleteTypes(); W_SLOT(connectReferenceToIncompleteTypes, W_Access::Private{});
+    void emitInDefinedOrder(); W_SLOT(emitInDefinedOrder, W_Access::Private{});
+    void customTypes(); W_SLOT(customTypes, W_Access::Private{});
+    void streamCustomTypes(); W_SLOT(streamCustomTypes, W_Access::Private{});
+    void metamethod(); W_SLOT(metamethod, W_Access::Private{});
+    void namespaces(); W_SLOT(namespaces, W_Access::Private{});
+    void threadSignalEmissionCrash(); W_SLOT(threadSignalEmissionCrash, W_Access::Private{});
+    void thread(); W_SLOT(thread, W_Access::Private{});
+    void thread0(); W_SLOT(thread0, W_Access::Private{});
+    void moveToThread(); W_SLOT(moveToThread, W_Access::Private{});
+    void senderTest(); W_SLOT(senderTest, W_Access::Private{});
+    void declareInterface(); W_SLOT(declareInterface, W_Access::Private{});
+    void qpointerResetBeforeDestroyedSignal(); W_SLOT(qpointerResetBeforeDestroyedSignal, W_Access::Private{});
+    void childDeletesItsSibling(); W_SLOT(childDeletesItsSibling, W_Access::Private{});
+    void dynamicProperties(); W_SLOT(dynamicProperties, W_Access::Private{});
+    void floatProperty(); W_SLOT(floatProperty, W_Access::Private{});
+    void qrealProperty(); W_SLOT(qrealProperty, W_Access::Private{});
+    void property(); W_SLOT(property, W_Access::Private{});
+    void recursiveSignalEmission(); W_SLOT(recursiveSignalEmission, W_Access::Private{});
+    void signalBlocking(); W_SLOT(signalBlocking, W_Access::Private{});
+    void blockingQueuedConnection(); W_SLOT(blockingQueuedConnection, W_Access::Private{});
+    void childEvents(); W_SLOT(childEvents, W_Access::Private{});
+    void installEventFilter(); W_SLOT(installEventFilter, W_Access::Private{});
+    void deleteSelfInSlot(); W_SLOT(deleteSelfInSlot, W_Access::Private{});
+    void disconnectSelfInSlotAndDeleteAfterEmit(); W_SLOT(disconnectSelfInSlotAndDeleteAfterEmit, W_Access::Private{});
+    void dumpObjectInfo(); W_SLOT(dumpObjectInfo, W_Access::Private{});
 #if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
-    void dumpObjectTree(); W_SLOT(dumpObjectTree, W_Access::Private{})
+    void dumpObjectTree(); W_SLOT(dumpObjectTree, W_Access::Private{});
 #endif
-    void connectToSender(); W_SLOT(connectToSender, W_Access::Private{})
-    void qobjectConstCast(); W_SLOT(qobjectConstCast, W_Access::Private{})
-    void uniqConnection(); W_SLOT(uniqConnection, W_Access::Private{})
-    void uniqConnectionPtr(); W_SLOT(uniqConnectionPtr, W_Access::Private{})
-    void interfaceIid(); W_SLOT(interfaceIid, W_Access::Private{})
-    void deleteQObjectWhenDeletingEvent(); W_SLOT(deleteQObjectWhenDeletingEvent, W_Access::Private{})
-    void overloads(); W_SLOT(overloads, W_Access::Private{})
-    void isSignalConnected(); W_SLOT(isSignalConnected, W_Access::Private{})
-    void isSignalConnectedAfterDisconnection(); W_SLOT(isSignalConnectedAfterDisconnection, W_Access::Private{})
-    void qMetaObjectConnect(); W_SLOT(qMetaObjectConnect, W_Access::Private{})
-    void qMetaObjectDisconnectOne(); W_SLOT(qMetaObjectDisconnectOne, W_Access::Private{})
-    void sameName(); W_SLOT(sameName, W_Access::Private{})
-    void connectByMetaMethods(); W_SLOT(connectByMetaMethods, W_Access::Private{})
-    void connectByMetaMethodSlotInsteadOfSignal(); W_SLOT(connectByMetaMethodSlotInsteadOfSignal, W_Access::Private{})
-    void connectConstructorByMetaMethod(); W_SLOT(connectConstructorByMetaMethod, W_Access::Private{})
-    void disconnectByMetaMethod(); W_SLOT(disconnectByMetaMethod, W_Access::Private{})
-    void disconnectNotSignalMetaMethod(); W_SLOT(disconnectNotSignalMetaMethod, W_Access::Private{})
-    void autoConnectionBehavior(); W_SLOT(autoConnectionBehavior, W_Access::Private{})
-    void baseDestroyed(); W_SLOT(baseDestroyed, W_Access::Private{})
-    void pointerConnect(); W_SLOT(pointerConnect, W_Access::Private{})
-    void pointerDisconnect(); W_SLOT(pointerDisconnect, W_Access::Private{})
-    void emitInDefinedOrderPointer(); W_SLOT(emitInDefinedOrderPointer, W_Access::Private{})
-    void customTypesPointer(); W_SLOT(customTypesPointer, W_Access::Private{})
-    void connectCxx0x(); W_SLOT(connectCxx0x, W_Access::Private{})
-    void connectToStaticCxx0x(); W_SLOT(connectToStaticCxx0x, W_Access::Private{})
-    void connectCxx0xTypeMatching(); W_SLOT(connectCxx0xTypeMatching, W_Access::Private{})
-    void connectCxx17Noexcept(); W_SLOT(connectCxx17Noexcept, W_Access::Private{})
-    void connectConvert(); W_SLOT(connectConvert, W_Access::Private{})
-    void connectWithReference(); W_SLOT(connectWithReference, W_Access::Private{})
-    void connectManyArguments(); W_SLOT(connectManyArguments, W_Access::Private{})
-    void connectForwardDeclare(); W_SLOT(connectForwardDeclare, W_Access::Private{})
-    void connectNoDefaultConstructorArg(); W_SLOT(connectNoDefaultConstructorArg, W_Access::Private{})
-    void returnValue_data(); W_SLOT(returnValue_data, W_Access::Private{})
-    void returnValue(); W_SLOT(returnValue, W_Access::Private{})
-    void returnValue2_data(); W_SLOT(returnValue2_data, W_Access::Private{})
-    void returnValue2(); W_SLOT(returnValue2, W_Access::Private{})
-    void connectVirtualSlots(); W_SLOT(connectVirtualSlots, W_Access::Private{})
-    void connectSlotsVMIClass(); W_SLOT(connectSlotsVMIClass, W_Access::Private{})  // VMI = Virtual or Multiple Inheritance
-    void connectPrivateSlots(); W_SLOT(connectPrivateSlots, W_Access::Private{})
-    void connectFunctorArgDifference(); W_SLOT(connectFunctorArgDifference, W_Access::Private{})
-    void connectFunctorOverloads(); W_SLOT(connectFunctorOverloads, W_Access::Private{})
-    void connectFunctorQueued(); W_SLOT(connectFunctorQueued, W_Access::Private{})
-    void connectFunctorWithContext(); W_SLOT(connectFunctorWithContext, W_Access::Private{})
-    void connectFunctorWithContextUnique(); W_SLOT(connectFunctorWithContextUnique, W_Access::Private{})
-    void connectFunctorDeadlock(); W_SLOT(connectFunctorDeadlock, W_Access::Private{})
-    void connectFunctorMoveOnly(); W_SLOT(connectFunctorMoveOnly, W_Access::Private{})
-    void connectStaticSlotWithObject(); W_SLOT(connectStaticSlotWithObject, W_Access::Private{})
-    void disconnectDoesNotLeakFunctor(); W_SLOT(disconnectDoesNotLeakFunctor, W_Access::Private{})
-    void contextDoesNotLeakFunctor(); W_SLOT(contextDoesNotLeakFunctor, W_Access::Private{})
-    void connectBase(); W_SLOT(connectBase, W_Access::Private{})
-    void connectWarnings(); W_SLOT(connectWarnings, W_Access::Private{})
-    void qmlConnect(); W_SLOT(qmlConnect, W_Access::Private{})
-    void exceptions(); W_SLOT(exceptions, W_Access::Private{})
+    void connectToSender(); W_SLOT(connectToSender, W_Access::Private{});
+    void qobjectConstCast(); W_SLOT(qobjectConstCast, W_Access::Private{});
+    void uniqConnection(); W_SLOT(uniqConnection, W_Access::Private{});
+    void uniqConnectionPtr(); W_SLOT(uniqConnectionPtr, W_Access::Private{});
+    void interfaceIid(); W_SLOT(interfaceIid, W_Access::Private{});
+    void deleteQObjectWhenDeletingEvent(); W_SLOT(deleteQObjectWhenDeletingEvent, W_Access::Private{});
+    void overloads(); W_SLOT(overloads, W_Access::Private{});
+    void isSignalConnected(); W_SLOT(isSignalConnected, W_Access::Private{});
+    void isSignalConnectedAfterDisconnection(); W_SLOT(isSignalConnectedAfterDisconnection, W_Access::Private{});
+    void qMetaObjectConnect(); W_SLOT(qMetaObjectConnect, W_Access::Private{});
+    void qMetaObjectDisconnectOne(); W_SLOT(qMetaObjectDisconnectOne, W_Access::Private{});
+    void sameName(); W_SLOT(sameName, W_Access::Private{});
+    void connectByMetaMethods(); W_SLOT(connectByMetaMethods, W_Access::Private{});
+    void connectByMetaMethodSlotInsteadOfSignal(); W_SLOT(connectByMetaMethodSlotInsteadOfSignal, W_Access::Private{});
+    void connectConstructorByMetaMethod(); W_SLOT(connectConstructorByMetaMethod, W_Access::Private{});
+    void disconnectByMetaMethod(); W_SLOT(disconnectByMetaMethod, W_Access::Private{});
+    void disconnectNotSignalMetaMethod(); W_SLOT(disconnectNotSignalMetaMethod, W_Access::Private{});
+    void autoConnectionBehavior(); W_SLOT(autoConnectionBehavior, W_Access::Private{});
+    void baseDestroyed(); W_SLOT(baseDestroyed, W_Access::Private{});
+    void pointerConnect(); W_SLOT(pointerConnect, W_Access::Private{});
+    void pointerDisconnect(); W_SLOT(pointerDisconnect, W_Access::Private{});
+    void emitInDefinedOrderPointer(); W_SLOT(emitInDefinedOrderPointer, W_Access::Private{});
+    void customTypesPointer(); W_SLOT(customTypesPointer, W_Access::Private{});
+    void connectCxx0x(); W_SLOT(connectCxx0x, W_Access::Private{});
+    void connectToStaticCxx0x(); W_SLOT(connectToStaticCxx0x, W_Access::Private{});
+    void connectCxx0xTypeMatching(); W_SLOT(connectCxx0xTypeMatching, W_Access::Private{});
+    void connectCxx17Noexcept(); W_SLOT(connectCxx17Noexcept, W_Access::Private{});
+    void connectConvert(); W_SLOT(connectConvert, W_Access::Private{});
+    void connectWithReference(); W_SLOT(connectWithReference, W_Access::Private{});
+    void connectManyArguments(); W_SLOT(connectManyArguments, W_Access::Private{});
+    void connectForwardDeclare(); W_SLOT(connectForwardDeclare, W_Access::Private{});
+    void connectNoDefaultConstructorArg(); W_SLOT(connectNoDefaultConstructorArg, W_Access::Private{});
+    void returnValue_data(); W_SLOT(returnValue_data, W_Access::Private{});
+    void returnValue(); W_SLOT(returnValue, W_Access::Private{});
+    void returnValue2_data(); W_SLOT(returnValue2_data, W_Access::Private{});
+    void returnValue2(); W_SLOT(returnValue2, W_Access::Private{});
+    void connectVirtualSlots(); W_SLOT(connectVirtualSlots, W_Access::Private{});
+    void connectSlotsVMIClass(); W_SLOT(connectSlotsVMIClass, W_Access::Private{});  // VMI = Virtual or Multiple Inheritance
+    void connectPrivateSlots(); W_SLOT(connectPrivateSlots, W_Access::Private{});
+    void connectFunctorArgDifference(); W_SLOT(connectFunctorArgDifference, W_Access::Private{});
+    void connectFunctorOverloads(); W_SLOT(connectFunctorOverloads, W_Access::Private{});
+    void connectFunctorQueued(); W_SLOT(connectFunctorQueued, W_Access::Private{});
+    void connectFunctorWithContext(); W_SLOT(connectFunctorWithContext, W_Access::Private{});
+    void connectFunctorWithContextUnique(); W_SLOT(connectFunctorWithContextUnique, W_Access::Private{});
+    void connectFunctorDeadlock(); W_SLOT(connectFunctorDeadlock, W_Access::Private{});
+    void connectFunctorMoveOnly(); W_SLOT(connectFunctorMoveOnly, W_Access::Private{});
+    void connectStaticSlotWithObject(); W_SLOT(connectStaticSlotWithObject, W_Access::Private{});
+    void disconnectDoesNotLeakFunctor(); W_SLOT(disconnectDoesNotLeakFunctor, W_Access::Private{});
+    void contextDoesNotLeakFunctor(); W_SLOT(contextDoesNotLeakFunctor, W_Access::Private{});
+    void connectBase(); W_SLOT(connectBase, W_Access::Private{});
+    void connectWarnings(); W_SLOT(connectWarnings, W_Access::Private{});
+    void qmlConnect(); W_SLOT(qmlConnect, W_Access::Private{});
+    void exceptions(); W_SLOT(exceptions, W_Access::Private{});
 #if QT_VERSION < QT_VERSION_CHECK(6,2,0)
-    void noDeclarativeParentChangedOnDestruction(); W_SLOT(noDeclarativeParentChangedOnDestruction, W_Access::Private{})
+    void noDeclarativeParentChangedOnDestruction(); W_SLOT(noDeclarativeParentChangedOnDestruction, W_Access::Private{});
 #endif
-    void deleteLaterInAboutToBlockHandler(); W_SLOT(deleteLaterInAboutToBlockHandler, W_Access::Private{})
-    void mutableFunctor(); W_SLOT(mutableFunctor, W_Access::Private{})
-    void checkArgumentsForNarrowing(); W_SLOT(checkArgumentsForNarrowing, W_Access::Private{})
-    void nullReceiver(); W_SLOT(nullReceiver, W_Access::Private{})
-    void functorReferencesConnection(); W_SLOT(functorReferencesConnection, W_Access::Private{})
-    void disconnectDisconnects(); W_SLOT(disconnectDisconnects, W_Access::Private{})
-    void singleShotConnection(); W_SLOT(singleShotConnection, W_Access::Private{})
+    void deleteLaterInAboutToBlockHandler(); W_SLOT(deleteLaterInAboutToBlockHandler, W_Access::Private{});
+    void mutableFunctor(); W_SLOT(mutableFunctor, W_Access::Private{});
+    void checkArgumentsForNarrowing(); W_SLOT(checkArgumentsForNarrowing, W_Access::Private{});
+    void nullReceiver(); W_SLOT(nullReceiver, W_Access::Private{});
+    void functorReferencesConnection(); W_SLOT(functorReferencesConnection, W_Access::Private{});
+    void disconnectDisconnects(); W_SLOT(disconnectDisconnects, W_Access::Private{});
+    void singleShotConnection(); W_SLOT(singleShotConnection, W_Access::Private{});
 #if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
-    void objectNameBinding(); W_SLOT(objectNameBinding, W_Access::Private{})
+    void objectNameBinding(); W_SLOT(objectNameBinding, W_Access::Private{});
 #endif
 #if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
-    void emitToDestroyedClass(); W_SLOT(emitToDestroyedClass, W_Access::Private{})
+    void emitToDestroyedClass(); W_SLOT(emitToDestroyedClass, W_Access::Private{});
 #endif
 };
 
@@ -221,33 +221,33 @@ public:
     void emitSignal4() { emit signal4(); }
 
 signals:
-    void signal1() W_SIGNAL(signal1)
-    void signal2() W_SIGNAL(signal2)
-    void signal3() W_SIGNAL(signal3)
-    void signal4() W_SIGNAL(signal4)
-    void signal5() W_SIGNAL_COMPAT(signal5)
-    void signal6(void) W_SIGNAL(signal6)
-    void signal7(int a, const QString &b) W_SIGNAL(signal7,a,b)
+    void signal1() W_SIGNAL(signal1);
+    void signal2() W_SIGNAL(signal2);
+    void signal3() W_SIGNAL(signal3);
+    void signal4() W_SIGNAL(signal4);
+    void signal5() W_SIGNAL_COMPAT(signal5);
+    void signal6(void) W_SIGNAL(signal6);
+    void signal7(int a, const QString &b) W_SIGNAL(signal7,a,b);
 
 public slots:
     void aPublicSlot() { aPublicSlotCalled++; }
-    W_SLOT(aPublicSlot)
+    W_SLOT(aPublicSlot);
 
 public:
-    void invoke1(){} W_INVOKABLE(invoke1)
-    void sinvoke1(){} W_INVOKABLE(sinvoke1, W_Scriptable{})
+    void invoke1(){} W_INVOKABLE(invoke1);
+    void sinvoke1(){} W_INVOKABLE(sinvoke1, W_Scriptable{});
     int aPublicSlotCalled;
 protected:
-    void invoke2(){} W_INVOKABLE(invoke2,(), W_Compat{}, W_Access::Protected{})
-    void invoke2(int){} W_INVOKABLE(invoke2,(int), W_Compat{}, W_Access::Protected{})
-    void sinvoke2(){} W_INVOKABLE(sinvoke2, W_Compat{}, W_Scriptable{}, W_Access::Protected{})
+    void invoke2(){} W_INVOKABLE(invoke2,(), W_Compat{}, W_Access::Protected{});
+    void invoke2(int){} W_INVOKABLE(invoke2,(int), W_Compat{}, W_Access::Protected{});
+    void sinvoke2(){} W_INVOKABLE(sinvoke2, W_Compat{}, W_Scriptable{}, W_Access::Protected{});
 private:
     void invoke3(int hinz = 0, int kunz = 0)
     {
         Q_UNUSED(hinz)
         Q_UNUSED(kunz)
-    } W_INVOKABLE(invoke3, W_Access::Private{})
-    void sinvoke3(){} W_INVOKABLE(sinvoke3, W_Scriptable{}, W_Access::Private{})
+    } W_INVOKABLE(invoke3, W_Access::Private{});
+    void sinvoke3(){} W_INVOKABLE(sinvoke3, W_Scriptable{}, W_Access::Private{});
 
     int recursionCount;
 };
@@ -300,13 +300,13 @@ public:
 
 public slots:
     void slot1() { sequence_slot1 = ++sequence; count_slot1++; }
-    W_SLOT(slot1)
+    W_SLOT(slot1);
     void slot2() { sequence_slot2 = ++sequence; count_slot2++; }
-    W_SLOT(slot2)
+    W_SLOT(slot2);
     void slot3() { sequence_slot3 = ++sequence; count_slot3++; }
-    W_SLOT(slot3)
+    W_SLOT(slot3);
     void slot4() { sequence_slot4 = ++sequence; count_slot4++; }
-    W_SLOT(slot4)
+    W_SLOT(slot4);
 
 };
 
@@ -443,16 +443,16 @@ public:
     void emitSignalLoopBack() { emit signalLoopBack(); }
 
 signals:
-    void signalNoParams() W_SIGNAL(signalNoParams)
-    void signalWithParams(int i) W_SIGNAL(signalWithParams,(int),i)
-    void signalWithParams(int i, QString string) W_SIGNAL(signalWithParams,(int,QString),i, string)
+    void signalNoParams() W_SIGNAL(signalNoParams);
+    void signalWithParams(int i) W_SIGNAL(signalWithParams,(int),i);
+    void signalWithParams(int i, QString string) W_SIGNAL(signalWithParams,(int,QString),i, string);
     void signalManyParams(int i1, int i2, int i3, QString string, bool onoff)
-        W_SIGNAL(signalManyParams,(int,int,int,QString,bool),i1,i2,i3,string,onoff)
+        W_SIGNAL(signalManyParams,(int,int,int,QString,bool),i1,i2,i3,string,onoff);
     void signalManyParams(int i1, int i2, int i3, QString string, bool onoff, bool _)
-        W_SIGNAL(signalManyParams,(int,int,int,QString,bool,bool),i1,i2,i3,string,onoff,_)
+        W_SIGNAL(signalManyParams,(int,int,int,QString,bool,bool),i1,i2,i3,string,onoff,_);
     void signalManyParams2(int i1, int i2, int i3, QString string, bool onoff)
-        W_SIGNAL(signalManyParams2, i1,i2,i3,string,onoff)
-    void signalLoopBack() W_SIGNAL(signalLoopBack)
+        W_SIGNAL(signalManyParams2, i1,i2,i3,string,onoff);
+    void signalLoopBack() W_SIGNAL(signalLoopBack);
 };
 
 class AutoConnectReceiver : public QObject
@@ -472,42 +472,42 @@ public:
 
 public slots:
     void on_Sender_signalNoParams() { called_slots << 1; }
-    W_SLOT(on_Sender_signalNoParams)
+    W_SLOT(on_Sender_signalNoParams);
     void on_Sender_signalWithParams(int = 0) { called_slots << 2; }
-    W_SLOT(on_Sender_signalWithParams,(int))
+    W_SLOT(on_Sender_signalWithParams,(int));
     void on_Sender_signalWithParams(int, QString) { called_slots << 3; }
-    W_SLOT(on_Sender_signalWithParams,(int, QString))
+    W_SLOT(on_Sender_signalWithParams,(int, QString));
     void on_Sender_signalManyParams() { called_slots << 4; }
-    W_SLOT(on_Sender_signalManyParams,())
+    W_SLOT(on_Sender_signalManyParams,());
     void on_Sender_signalManyParams(int, int, int, QString, bool) { called_slots << 5; }
-    W_SLOT(on_Sender_signalManyParams,(int,int,int,QString,bool))
+    W_SLOT(on_Sender_signalManyParams,(int,int,int,QString,bool));
     void on_Sender_signalManyParams(int, int, int, QString, bool, bool) { called_slots << 6;}
-    W_SLOT(on_Sender_signalManyParams,(int,int,int,QString,bool,bool))
+    W_SLOT(on_Sender_signalManyParams,(int,int,int,QString,bool,bool));
     void on_Sender_signalManyParams2(int, int, int, QString, bool) { called_slots << 7; }
-    W_SLOT(on_Sender_signalManyParams2)
+    W_SLOT(on_Sender_signalManyParams2);
     void slotLoopBack() { called_slots << 8; }
-    W_SLOT(slotLoopBack)
+    W_SLOT(slotLoopBack);
     void on_Receiver_signalNoParams() { called_slots << 9; }
-    W_SLOT(on_Receiver_signalNoParams)
+    W_SLOT(on_Receiver_signalNoParams);
     void on_Receiver_signal_with_underscore() { called_slots << 10; }
-    W_SLOT(on_Receiver_signal_with_underscore)
+    W_SLOT(on_Receiver_signal_with_underscore);
 
 protected slots:
     void o() { called_slots << -1; }
-    W_SLOT(o)
+    W_SLOT(o);
     void on() { called_slots << -1; }
-    W_SLOT(on)
+    W_SLOT(on);
     void on_() { called_slots << -1; }
-    W_SLOT(on_)
+    W_SLOT(on_);
     void on_something() { called_slots << -1; }
-    W_SLOT(on_something)
+    W_SLOT(on_something);
     void on_child_signal() { called_slots << -1; }
-    W_SLOT(on_child_signal)
+    W_SLOT(on_child_signal);
 
 signals:
-    void on_Sender_signalLoopBack() W_SIGNAL(on_Sender_signalLoopBack)
-    void signalNoParams() W_SIGNAL(signalNoParams)
-    void signal_with_underscore() W_SIGNAL(signal_with_underscore)
+    void on_Sender_signalLoopBack() W_SIGNAL(on_Sender_signalLoopBack);
+    void signalNoParams() W_SIGNAL(signalNoParams);
+    void signal_with_underscore() W_SIGNAL(signal_with_underscore);
 };
 
 void tst_QObject::connectSlotsByName()
@@ -948,9 +948,9 @@ class QObjectWithIncomplete : public QObject {
 public:
     QObjectWithIncomplete(QObject *parent=nullptr) : QObject(parent) {}
 signals:
-    void signalWithIncomplete(const Incomplete & x) W_SIGNAL(signalWithIncomplete, (const Incomplete &), x)
+    void signalWithIncomplete(const Incomplete & x) W_SIGNAL(signalWithIncomplete, (const Incomplete &), x);
 public slots:
-    void slotWithIncomplete(const Incomplete &) {} W_SLOT(slotWithIncomplete,(const Incomplete &))
+    void slotWithIncomplete(const Incomplete &) {} W_SLOT(slotWithIncomplete,(const Incomplete &));
 };
 
 void tst_QObject::connectReferenceToIncompleteTypes() {
@@ -1088,7 +1088,7 @@ protected:
     void disconnectNotify(const QMetaMethod &signal) override
     { disconnectedSignals.append(signal); }
 Q_SIGNALS:
-    void signal1() W_SIGNAL(signal1)
+    void signal1() W_SIGNAL(signal1);
 };
 
 class ConnectByNameNotifyReceiverObject : public QObject
@@ -1110,11 +1110,11 @@ public:
 
 public Q_SLOTS:
     void on_foo_signal1() {}
-    W_SLOT(on_foo_signal1)
+    W_SLOT(on_foo_signal1);
     void on_bar_signal1() {}
-    W_SLOT(on_bar_signal1)
+    W_SLOT(on_bar_signal1);
     void on_baz_signal1() {}
-    W_SLOT(on_baz_signal1)
+    W_SLOT(on_baz_signal1);
 };
 
 void tst_QObject::connectNotify_connectSlotsByName()
@@ -1142,9 +1142,9 @@ class ConnectDisconnectNotifyShadowObject
     W_OBJECT(ConnectDisconnectNotifyShadowObject)
 public Q_SLOTS:
     void slot1() {}
-    W_SLOT(slot1)
+    W_SLOT(slot1);
 Q_SIGNALS:
-    void signal1() W_SIGNAL(signal1)
+    void signal1() W_SIGNAL(signal1);
 };
 
 void tst_QObject::connectDisconnectNotify_shadowing()
@@ -1220,7 +1220,7 @@ public slots:
         slot1();
         disconnect(sender(), SIGNAL(signal1()), this, SLOT(slot1_disconnectThis()));
     }
-    W_SLOT(slot1_disconnectThis)
+    W_SLOT(slot1_disconnectThis);
 
     void slot2_reconnectThis()
     {
@@ -1230,13 +1230,13 @@ public slots:
         disconnect(s, SIGNAL(signal1()), this, SLOT(slot2_reconnectThis()));
         connect(s, SIGNAL(signal1()), this, SLOT(slot2_reconnectThis()));
     }
-    W_SLOT(slot2_reconnectThis)
+    W_SLOT(slot2_reconnectThis);
     void slot1_disconnectNext()
     {
         slot1();
         disconnect(sender(), SIGNAL(signal1()), next, SLOT(slot1()));
     }
-    W_SLOT(slot1_disconnectNext)
+    W_SLOT(slot1_disconnectNext);
     void slot2_reconnectNext()
     {
         slot2();
@@ -1251,19 +1251,19 @@ public slots:
         disconnect(next, SIGNAL(destroyed()), this, SLOT(deleteLater()));
         disconnect(QCoreApplication::instance(), SIGNAL(aboutToQuit()), this, SLOT(deleteLater()));
     }
-    W_SLOT(slot2_reconnectNext)
+    W_SLOT(slot2_reconnectNext);
     void slot1_deleteNext()
     {
         slot1();
         delete next;
     }
-    W_SLOT(slot1_deleteNext)
+    W_SLOT(slot1_deleteNext);
     void slot2_deleteSender()
     {
         slot2();
         delete sender();
     }
-    W_SLOT(slot2_deleteSender)
+    W_SLOT(slot2_deleteSender);
 };
 
 void tst_QObject::emitInDefinedOrder()
@@ -1526,13 +1526,13 @@ public:
 
 public slots:
     void slot1(CustomType ct);
-    W_SLOT(slot1)
+    W_SLOT(slot1);
     void slot2(const QList<CustomType> &ct);
-    W_SLOT(slot2)
+    W_SLOT(slot2);
 
 signals:
-    void signal1(CustomType ct) W_SIGNAL(signal1,ct)
-    void signal2(const QList<CustomType> &ct) W_SIGNAL(signal2,ct)
+    void signal1(CustomType ct) W_SIGNAL(signal1,ct);
+    void signal2(const QList<CustomType> &ct) W_SIGNAL(signal2,ct);
 
 public:
     CustomType received;
@@ -1806,10 +1806,10 @@ public slots:
         slotThread = QThread::currentThread();
         emit theSignal();
     }
-    W_SLOT(theSlot)
+    W_SLOT(theSlot);
 
 signals:
-    void theSignal() W_SIGNAL(theSignal)
+    void theSignal() W_SIGNAL(theSignal);
 };
 
 class MoveToThreadThread : public QThread
@@ -2258,9 +2258,9 @@ namespace QObjectTest
         int i;
     public slots:
         void aSlot() { ++i; }
-        W_SLOT(aSlot)
+        W_SLOT(aSlot);
     signals:
-        void aSignal() W_SIGNAL(aSignal)
+        void aSignal() W_SIGNAL(aSignal);
     };
 }
 
@@ -2296,17 +2296,17 @@ public slots:
         theSender = sender();
         theSignalId = senderSignalIndex();
     }
-    W_SLOT(rememberSender)
+    W_SLOT(rememberSender);
 
     void deleteAndRememberSender()
     {
         delete theSender;
         rememberSender();
     }
-    W_SLOT(deleteAndRememberSender)
+    W_SLOT(deleteAndRememberSender);
 signals:
-    void anotherSignal() W_SIGNAL(anotherSignal)
-    void theSignal() W_SIGNAL(theSignal)
+    void anotherSignal() W_SIGNAL(anotherSignal);
+    void theSignal() W_SIGNAL(theSignal);
 };
 
 void tst_QObject::senderTest()
@@ -2471,7 +2471,7 @@ public:
 private slots:
     inline void otherObjectDestroyed()
     { pointerWasZero = pointer.isNull(); }
-    W_SLOT(otherObjectDestroyed)
+    W_SLOT(otherObjectDestroyed);
 };
 
 void tst_QObject::qpointerResetBeforeDestroyedSignal()
@@ -2493,11 +2493,11 @@ class DefaultArguments : public QObject
 public slots:
 
     void theSlot(const QString &s) { result = s; }
-    W_SLOT(theSlot)
+    W_SLOT(theSlot);
 
 signals:
-    void theOriginalSignal() W_SIGNAL(theOriginalSignal)
-    void theSecondSignal(const QString &s = QString("secondDefault")) W_SIGNAL(theSecondSignal,s)
+    void theOriginalSignal() W_SIGNAL(theOriginalSignal);
+    void theSecondSignal(const QString &s = QString("secondDefault")) W_SIGNAL(theSecondSignal,s);
 
 public:
 
@@ -2577,115 +2577,115 @@ class NormalizeObject : public QObject
 public:
 
 signals:
-    void uintPointerSignal(uint * a) W_SIGNAL(uintPointerSignal,a)
-    void ulongPointerSignal(ulong * a) W_SIGNAL(ulongPointerSignal,a)
-    void constUintPointerSignal(const uint * a) W_SIGNAL(constUintPointerSignal,a)
-    void constUlongPointerSignal(const ulong * a) W_SIGNAL(constUlongPointerSignal,a)
+    void uintPointerSignal(uint * a) W_SIGNAL(uintPointerSignal,a);
+    void ulongPointerSignal(ulong * a) W_SIGNAL(ulongPointerSignal,a);
+    void constUintPointerSignal(const uint * a) W_SIGNAL(constUintPointerSignal,a);
+    void constUlongPointerSignal(const ulong * a) W_SIGNAL(constUlongPointerSignal,a);
 
-    void structSignal(Struct s) W_SIGNAL(structSignal,s)
-    void classSignal(Class c) W_SIGNAL(classSignal,c)
-    void enumSignal(Enum e) W_SIGNAL(enumSignal,e)
+    void structSignal(Struct s) W_SIGNAL(structSignal,s);
+    void classSignal(Class c) W_SIGNAL(classSignal,c);
+    void enumSignal(Enum e) W_SIGNAL(enumSignal,e);
 
-    void structPointerSignal(Struct *s) W_SIGNAL(structPointerSignal,s)
-    void classPointerSignal(Class *c) W_SIGNAL(classPointerSignal,c)
-    void enumPointerSignal(Enum *e) W_SIGNAL(enumPointerSignal,e)
+    void structPointerSignal(Struct *s) W_SIGNAL(structPointerSignal,s);
+    void classPointerSignal(Class *c) W_SIGNAL(classPointerSignal,c);
+    void enumPointerSignal(Enum *e) W_SIGNAL(enumPointerSignal,e);
 
-    void constStructPointerSignal(const Struct *s) W_SIGNAL(constStructPointerSignal,s)
-    void constClassPointerSignal(const Class *c) W_SIGNAL(constClassPointerSignal,c)
-    void constEnumPointerSignal(const Enum *e) W_SIGNAL(constEnumPointerSignal,e)
+    void constStructPointerSignal(const Struct *s) W_SIGNAL(constStructPointerSignal,s);
+    void constClassPointerSignal(const Class *c) W_SIGNAL(constClassPointerSignal,c);
+    void constEnumPointerSignal(const Enum *e) W_SIGNAL(constEnumPointerSignal,e);
 
-    void constStructPointerConstPointerSignal(const Struct * const *s) W_SIGNAL(constStructPointerConstPointerSignal,s)
-    void constClassPointerConstPointerSignal(const Class * const *c) W_SIGNAL(constClassPointerConstPointerSignal,c)
-    void constEnumPointerConstPointerSignal(const Enum * const *e) W_SIGNAL(constEnumPointerConstPointerSignal,e)
+    void constStructPointerConstPointerSignal(const Struct * const *s) W_SIGNAL(constStructPointerConstPointerSignal,s);
+    void constClassPointerConstPointerSignal(const Class * const *c) W_SIGNAL(constClassPointerConstPointerSignal,c);
+    void constEnumPointerConstPointerSignal(const Enum * const *e) W_SIGNAL(constEnumPointerConstPointerSignal,e);
 
-    void unsignedintSignal(unsigned int a) W_SIGNAL(unsignedintSignal,a)
-    void unsignedSignal(unsigned a) W_SIGNAL(unsignedSignal,a)
-    void unsignedlongSignal(unsigned long a) W_SIGNAL(unsignedlongSignal,a)
-    void unsignedlonglongSignal(quint64 a) W_SIGNAL(unsignedlonglongSignal,a)
-    void unsignedlongintSignal(unsigned long int a) W_SIGNAL(unsignedlongintSignal,a)
-    void unsignedshortSignal(unsigned short a) W_SIGNAL(unsignedshortSignal,a)
-    void unsignedcharSignal(unsigned char a) W_SIGNAL(unsignedcharSignal,a)
+    void unsignedintSignal(unsigned int a) W_SIGNAL(unsignedintSignal,a);
+    void unsignedSignal(unsigned a) W_SIGNAL(unsignedSignal,a);
+    void unsignedlongSignal(unsigned long a) W_SIGNAL(unsignedlongSignal,a);
+    void unsignedlonglongSignal(quint64 a) W_SIGNAL(unsignedlonglongSignal,a);
+    void unsignedlongintSignal(unsigned long int a) W_SIGNAL(unsignedlongintSignal,a);
+    void unsignedshortSignal(unsigned short a) W_SIGNAL(unsignedshortSignal,a);
+    void unsignedcharSignal(unsigned char a) W_SIGNAL(unsignedcharSignal,a);
 
-    void typeRefSignal(Template<Class &> &ref) W_SIGNAL(typeRefSignal,ref)
-    void constTypeRefSignal(const Template<Class const &> &ref) W_SIGNAL(constTypeRefSignal,ref)
-    void typeConstRefSignal(Template<Class const &> const &ref) W_SIGNAL(typeConstRefSignal,ref)
+    void typeRefSignal(Template<Class &> &ref) W_SIGNAL(typeRefSignal,ref);
+    void constTypeRefSignal(const Template<Class const &> &ref) W_SIGNAL(constTypeRefSignal,ref);
+    void typeConstRefSignal(Template<Class const &> const &ref) W_SIGNAL(typeConstRefSignal,ref);
 
-    void typePointerConstRefSignal(Class * const &a) W_SIGNAL(typePointerConstRefSignal,a)
+    void typePointerConstRefSignal(Class * const &a) W_SIGNAL(typePointerConstRefSignal,a);
 
-    void constTemplateSignal1( Template<int > a) W_SIGNAL(constTemplateSignal1,a)
-    void constTemplateSignal2( Template< const int >a) W_SIGNAL(constTemplateSignal2,a)
+    void constTemplateSignal1( Template<int > a) W_SIGNAL(constTemplateSignal1,a);
+    void constTemplateSignal2( Template< const int >a) W_SIGNAL(constTemplateSignal2,a);
 
 public slots:
     void uintPointerSlot(uint *) { }
-    W_SLOT(uintPointerSlot)
+    W_SLOT(uintPointerSlot);
     void ulongPointerSlot(ulong *) { }
-    W_SLOT(ulongPointerSlot)
+    W_SLOT(ulongPointerSlot);
     void constUintPointerSlot(const uint *) { }
-    W_SLOT(constUintPointerSlot)
+    W_SLOT(constUintPointerSlot);
     void constUlongPointerSlot(const ulong *) { }
-    W_SLOT(constUlongPointerSlot)
+    W_SLOT(constUlongPointerSlot);
 
     void structSlot(Struct s) { Q_UNUSED(s); }
-    W_SLOT(structSlot)
+    W_SLOT(structSlot);
     void classSlot(Class c) { Q_UNUSED(c); }
-    W_SLOT(classSlot)
+    W_SLOT(classSlot);
     void enumSlot(Enum e) { Q_UNUSED(e); }
-    W_SLOT(enumSlot)
+    W_SLOT(enumSlot);
 
     void structPointerSlot(Struct *s) { Q_UNUSED(s); }
-    W_SLOT(structPointerSlot)
+    W_SLOT(structPointerSlot);
     void classPointerSlot(Class *c) { Q_UNUSED(c); }
-    W_SLOT(classPointerSlot)
+    W_SLOT(classPointerSlot);
     void enumPointerSlot(Enum *e) { Q_UNUSED(e); }
-    W_SLOT(enumPointerSlot)
+    W_SLOT(enumPointerSlot);
 
     void constStructPointerSlot(const Struct *s) { Q_UNUSED(s); }
-    W_SLOT(constStructPointerSlot)
+    W_SLOT(constStructPointerSlot);
     void constClassPointerSlot(const Class *c) { Q_UNUSED(c); }
-    W_SLOT(constClassPointerSlot)
+    W_SLOT(constClassPointerSlot);
     void constEnumPointerSlot(const Enum *e) { Q_UNUSED(e); }
-    W_SLOT(constEnumPointerSlot)
+    W_SLOT(constEnumPointerSlot);
 
     void constStructPointerConstPointerSlot(const Struct * const *s) { Q_UNUSED(s); }
-    W_SLOT(constStructPointerConstPointerSlot)
+    W_SLOT(constStructPointerConstPointerSlot);
     void constClassPointerConstPointerSlot(const Class * const *c) { Q_UNUSED(c); }
-    W_SLOT(constClassPointerConstPointerSlot)
+    W_SLOT(constClassPointerConstPointerSlot);
     void constEnumPointerConstPointerSlot(const Enum * const *e) { Q_UNUSED(e); }
-    W_SLOT(constEnumPointerConstPointerSlot)
+    W_SLOT(constEnumPointerConstPointerSlot);
 
     void uintSlot(uint) {}
-    W_SLOT(uintSlot)
+    W_SLOT(uintSlot);
     void unsignedintSlot(unsigned int) {}
-    W_SLOT(unsignedintSlot)
+    W_SLOT(unsignedintSlot);
     void unsignedSlot(unsigned) {}
-    W_SLOT(unsignedSlot)
+    W_SLOT(unsignedSlot);
     void unsignedlongSlot(unsigned long) {}
-    W_SLOT(unsignedlongSlot)
+    W_SLOT(unsignedlongSlot);
     void unsignedlonglongSlot(quint64) {}
-    W_SLOT(unsignedlonglongSlot)
+    W_SLOT(unsignedlonglongSlot);
     void unsignedlongintSlot(unsigned long int) {}
-    W_SLOT(unsignedlongintSlot)
+    W_SLOT(unsignedlongintSlot);
     void unsignedshortSlot(unsigned short) {}
-    W_SLOT(unsignedshortSlot)
+    W_SLOT(unsignedshortSlot);
     void unsignedcharSlot(unsigned char) {}
-    W_SLOT(unsignedcharSlot)
+    W_SLOT(unsignedcharSlot);
 
     void typeRefSlot(Template<Class &> &) {}
-    W_SLOT(typeRefSlot)
+    W_SLOT(typeRefSlot);
     void constTypeRefSlot(const Template<const Class &> &) {}
-    W_SLOT(constTypeRefSlot)
+    W_SLOT(constTypeRefSlot);
     void typeConstRefSlot(Template<Class const &> const &) {}
-    W_SLOT(typeConstRefSlot)
+    W_SLOT(typeConstRefSlot);
 
     void typePointerConstRefSlot(Class * const &) {}
-    W_SLOT(typePointerConstRefSlot)
+    W_SLOT(typePointerConstRefSlot);
 
     void constTemplateSlot1(Template<int > const) {}
-    W_SLOT(constTemplateSlot1)
+    W_SLOT(constTemplateSlot1);
     void constTemplateSlot2(const Template<int > ) {}
-    W_SLOT(constTemplateSlot2)
+    W_SLOT(constTemplateSlot2);
     void constTemplateSlot3(const Template< const int >) {}
-    W_SLOT(constTemplateSlot3)
+    W_SLOT(constTemplateSlot3);
 };
 
 void tst_QObject::normalize()
@@ -3382,7 +3382,7 @@ public:
         emit work();
     }
 signals:
-    void work() W_SIGNAL(work)
+    void work() W_SIGNAL(work);
 };
 
 namespace QObjectTest { // Do not clash with WinAPI 'DeleteObject'
@@ -3395,17 +3395,17 @@ public slots:
     {
         delete this;
     }
-    W_SLOT(deleteSelf)
+    W_SLOT(deleteSelf);
 
     void relaySignalAndProcessEvents()
     {
         emit relayedSignal();
         QCoreApplication::processEvents();
     }
-    W_SLOT(relaySignalAndProcessEvents)
+    W_SLOT(relaySignalAndProcessEvents);
 
 signals:
-    void relayedSignal() W_SIGNAL(relayedSignal)
+    void relayedSignal() W_SIGNAL(relayedSignal);
 };
 } // namespace QObjectTest
 
@@ -3475,17 +3475,17 @@ public slots:
     {
         disconnect(sender(), 0, this, 0);
     }
-    W_SLOT(disconnectSelf)
+    W_SLOT(disconnectSelf);
 
     void relaySignalAndProcessEvents()
     {
         emit relayedSignal();
         QCoreApplication::processEvents();
     }
-    W_SLOT(relaySignalAndProcessEvents)
+    W_SLOT(relaySignalAndProcessEvents);
 
 signals:
-    void relayedSignal() W_SIGNAL(relayedSignal)
+    void relayedSignal() W_SIGNAL(relayedSignal);
 };
 
 void tst_QObject::disconnectSelfInSlotAndDeleteAfterEmit()
@@ -3594,7 +3594,7 @@ class ConnectToSender : public QObject
 { W_OBJECT(ConnectToSender)
     public slots:
         void uselessSlot() { count++; }
-    W_SLOT(uselessSlot)
+    W_SLOT(uselessSlot);
 
         void harmfullSlot() {
             //this used to crash
@@ -3603,7 +3603,7 @@ class ConnectToSender : public QObject
             connect(sender(), SIGNAL(signal1()), this, SLOT(uselessSlot()));
             QList<double>() << 45 << 78 << 65 << 121 << 45 << 78 << 12;
         }
-        W_SLOT(harmfullSlot)
+        W_SLOT(harmfullSlot);
     public:
         int count;
 };
@@ -3796,14 +3796,14 @@ class OverloadObject : public QObject
     friend class tst_QObject;
     W_OBJECT(OverloadObject)
     signals:
-        void sig(int i, char c, qreal m = 12) W_SIGNAL(sig,(int, char, qreal),i,c,m)
-        void sig(int i, int j = 12) W_SIGNAL(sig,(int,int),i,j)
+        void sig(int i, char c, qreal m = 12) W_SIGNAL(sig,(int, char, qreal),i,c,m);
+        void sig(int i, int j = 12) W_SIGNAL(sig,(int,int),i,j);
         void sig(QObject *o, QObject *p, QObject *q = 0, QObject *r = 0) const
-            W_SIGNAL(sig,(QObject*,QObject*,QObject*,QObject*),o,p,q,r)
-        void other(int a = 0) W_SIGNAL(other,(int),a)
+            W_SIGNAL(sig,(QObject*,QObject*,QObject*,QObject*),o,p,q,r);
+        void other(int a = 0) W_SIGNAL(other,(int),a);
         void sig(QObject *o, OverloadObject *p = 0, QObject *q = 0, QObject *r = 0)
-            W_SIGNAL(sig,(QObject*,OverloadObject*,QObject*,QObject*),o,p,q,r)
-        void sig(double r = 0.5) W_SIGNAL(sig,(double),r)
+            W_SIGNAL(sig,(QObject*,OverloadObject*,QObject*,QObject*),o,p,q,r);
+        void sig(double r = 0.5) W_SIGNAL(sig,(double),r);
     public slots:
         void slo(int i, int j = 43)
         {
@@ -3811,7 +3811,7 @@ class OverloadObject : public QObject
             i1_num = i;
             i2_num = j;
         }
-        W_SLOT(slo,(int,int))
+        W_SLOT(slo,(int,int));
         void slo(QObject *o, QObject *p = qApp, QObject *q = qApp, QObject *r = qApp)
         {
             s_num += 10;
@@ -3820,12 +3820,12 @@ class OverloadObject : public QObject
             o3_obj = q;
             o4_obj = r;
         }
-        W_SLOT(slo,(QObject*,QObject*,QObject*,QObject*))
+        W_SLOT(slo,(QObject*,QObject*,QObject*,QObject*));
         void slo()
         {
             s_num += 100;
         }
-        W_SLOT(slo,())
+        W_SLOT(slo,());
 
     public:
         int s_num;
@@ -3889,24 +3889,24 @@ class ManySignals : public QObject
 {   W_OBJECT(ManySignals)
     friend class tst_QObject;
 signals:
-    void sig00() W_SIGNAL(sig00) void sig01() W_SIGNAL(sig01) void sig02() W_SIGNAL(sig02) void sig03() W_SIGNAL(sig03) void sig04() W_SIGNAL(sig04)
-    void sig05() W_SIGNAL(sig05) void sig06() W_SIGNAL(sig06) void sig07() W_SIGNAL(sig07) void sig08() W_SIGNAL(sig08) void sig09() W_SIGNAL(sig09)
-    void sig10() W_SIGNAL(sig10) void sig11() W_SIGNAL(sig11) void sig12() W_SIGNAL(sig12) void sig13() W_SIGNAL(sig13) void sig14() W_SIGNAL(sig14)
-    void sig15() W_SIGNAL(sig15) void sig16() W_SIGNAL(sig16) void sig17() W_SIGNAL(sig17) void sig18() W_SIGNAL(sig18) void sig19() W_SIGNAL(sig19)
-    void sig20() W_SIGNAL(sig20) void sig21() W_SIGNAL(sig21) void sig22() W_SIGNAL(sig22) void sig23() W_SIGNAL(sig23) void sig24() W_SIGNAL(sig24)
-    void sig25() W_SIGNAL(sig25) void sig26() W_SIGNAL(sig26) void sig27() W_SIGNAL(sig27) void sig28() W_SIGNAL(sig28) void sig29() W_SIGNAL(sig29)
-    void sig30() W_SIGNAL(sig30) void sig31() W_SIGNAL(sig31) void sig32() W_SIGNAL(sig32) void sig33() W_SIGNAL(sig33) void sig34() W_SIGNAL(sig34)
-    void sig35() W_SIGNAL(sig35) void sig36() W_SIGNAL(sig36) void sig37() W_SIGNAL(sig37) void sig38() W_SIGNAL(sig38) void sig39() W_SIGNAL(sig39)
-    void sig40() W_SIGNAL(sig40) void sig41() W_SIGNAL(sig41) void sig42() W_SIGNAL(sig42) void sig43() W_SIGNAL(sig43) void sig44() W_SIGNAL(sig44)
-    void sig45() W_SIGNAL(sig45) void sig46() W_SIGNAL(sig46) void sig47() W_SIGNAL(sig47) void sig48() W_SIGNAL(sig48) void sig49() W_SIGNAL(sig49)
-    void sig50() W_SIGNAL(sig50) void sig51() W_SIGNAL(sig51) void sig52() W_SIGNAL(sig52) void sig53() W_SIGNAL(sig53) void sig54() W_SIGNAL(sig54)
-    void sig55() W_SIGNAL(sig55) void sig56() W_SIGNAL(sig56) void sig57() W_SIGNAL(sig57) void sig58() W_SIGNAL(sig58) void sig59() W_SIGNAL(sig59)
-    void sig60() W_SIGNAL(sig60) void sig61() W_SIGNAL(sig61) void sig62() W_SIGNAL(sig62) void sig63() W_SIGNAL(sig63) void sig64() W_SIGNAL(sig64)
-    void sig65() W_SIGNAL(sig65) void sig66() W_SIGNAL(sig66) void sig67() W_SIGNAL(sig67) void sig68() W_SIGNAL(sig68) void sig69() W_SIGNAL(sig69)
+    void sig00() W_SIGNAL(sig00); void sig01() W_SIGNAL(sig01); void sig02() W_SIGNAL(sig02); void sig03() W_SIGNAL(sig03); void sig04() W_SIGNAL(sig04);
+    void sig05() W_SIGNAL(sig05); void sig06() W_SIGNAL(sig06); void sig07() W_SIGNAL(sig07); void sig08() W_SIGNAL(sig08); void sig09() W_SIGNAL(sig09);
+    void sig10() W_SIGNAL(sig10); void sig11() W_SIGNAL(sig11); void sig12() W_SIGNAL(sig12); void sig13() W_SIGNAL(sig13); void sig14() W_SIGNAL(sig14);
+    void sig15() W_SIGNAL(sig15); void sig16() W_SIGNAL(sig16); void sig17() W_SIGNAL(sig17); void sig18() W_SIGNAL(sig18); void sig19() W_SIGNAL(sig19);
+    void sig20() W_SIGNAL(sig20); void sig21() W_SIGNAL(sig21); void sig22() W_SIGNAL(sig22); void sig23() W_SIGNAL(sig23); void sig24() W_SIGNAL(sig24);
+    void sig25() W_SIGNAL(sig25); void sig26() W_SIGNAL(sig26); void sig27() W_SIGNAL(sig27); void sig28() W_SIGNAL(sig28); void sig29() W_SIGNAL(sig29);
+    void sig30() W_SIGNAL(sig30); void sig31() W_SIGNAL(sig31); void sig32() W_SIGNAL(sig32); void sig33() W_SIGNAL(sig33); void sig34() W_SIGNAL(sig34);
+    void sig35() W_SIGNAL(sig35); void sig36() W_SIGNAL(sig36); void sig37() W_SIGNAL(sig37); void sig38() W_SIGNAL(sig38); void sig39() W_SIGNAL(sig39);
+    void sig40() W_SIGNAL(sig40); void sig41() W_SIGNAL(sig41); void sig42() W_SIGNAL(sig42); void sig43() W_SIGNAL(sig43); void sig44() W_SIGNAL(sig44);
+    void sig45() W_SIGNAL(sig45); void sig46() W_SIGNAL(sig46); void sig47() W_SIGNAL(sig47); void sig48() W_SIGNAL(sig48); void sig49() W_SIGNAL(sig49);
+    void sig50() W_SIGNAL(sig50); void sig51() W_SIGNAL(sig51); void sig52() W_SIGNAL(sig52); void sig53() W_SIGNAL(sig53); void sig54() W_SIGNAL(sig54);
+    void sig55() W_SIGNAL(sig55); void sig56() W_SIGNAL(sig56); void sig57() W_SIGNAL(sig57); void sig58() W_SIGNAL(sig58); void sig59() W_SIGNAL(sig59);
+    void sig60() W_SIGNAL(sig60); void sig61() W_SIGNAL(sig61); void sig62() W_SIGNAL(sig62); void sig63() W_SIGNAL(sig63); void sig64() W_SIGNAL(sig64);
+    void sig65() W_SIGNAL(sig65); void sig66() W_SIGNAL(sig66); void sig67() W_SIGNAL(sig67); void sig68() W_SIGNAL(sig68); void sig69() W_SIGNAL(sig69);
 
 public slots:
     void received() { rec++; }
-    W_SLOT(received)
+    W_SLOT(received);
 public:
     int rec;
 };
@@ -4297,9 +4297,9 @@ class ConfusingObject : public SenderObject
 { W_OBJECT(ConfusingObject)
 public slots:
     void signal1() { s++; }
-    W_SLOT(signal1)
+    W_SLOT(signal1);
 signals:
-    void aPublicSlot() W_SIGNAL(aPublicSlot)
+    void aPublicSlot() W_SIGNAL(aPublicSlot);
 public:
     int s;
     ConfusingObject() : s(0) {}
@@ -4615,7 +4615,7 @@ public slots:
         QVERIFY(!destroyed);
         fooList << "c" << "d";
     }
-    W_SLOT(slotUseList)
+    W_SLOT(slotUseList);
 };
 
 static void processEvents()
@@ -4987,115 +4987,115 @@ class LotsOfSignalsAndSlots: public QObject
 
     public slots:
         void slot_v() {}
-        W_SLOT(slot_v)
+        W_SLOT(slot_v);
         void slot_v_noexcept() Q_DECL_NOTHROW {}
-        W_SLOT(slot_v_noexcept)
+        W_SLOT(slot_v_noexcept);
         void slot_vi(int) {}
-        W_SLOT(slot_vi)
+        W_SLOT(slot_vi);
         void slot_vi_noexcept() Q_DECL_NOTHROW {}
-        W_SLOT(slot_vi_noexcept)
+        W_SLOT(slot_vi_noexcept);
         void slot_vii(int, int) {}
-        W_SLOT(slot_vii)
+        W_SLOT(slot_vii);
         void slot_viii(int, int, int) {}
-        W_SLOT(slot_viii)
+        W_SLOT(slot_viii);
         int slot_i() { return 0; }
-        W_SLOT(slot_i)
+        W_SLOT(slot_i);
         int slot_i_noexcept() Q_DECL_NOTHROW { return 0; }
-        W_SLOT(slot_i_noexcept)
+        W_SLOT(slot_i_noexcept);
         int slot_ii(int) { return 0; }
-        W_SLOT(slot_ii)
+        W_SLOT(slot_ii);
         int slot_iii(int, int) { return 0; }
-        W_SLOT(slot_iii)
+        W_SLOT(slot_iii);
         int slot_iiii(int, int, int) { return 0; }
-        W_SLOT(slot_iiii)
+        W_SLOT(slot_iiii);
         void slot_vRi(int &) {}
-        W_SLOT(slot_vRi)
+        W_SLOT(slot_vRi);
         void slot_vs(short) {}
-        W_SLOT(slot_vs)
+        W_SLOT(slot_vs);
         void slot_vRs(short&) {}
-        W_SLOT(slot_vRs)
+        W_SLOT(slot_vRs);
    /*     #ifdef Q_COMPILER_RVALUE_REFS
         void slot_vOi(int &&) {}
-        W_SLOT(slot_vOi)
+        W_SLOT(slot_vOi);
         void slot_vOs(short &&) {}
-        W_SLOT(slot_vOs)
+        W_SLOT(slot_vOs);
         #endif*/
         void slot_vPFvvE(fptr) {}
-        W_SLOT(slot_vPFvvE,(fptr))
+        W_SLOT(slot_vPFvvE,(fptr));
 
         void const_slot_v() const {}
-        W_SLOT(const_slot_v)
+        W_SLOT(const_slot_v);
         void const_slot_v_noexcept() const Q_DECL_NOTHROW {}
-        W_SLOT(const_slot_v_noexcept)
+        W_SLOT(const_slot_v_noexcept);
         void const_slot_vi(int) const {}
-        W_SLOT(const_slot_vi)
+        W_SLOT(const_slot_vi);
         void const_slot_vi_noexcept(int) Q_DECL_NOTHROW {}
-        W_SLOT(const_slot_vi_noexcept)
+        W_SLOT(const_slot_vi_noexcept);
 
         static void static_slot_v() {}
-        W_SLOT(static_slot_v)
+        W_SLOT(static_slot_v);
         static void static_slot_v_noexcept() Q_DECL_NOTHROW {}
-        W_SLOT(static_slot_v_noexcept)
+        W_SLOT(static_slot_v_noexcept);
         static void static_slot_vi(int) {}
-        W_SLOT(static_slot_vi)
+        W_SLOT(static_slot_vi);
         static void static_slot_vi_noexcept(int) Q_DECL_NOTHROW {}
-        W_SLOT(static_slot_vi_noexcept)
+        W_SLOT(static_slot_vi_noexcept);
         static void static_slot_vii(int, int) {}
-        W_SLOT(static_slot_vii)
+        W_SLOT(static_slot_vii);
         static void static_slot_viii(int, int, int) {}
-        W_SLOT(static_slot_viii)
+        W_SLOT(static_slot_viii);
         static int static_slot_i() { return 0; }
-        W_SLOT(static_slot_i)
+        W_SLOT(static_slot_i);
         static int static_slot_i_noexcept() Q_DECL_NOTHROW { return 0; }
-        W_SLOT(static_slot_i_noexcept)
+        W_SLOT(static_slot_i_noexcept);
         static int static_slot_ii(int) { return 0; }
-        W_SLOT(static_slot_ii)
+        W_SLOT(static_slot_ii);
         static int static_slot_iii(int, int) { return 0; }
-        W_SLOT(static_slot_iii)
+        W_SLOT(static_slot_iii);
         static int static_slot_iiii(int, int, int) { return 0; }
-        W_SLOT(static_slot_iiii)
+        W_SLOT(static_slot_iiii);
         static void static_slot_vRi(int &) {}
-        W_SLOT(static_slot_vRi)
+        W_SLOT(static_slot_vRi);
         static void static_slot_vs(short) {}
-        W_SLOT(static_slot_vs)
+        W_SLOT(static_slot_vs);
         static void static_slot_vRs(short&) {}
-        W_SLOT(static_slot_vRs)
+        W_SLOT(static_slot_vRs);
 /*        #if defined(Q_COMPILER_RVALUE_REFS) || defined(QT_ENABLE_CXX0X)
         static void static_slot_vOi(int &&) {}
-        W_SLOT(static_slot_vOi)
+        W_SLOT(static_slot_vOi);
         static void static_slot_vOs(short &&) {}
-        W_SLOT(static_slot_vOs)
+        W_SLOT(static_slot_vOs);
         #endif*/
         static void static_slot_vPFvvE(fptr) {}
-        W_SLOT(static_slot_vPFvvE,(fptr))
+        W_SLOT(static_slot_vPFvvE,(fptr));
 
         void slot_vcRQObject(const QObject &) {}
-        W_SLOT(slot_vcRQObject)
+        W_SLOT(slot_vcRQObject);
         void slot_vRQObject(QObject &) {}
-        W_SLOT(slot_vRQObject)
+        W_SLOT(slot_vRQObject);
 
     signals:
-        void signal_v() W_SIGNAL(signal_v)
-        void signal_vi(int a) W_SIGNAL(signal_vi, a)
-        void signal_vii(int a, int b) W_SIGNAL(signal_vii, a,b)
-        void signal_viii(int a, int b, int c) W_SIGNAL(signal_viii, a,b,c)
-        void signal_vRi(int &a) W_SIGNAL(signal_vRi, a)
-        void signal_vs(short a) W_SIGNAL(signal_vs, a)
-        void signal_vRs(short &a) W_SIGNAL(signal_vRs, a)
+        void signal_v() W_SIGNAL(signal_v);
+        void signal_vi(int a) W_SIGNAL(signal_vi, a);
+        void signal_vii(int a, int b) W_SIGNAL(signal_vii, a,b);
+        void signal_viii(int a, int b, int c) W_SIGNAL(signal_viii, a,b,c);
+        void signal_vRi(int &a) W_SIGNAL(signal_vRi, a);
+        void signal_vs(short a) W_SIGNAL(signal_vs, a);
+        void signal_vRs(short &a) W_SIGNAL(signal_vRs, a);
 /*        #if defined(Q_COMPILER_RVALUE_REFS) || defined(QT_ENABLE_CXX0X)
-        void signal_vOi(int &&) W_SIGNAL()
-        void signal_vOs(short &&) W_SIGNAL()
+        void signal_vOi(int &&) W_SIGNAL();
+        void signal_vOs(short &&) W_SIGNAL();
         #endif*/
-        void signal_vPFvvE(fptr a) W_SIGNAL(signal_vPFvvE,(fptr), a)
+        void signal_vPFvvE(fptr a) W_SIGNAL(signal_vPFvvE,(fptr), a);
 
-        void const_signal_v() const W_SIGNAL(const_signal_v)
-        void const_signal_vi(int a) const W_SIGNAL(const_signal_vi, a)
+        void const_signal_v() const W_SIGNAL(const_signal_v);
+        void const_signal_vi(int a) const W_SIGNAL(const_signal_vi, a);
 
-        void signal_vcRQObject(const QObject &a) W_SIGNAL(signal_vcRQObject, a)
-        void signal_vRQObject(QObject &a) W_SIGNAL(signal_vRQObject, a)
+        void signal_vcRQObject(const QObject &a) W_SIGNAL(signal_vcRQObject, a);
+        void signal_vRQObject(QObject &a) W_SIGNAL(signal_vRQObject, a);
 
-        void signal(short&a, short b, long long c, short d) W_SIGNAL(signal, a,b,c,d)
-        void otherSignal(const char *a) W_SIGNAL(otherSignal, a)
+        void signal(short&a, short b, long long c, short d) W_SIGNAL(signal, a,b,c,d);
+        void otherSignal(const char *a) W_SIGNAL(otherSignal, a);
 };
 
 void tst_QObject::connectCxx0xTypeMatching()
@@ -5250,10 +5250,10 @@ void tst_QObject::connectCxx17Noexcept()
 class StringVariant : public QObject
 { W_OBJECT(StringVariant)
 signals:
-    void stringSignal(const QString &str) W_SIGNAL(stringSignal, str)
+    void stringSignal(const QString &str) W_SIGNAL(stringSignal, str);
 public slots:
     void variantSlot(const QVariant &v) { var = v; }
-    W_SLOT(variantSlot)
+    W_SLOT(variantSlot);
 public:
     QVariant var;
     friend class tst_QObject;
@@ -5295,26 +5295,26 @@ class ConnectWithReferenceObject : public QObject {
     W_OBJECT(ConnectWithReferenceObject)
     friend class tst_QObject;
 signals:
-    void boolRef(bool &a, bool b) W_SIGNAL(boolRef,a,b)
-    void stringRef(QString &a, const QString & b) W_SIGNAL(stringRef,a,b)
-    void boolPtr(bool *a, bool b) W_SIGNAL(boolPtr,a,b)
-    void stringPtr(QString *a, const QString & b) W_SIGNAL(stringPtr,a,b)
+    void boolRef(bool &a, bool b) W_SIGNAL(boolRef,a,b);
+    void stringRef(QString &a, const QString & b) W_SIGNAL(stringRef,a,b);
+    void boolPtr(bool *a, bool b) W_SIGNAL(boolPtr,a,b);
+    void stringPtr(QString *a, const QString & b) W_SIGNAL(stringPtr,a,b);
 public slots:
     void boolRefSlot(bool &b1, bool b2) {  b1 = b2; }
-    W_SLOT(boolRefSlot)
+    W_SLOT(boolRefSlot);
     void stringRefSlot(QString &s1, const QString &s2) {  s1 = s2; }
-    W_SLOT(stringRefSlot)
+    W_SLOT(stringRefSlot);
     void boolPtrSlot(bool *b1, bool b2) {  *b1 = b2; }
-    W_SLOT(boolPtrSlot)
+    W_SLOT(boolPtrSlot);
     void stringPtrSlot(QString *s1, const QString &s2) {  *s1 = s2; }
-    W_SLOT(stringPtrSlot)
+    W_SLOT(stringPtrSlot);
 
     void stringSlot1(QString s) { last = s; }
-    W_SLOT(stringSlot1)
+    W_SLOT(stringSlot1);
     void stringSlot2(const QString &s) { last = s; }
-    W_SLOT(stringSlot2)
+    W_SLOT(stringSlot2);
     void stringSlot3(QString &s) { last = s; }
-    W_SLOT(stringSlot3)
+    W_SLOT(stringSlot3);
 public:
     QString last;
 };
@@ -5375,12 +5375,12 @@ void tst_QObject::connectWithReference()
 class ManyArgumentObject : public QObject {
     W_OBJECT(ManyArgumentObject)
 signals:
-    void signal1(const QString &a) W_SIGNAL(signal1,a)
-    void signal2(const QString &a, const QString &b) W_SIGNAL(signal2,a,b)
-    void signal3(const QString &a, const QString &b, const QString &c) W_SIGNAL(signal3,a,b,c)
-    void signal4(const QString &a, const QString &b, const QString &c, const QString&d) W_SIGNAL(signal4,a,b,c,d)
-    void signal5(const QString &a, const QString &b, const QString &c, const QString&d, const QString&e) W_SIGNAL(signal5,a,b,c,d,e)
-    void signal6(const QString &a, const QString &b, const QString &c, const QString&d, const QString&e, const QString&f) W_SIGNAL(signal6,a,b,c,d,e,f)
+    void signal1(const QString &a) W_SIGNAL(signal1,a);
+    void signal2(const QString &a, const QString &b) W_SIGNAL(signal2,a,b);
+    void signal3(const QString &a, const QString &b, const QString &c) W_SIGNAL(signal3,a,b,c);
+    void signal4(const QString &a, const QString &b, const QString &c, const QString&d) W_SIGNAL(signal4,a,b,c,d);
+    void signal5(const QString &a, const QString &b, const QString &c, const QString&d, const QString&e) W_SIGNAL(signal5,a,b,c,d,e);
+    void signal6(const QString &a, const QString &b, const QString &c, const QString&d, const QString&e, const QString&f) W_SIGNAL(signal6,a,b,c,d,e,f);
 
 public slots:
 #define MANYARGUMENT_COMPARE(L) QCOMPARE(L, QString(#L))
@@ -5388,35 +5388,35 @@ public slots:
         MANYARGUMENT_COMPARE(a);
         count++;
     }
-    W_SLOT(slot1)
+    W_SLOT(slot1);
     void slot2(const QString &a, const QString &b) {
         MANYARGUMENT_COMPARE(a); MANYARGUMENT_COMPARE(b);
         count++;
     }
-    W_SLOT(slot2)
+    W_SLOT(slot2);
     void slot3(const QString &a, const QString &b, const QString &c) {
         MANYARGUMENT_COMPARE(a); MANYARGUMENT_COMPARE(b); MANYARGUMENT_COMPARE(c);
         count++;
     }
-    W_SLOT(slot3)
+    W_SLOT(slot3);
     void slot4(const QString &a, const QString &b, const QString &c, const QString&d) {
         MANYARGUMENT_COMPARE(a); MANYARGUMENT_COMPARE(b); MANYARGUMENT_COMPARE(c);
         MANYARGUMENT_COMPARE(d);
         count++;
     }
-    W_SLOT(slot4)
+    W_SLOT(slot4);
     void slot5(const QString &a, const QString &b, const QString &c, const QString&d, const QString&e) {
         MANYARGUMENT_COMPARE(a); MANYARGUMENT_COMPARE(b); MANYARGUMENT_COMPARE(c);
         MANYARGUMENT_COMPARE(d); MANYARGUMENT_COMPARE(e);
         count++;
     }
-    W_SLOT(slot5)
+    W_SLOT(slot5);
     void slot6(const QString &a, const QString &b, const QString &c, const QString&d, const QString&e, const QString&f) {
         MANYARGUMENT_COMPARE(a); MANYARGUMENT_COMPARE(b); MANYARGUMENT_COMPARE(c);
         MANYARGUMENT_COMPARE(d); MANYARGUMENT_COMPARE(e); MANYARGUMENT_COMPARE(f);
         count++;
     }
-    W_SLOT(slot6)
+    W_SLOT(slot6);
 public:
     int count;
 
@@ -5566,10 +5566,10 @@ class ForwardDeclareArguments : public QObject
 {
     W_OBJECT(ForwardDeclareArguments)
 signals:
-    void mySignal(const ForwardDeclared&a) W_SIGNAL(mySignal,a)
+    void mySignal(const ForwardDeclared&a) W_SIGNAL(mySignal,a);
 public slots:
     void mySlot(const ForwardDeclared&) {}
-    W_SLOT(mySlot)
+    W_SLOT(mySlot);
 };
 
 void tst_QObject::connectForwardDeclare()
@@ -5592,10 +5592,10 @@ class NoDefaultContructorArguments : public QObject
 {
     W_OBJECT(NoDefaultContructorArguments)
 signals:
-    void mySignal(const NoDefaultConstructor&a) W_SIGNAL(mySignal,a)
+    void mySignal(const NoDefaultConstructor&a) W_SIGNAL(mySignal,a);
 public slots:
     void mySlot(const NoDefaultConstructor&) {}
-    W_SLOT(mySlot)
+    W_SLOT(mySlot);
 };
 
 void tst_QObject::connectNoDefaultConstructorArg()
@@ -5620,35 +5620,35 @@ class ReturnValue : public QObject {
 friend class tst_QObject;
 W_OBJECT(ReturnValue)
 signals:
-    QVariant returnVariant(int a) W_SIGNAL(returnVariant,a)
-    QString returnString(int a) W_SIGNAL(returnString,a)
-    int returnInt(int a) W_SIGNAL(returnInt,a)
-    void returnVoid(int a) W_SIGNAL(returnVoid,a)
-    CustomType returnCustomType(int a) W_SIGNAL(returnCustomType,a)
-    MoveOnly returnMoveOnly(int a) W_SIGNAL(returnMoveOnly,a)
+    QVariant returnVariant(int a) W_SIGNAL(returnVariant,a);
+    QString returnString(int a) W_SIGNAL(returnString,a);
+    int returnInt(int a) W_SIGNAL(returnInt,a);
+    void returnVoid(int a) W_SIGNAL(returnVoid,a);
+    CustomType returnCustomType(int a) W_SIGNAL(returnCustomType,a);
+    MoveOnly returnMoveOnly(int a) W_SIGNAL(returnMoveOnly,a);
 
-    QObject *returnPointer() W_SIGNAL(returnPointer)
+    QObject *returnPointer() W_SIGNAL(returnPointer);
 public slots:
     QVariant returnVariantSlot(int i) { return i; }
-    W_SLOT(returnVariantSlot)
+    W_SLOT(returnVariantSlot);
     QString returnStringSlot(int i) { return QString::number(i); }
-    W_SLOT(returnStringSlot)
+    W_SLOT(returnStringSlot);
     int returnIntSlot(int i) { return i; }
-    W_SLOT(returnIntSlot)
+    W_SLOT(returnIntSlot);
     CustomType returnCustomTypeSlot(int i) { return CustomType(i); }
-    W_SLOT(returnCustomTypeSlot)
+    W_SLOT(returnCustomTypeSlot);
     void returnVoidSlot() {}
-    W_SLOT(returnVoidSlot)
+    W_SLOT(returnVoidSlot);
     int return23() { return 23; }
-    W_SLOT(return23)
+    W_SLOT(return23);
     QString returnHello() { return QStringLiteral("hello"); }
-    W_SLOT(returnHello)
+    W_SLOT(returnHello);
     QObject *returnThisSlot1() { return this; }
-    W_SLOT(returnThisSlot1)
+    W_SLOT(returnThisSlot1);
     ReturnValue *returnThisSlot2() { return this; }
-    W_SLOT(returnThisSlot2)
+    W_SLOT(returnThisSlot2);
     MoveOnly returnMoveOnlySlot(int i) { return MoveOnly(i); }
-    W_SLOT(returnMoveOnlySlot)
+    W_SLOT(returnMoveOnlySlot);
 public:
     struct VariantFunctor {
         QVariant operator()(int i) { return i; }
@@ -5961,12 +5961,12 @@ public slots:
     virtual void slot1() {
         base_counter1++;
     }
-    W_SLOT(slot1)
+    W_SLOT(slot1);
 public:
     VirtualSlotsObjectBase() : base_counter1(0) {}
     int base_counter1;
 signals:
-    void signal1() W_SIGNAL(signal1)
+    void signal1() W_SIGNAL(signal1);
 };
 
 class VirtualSlotsObject : public VirtualSlotsObjectBase {
@@ -5975,7 +5975,7 @@ public slots:
     virtual void slot1() {
         derived_counter1++;
     }
-    W_SLOT(slot1)
+    W_SLOT(slot1);
 public:
     VirtualSlotsObject() : derived_counter1(0) {}
     int derived_counter1;
@@ -6022,11 +6022,11 @@ public:
 
 public slots:
     void regularSlot() { ++regular_call_count; }
-    W_SLOT(regularSlot)
+    W_SLOT(regularSlot);
     virtual void slot1() { ++derived_counter2; }
-    W_SLOT(slot1)
+    W_SLOT(slot1);
     virtual void slot2() { ++virtual_base_count; }
-    W_SLOT(slot2)
+    W_SLOT(slot2);
 };
 W_OBJECT_IMPL(ObjectWithVirtualBase)
 
@@ -6493,7 +6493,7 @@ public slots:
         }
         ++m_aboutToBlocks;
     }
-    W_SLOT(onAboutToBlock)
+    W_SLOT(onAboutToBlock);
     void onAwake()
     {
         if (awake) {
@@ -6503,7 +6503,7 @@ public slots:
         ++m_awakes;
 
     }
-    W_SLOT(onAwake)
+    W_SLOT(onAwake);
     void onSignal1()
     {
         // Status check. At this point the event loop should have spinned enough to delete all the objects.
@@ -6511,7 +6511,7 @@ public slots:
         QCOMPARE(*m_statusAboutToBlock, 2);
         QMetaObject::invokeMethod(m_eventLoop, "quit", Qt::QueuedConnection);
     }
-    W_SLOT(onSignal1)
+    W_SLOT(onSignal1);
 
 private:
     StatusChanger *awake;
@@ -6640,7 +6640,7 @@ class StaticSlotChecker : public QObject
     W_OBJECT(StaticSlotChecker)
 public Q_SLOTS:
     static void staticSlot() { s_static_slot_checker = 2; }
-    W_SLOT(staticSlot)
+    W_SLOT(staticSlot);
 };
 
 void tst_QObject::connectStaticSlotWithObject()
@@ -6721,14 +6721,14 @@ class FunctorArgDifferenceObject : public QObject
 {
     W_OBJECT(FunctorArgDifferenceObject)
 signals:
-    void signal_ii(int a,int b) W_SIGNAL(signal_ii,a,b)
-    void signal_iiS(int a,int b, const QString &c) W_SIGNAL(signal_iiS,a,b,c)
-    void signal_dd(double a,double b) W_SIGNAL(signal_dd,a,b)
-    void signal_ddS(double a,double b, const QString &c) W_SIGNAL(signal_ddS,a,b,c)
-    void signal_S(const QString &a) W_SIGNAL(signal_S,a)
-    void signal_SSSS(const QString &a, const QString &c, const QString &d, const QString &e) W_SIGNAL(signal_SSSS,a,c,d,e)
-    void signal_iiSS(int a, int b, const QString &c, const QString &d) W_SIGNAL(signal_iiSS,a,b,c,d)
-    void signal_VV(const QVariant &a, const QVariant &b) W_SIGNAL(signal_VV,a,b)
+    void signal_ii(int a,int b) W_SIGNAL(signal_ii,a,b);
+    void signal_iiS(int a,int b, const QString &c) W_SIGNAL(signal_iiS,a,b,c);
+    void signal_dd(double a,double b) W_SIGNAL(signal_dd,a,b);
+    void signal_ddS(double a,double b, const QString &c) W_SIGNAL(signal_ddS,a,b,c);
+    void signal_S(const QString &a) W_SIGNAL(signal_S,a);
+    void signal_SSSS(const QString &a, const QString &c, const QString &d, const QString &e) W_SIGNAL(signal_SSSS,a,c,d,e);
+    void signal_iiSS(int a, int b, const QString &c, const QString &d) W_SIGNAL(signal_iiSS,a,b,c,d);
+    void signal_VV(const QVariant &a, const QVariant &b) W_SIGNAL(signal_VV,a,b);
 };
 
 template<typename Functor, typename Signal>
@@ -6800,10 +6800,10 @@ public:
 
 public Q_SLOTS:
     void triggerSignal() { Q_EMIT aSignal(); }
-    W_SLOT(triggerSignal)
+    W_SLOT(triggerSignal);
 
 Q_SIGNALS:
-    void aSignal() W_SIGNAL(aSignal)
+    void aSignal() W_SIGNAL(aSignal);
 };
 
 static int countedStructObjectsCount = 0;
@@ -7134,9 +7134,9 @@ public slots:
 #endif
         return s2;
     }
-    W_SLOT(throwException)
+    W_SLOT(throwException);
 signals:
-    CountedStruct mySignal(const CountedStruct &s1, CountedStruct s2) W_SIGNAL(mySignal,s1,s2)
+    CountedStruct mySignal(const CountedStruct &s1, CountedStruct s2) W_SIGNAL(mySignal,s1,s2);
 };
 
 class CountedExceptionThrower : public QObject
@@ -7869,14 +7869,14 @@ public slots:
         ++slotCalledCount;
         QVERIFY(!disconnect(sender, SIGNAL(signal1()), this, SLOT(aSlotByName())));
     }
-    W_SLOT(aSlotByName)
+    W_SLOT(aSlotByName);
 
     void aSlotByPtr()
     {
         ++slotCalledCount;
         QVERIFY(!disconnect(sender, &SenderObject::signal1, this, &ReceiverDisconnecting::aSlotByPtr));
     }
-    W_SLOT(aSlotByPtr)
+    W_SLOT(aSlotByPtr);
 };
 
 class DeleteThisReceiver : public QObject
@@ -7892,7 +7892,7 @@ public slots:
         ++counter;
         delete this;
     }
-    W_SLOT(deleteThis)
+    W_SLOT(deleteThis);
 };
 
 int DeleteThisReceiver::counter = 0;
@@ -8476,7 +8476,7 @@ public:
         }
     }
 
-    void theSignal()  W_SIGNAL(theSignal)
+    void theSignal()  W_SIGNAL(theSignal);
 };
 
 class Derived : public Base
@@ -8485,7 +8485,7 @@ class Derived : public Base
 public:
     ~Derived() { }
 
-    void doNothing() {} W_SLOT(doNothing)
+    void doNothing() {} W_SLOT(doNothing);
 };
 
 } // namespace EmitToDestroyedClass

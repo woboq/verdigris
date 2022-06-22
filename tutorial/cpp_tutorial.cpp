@@ -93,7 +93,7 @@ private:
             w_cpp::makeSignalBuilder(signalName, &GenericPropertyHolder::propertyChanged<I>).build();
     };
     // The W_CPP_SIGNAL macro registers our PropertyChangedSignals template to Verdigris
-    W_CPP_SIGNAL(PropertyChangedSignals)
+    W_CPP_SIGNAL(PropertyChangedSignals);
 
     // Next you should implement the getter and setter functions for all properties.
     // QML does not care about our C++ types so you can convert them directly to QVariant.
@@ -126,7 +126,7 @@ private:
                 .setSetter(&GenericPropertyHolder::setPropertyValue<I>)
                 .setNotify(&GenericPropertyHolder::propertyChanged<I>);
     };
-    W_CPP_PROPERTY(RegisterProperties)
+    W_CPP_PROPERTY(RegisterProperties);
 };
 
 // Generate the QObject implementation for all instances of the template

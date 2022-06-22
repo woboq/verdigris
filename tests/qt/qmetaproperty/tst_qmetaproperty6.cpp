@@ -52,14 +52,14 @@ class tst_QMetaProperty : public QObject
 
 private slots:
 #define DECLARE_TEST(NAME) void NAME(); W_SLOT(NAME)
-    DECLARE_TEST(hasStdCppSet)
-    DECLARE_TEST(isConstant)
-    DECLARE_TEST(isFinal)
-    DECLARE_TEST(gadget)
-    DECLARE_TEST(readAndWriteWithLazyRegistration)
-    DECLARE_TEST(mapProperty)
-    DECLARE_TEST(conversion)
-    DECLARE_TEST(enumsFlags)
+    DECLARE_TEST(hasStdCppSet);
+    DECLARE_TEST(isConstant);
+    DECLARE_TEST(isFinal);
+    DECLARE_TEST(gadget);
+    DECLARE_TEST(readAndWriteWithLazyRegistration);
+    DECLARE_TEST(mapProperty);
+    DECLARE_TEST(conversion);
+    DECLARE_TEST(enumsFlags);
 #undef DECLARE_TEST
 
 public:

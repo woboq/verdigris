@@ -39,25 +39,25 @@ class tst_QMetaMethod : public QObject
     W_OBJECT(tst_QMetaMethod)
 
 private:
-    void method_data(); W_SLOT(method_data)
-    void method(); W_SLOT(method, W_Access::Private{})
+    void method_data(); W_SLOT(method_data);
+    void method(); W_SLOT(method, W_Access::Private{});
 
-    void invalidMethod(); W_SLOT(invalidMethod, W_Access::Private{})
+    void invalidMethod(); W_SLOT(invalidMethod, W_Access::Private{});
 
-    void comparisonOperators(); W_SLOT(comparisonOperators, W_Access::Private{})
+    void comparisonOperators(); W_SLOT(comparisonOperators, W_Access::Private{});
 
-    void fromSignal(); W_SLOT(fromSignal, W_Access::Private{})
+    void fromSignal(); W_SLOT(fromSignal, W_Access::Private{});
 
-    void gadget(); W_SLOT(gadget, W_Access::Private{})
-    void revision(); W_SLOT(revision, W_Access::Private{})
+    void gadget(); W_SLOT(gadget, W_Access::Private{});
+    void revision(); W_SLOT(revision, W_Access::Private{});
 
-    void returnMetaType(); W_SLOT(returnMetaType, W_Access::Private{})
-    void parameterMetaType(); W_SLOT(parameterMetaType, W_Access::Private{})
+    void returnMetaType(); W_SLOT(returnMetaType, W_Access::Private{});
+    void parameterMetaType(); W_SLOT(parameterMetaType, W_Access::Private{});
 
-    void parameterTypeName(); W_SLOT(parameterTypeName, W_Access::Private{})
+    void parameterTypeName(); W_SLOT(parameterTypeName, W_Access::Private{});
 
 #if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
-    void isConst(); W_SLOT(isConst, W_Access::Private{})
+    void isConst(); W_SLOT(isConst, W_Access::Private{});
 #endif
 };
 W_OBJECT_IMPL(tst_QMetaMethod)
@@ -103,82 +103,82 @@ public:
 #else
     void voidInvokable();
 #endif
-    W_INVOKABLE(voidInvokable)
+    W_INVOKABLE(voidInvokable);
     void voidInvokableInt(int voidInvokableIntArg);
-    W_INVOKABLE(voidInvokableInt)
+    W_INVOKABLE(voidInvokableInt);
     void voidInvokableQReal(qreal voidInvokableQRealArg);
-    W_INVOKABLE(voidInvokableQReal)
+    W_INVOKABLE(voidInvokableQReal);
     void voidInvokableQString(const QString &voidInvokableQStringArg);
-    W_INVOKABLE(voidInvokableQString)
+    W_INVOKABLE(voidInvokableQString);
     void voidInvokableCustomType(CustomType voidInvokableCustomTypeArg);
-    W_INVOKABLE(voidInvokableCustomType)
+    W_INVOKABLE(voidInvokableCustomType);
     void voidInvokableCustomUnregisteredType(CustomUnregisteredType voidInvokableCustomUnregisteredTypeArg);
-    W_INVOKABLE(voidInvokableCustomUnregisteredType)
+    W_INVOKABLE(voidInvokableCustomUnregisteredType);
     bool boolInvokable();
-    W_INVOKABLE(boolInvokable)
+    W_INVOKABLE(boolInvokable);
     qreal qrealInvokable();
-    W_INVOKABLE(qrealInvokable)
+    W_INVOKABLE(qrealInvokable);
     QString qstringInvokable();
-    W_INVOKABLE(qstringInvokable)
+    W_INVOKABLE(qstringInvokable);
     CustomType customTypeInvokable();
-    W_INVOKABLE(customTypeInvokable)
+    W_INVOKABLE(customTypeInvokable);
     CustomUnregisteredType customUnregisteredTypeInvokable();
-    W_INVOKABLE(customUnregisteredTypeInvokable)
+    W_INVOKABLE(customUnregisteredTypeInvokable);
     QVariant qvariantInvokableBoolIntUIntLonglongULonglongDoubleLongShortCharUlongUshortUcharFloat(
         bool boolArg, int intArg, uint uintArg, qlonglong longlongArg, qulonglong ulonglongArg, double doubleArg,
         long longArg, short shortArg, char charArg, ulong ulongArg, ushort ushortArg, uchar ucharArg, float floatArg);
-    W_INVOKABLE(qvariantInvokableBoolIntUIntLonglongULonglongDoubleLongShortCharUlongUshortUcharFloat)
+    W_INVOKABLE(qvariantInvokableBoolIntUIntLonglongULonglongDoubleLongShortCharUlongUshortUcharFloat);
     void voidInvokableNoParameterNames(bool, int);
-    W_INVOKABLE(voidInvokableNoParameterNames)
+    W_INVOKABLE(voidInvokableNoParameterNames);
 public slots:
     void voidSlot();
-    W_SLOT(voidSlot)
+    W_SLOT(voidSlot);
     void voidSlotInt(int voidSlotIntArg);
-    W_SLOT(voidSlotInt)
+    W_SLOT(voidSlotInt);
     void voidSlotQReal(qreal voidSlotQRealArg);
-    W_SLOT(voidSlotQReal)
+    W_SLOT(voidSlotQReal);
     void voidSlotQString(const QString &voidSlotQStringArg);
-    W_SLOT(voidSlotQString)
+    W_SLOT(voidSlotQString);
     void voidSlotCustomType(CustomType voidSlotCustomTypeArg);
-    W_SLOT(voidSlotCustomType)
+    W_SLOT(voidSlotCustomType);
     void voidSlotCustomUnregisteredType(CustomUnregisteredType voidSlotCustomUnregisteredTypeArg);
-    W_SLOT(voidSlotCustomUnregisteredType)
+    W_SLOT(voidSlotCustomUnregisteredType);
     bool boolSlot();
-    W_SLOT(boolSlot)
+    W_SLOT(boolSlot);
     qreal qrealSlot();
-    W_SLOT(qrealSlot)
+    W_SLOT(qrealSlot);
     QString qstringSlot();
-    W_SLOT(qstringSlot)
+    W_SLOT(qstringSlot);
     CustomType customTypeSlot();
-    W_SLOT(customTypeSlot)
+    W_SLOT(customTypeSlot);
     CustomUnregisteredType customUnregisteredTypeSlot();
-    W_SLOT(customUnregisteredTypeSlot)
+    W_SLOT(customUnregisteredTypeSlot);
     QVariant qvariantSlotBoolIntUIntLonglongULonglongDoubleLongShortCharUlongUshortUcharFloat(
         bool boolArg, int intArg, uint uintArg, qlonglong longlongArg, qulonglong ulonglongArg, double doubleArg,
         long longArg, short shortArg, char charArg, ulong ulongArg, ushort ushortArg, uchar ucharArg, float floatArg);
-    W_SLOT(qvariantSlotBoolIntUIntLonglongULonglongDoubleLongShortCharUlongUshortUcharFloat)
+    W_SLOT(qvariantSlotBoolIntUIntLonglongULonglongDoubleLongShortCharUlongUshortUcharFloat);
     void voidSlotNoParameterNames(bool, int);
-    W_SLOT(voidSlotNoParameterNames)
+    W_SLOT(voidSlotNoParameterNames);
 signals:
-    void voidSignal() W_SIGNAL(voidSignal)
-    void voidSignalVoid(void) W_SIGNAL(voidSignalVoid)
-    void voidSignalInt(int voidSignalIntArg) W_SIGNAL(voidSignalInt,voidSignalIntArg)
-    void voidSignalQReal(qreal voidSignalQRealArg) W_SIGNAL(voidSignalQReal,voidSignalQRealArg)
-    void voidSignalQString(const QString &voidSignalQStringArg) W_SIGNAL(voidSignalQString,voidSignalQStringArg)
-    void voidSignalCustomType(CustomType voidSignalCustomTypeArg) W_SIGNAL(voidSignalCustomType,voidSignalCustomTypeArg)
-    void voidSignalCustomUnregisteredType(CustomUnregisteredType voidSignalCustomUnregisteredTypeArg) W_SIGNAL(voidSignalCustomUnregisteredType,voidSignalCustomUnregisteredTypeArg)
-    bool boolSignal() W_SIGNAL(boolSignal)
-    qreal qrealSignal() W_SIGNAL(qrealSignal)
-    QString qstringSignal() W_SIGNAL(qstringSignal)
-    CustomType customTypeSignal() W_SIGNAL(customTypeSignal)
-    CustomUnregisteredType customUnregisteredTypeSignal() W_SIGNAL(customUnregisteredTypeSignal)
+    void voidSignal() W_SIGNAL(voidSignal);
+    void voidSignalVoid(void) W_SIGNAL(voidSignalVoid);
+    void voidSignalInt(int voidSignalIntArg) W_SIGNAL(voidSignalInt,voidSignalIntArg);
+    void voidSignalQReal(qreal voidSignalQRealArg) W_SIGNAL(voidSignalQReal,voidSignalQRealArg);
+    void voidSignalQString(const QString &voidSignalQStringArg) W_SIGNAL(voidSignalQString,voidSignalQStringArg);
+    void voidSignalCustomType(CustomType voidSignalCustomTypeArg) W_SIGNAL(voidSignalCustomType,voidSignalCustomTypeArg);
+    void voidSignalCustomUnregisteredType(CustomUnregisteredType voidSignalCustomUnregisteredTypeArg) W_SIGNAL(voidSignalCustomUnregisteredType,voidSignalCustomUnregisteredTypeArg);
+    bool boolSignal() W_SIGNAL(boolSignal);
+    qreal qrealSignal() W_SIGNAL(qrealSignal);
+    QString qstringSignal() W_SIGNAL(qstringSignal);
+    CustomType customTypeSignal() W_SIGNAL(customTypeSignal);
+    CustomUnregisteredType customUnregisteredTypeSignal() W_SIGNAL(customUnregisteredTypeSignal);
     QVariant qvariantSignalBoolIntUIntLonglongULonglongDoubleLongShortCharUlongUshortUcharFloat(
         bool boolArg, int intArg, uint uintArg, qlonglong longlongArg, qulonglong ulonglongArg, double doubleArg,
         long longArg, short shortArg, char charArg, ulong ulongArg, ushort ushortArg, uchar ucharArg, float floatArg)
     W_SIGNAL(qvariantSignalBoolIntUIntLonglongULonglongDoubleLongShortCharUlongUshortUcharFloat,
                boolArg, intArg, uintArg, longlongArg, ulonglongArg, doubleArg,
-               longArg, shortArg, charArg, ulongArg, ushortArg, ucharArg, floatArg)
-    void voidSignalNoParameterNames(bool _1, int _2) W_SIGNAL(voidSignalNoParameterNames, _1, _2)
+               longArg, shortArg, charArg, ulongArg, ushortArg, ucharArg, floatArg);
+    void voidSignalNoParameterNames(bool _1, int _2) W_SIGNAL(voidSignalNoParameterNames, _1, _2);
 };
 W_OBJECT_IMPL(MethodTestObject)
 
@@ -798,9 +798,9 @@ class MyGadget {
 public:
     QString m_value;
     void setValue(const QString &value) { m_value = value; }
-    W_INVOKABLE(setValue)
+    W_INVOKABLE(setValue);
     QString getValue() { return m_value; }
-    W_INVOKABLE(getValue)
+    W_INVOKABLE(getValue);
 };
 W_GADGET_IMPL(MyGadget)
 W_REGISTER_ARGTYPE(MyGadget)
@@ -850,9 +850,9 @@ public:
     MyTestClass() {};
 // public Q_SLOTS:
     /*Q_REVISION(42)*/ MyGadget doStuff(int, float, MyGadget) {return {};}
-    W_SLOT(doStuff, (int, float, MyGadget))
+    W_SLOT(doStuff, (int, float, MyGadget));
 public:
-    QObject *mySignal() W_SIGNAL(mySignal)
+    QObject *mySignal() W_SIGNAL(mySignal);
 };
 W_OBJECT_IMPL(MyTestClass)
 

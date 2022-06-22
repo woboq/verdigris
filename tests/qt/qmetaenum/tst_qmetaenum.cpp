@@ -44,10 +44,10 @@ public:
     W_FLAG(Flags, Flag1, Flag2)
 
 private:
-    void fromType(); W_SLOT(fromType)
-    void valuesToKeys_data(); W_SLOT(valuesToKeys_data)
-    void valuesToKeys(); W_SLOT(valuesToKeys)
-    void defaultConstructed(); W_SLOT(defaultConstructed)
+    void fromType(); W_SLOT(fromType);
+    void valuesToKeys_data(); W_SLOT(valuesToKeys_data);
+    void valuesToKeys(); W_SLOT(valuesToKeys);
+    void defaultConstructed(); W_SLOT(defaultConstructed);
 };
 
 W_OBJECT_IMPL(tst_QMetaEnum)

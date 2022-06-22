@@ -42,12 +42,12 @@ class tst_CppApi : public QObject
 
 private slots:
     void enumBase();
-    W_SLOT(enumBase, W_Access::Private{})
+    W_SLOT(enumBase, W_Access::Private{});
 
     void firstTest();
-    W_SLOT(firstTest, W_Access::Private{})
+    W_SLOT(firstTest, W_Access::Private{});
     void notifyTest();
-    W_SLOT(notifyTest, W_Access::Private{})
+    W_SLOT(notifyTest, W_Access::Private{});
 
 private:
     QString m_name{};
@@ -74,7 +74,7 @@ public:
     struct MySignals {
         constexpr static auto signal = w_cpp::makeSignalBuilder(signalName<I>(), &tst_CppApi::notifyPropertyChanged<I>).build();
     };
-    W_CPP_SIGNAL(MySignals)
+    W_CPP_SIGNAL(MySignals);
 
 private:
     template<size_t I> requires(I < 2)
@@ -98,7 +98,7 @@ private:
             }
         }();
     };
-    W_CPP_PROPERTY(MyProperties)
+    W_CPP_PROPERTY(MyProperties);
 };
 
 void tst_CppApi::firstTest()

@@ -68,28 +68,28 @@ public:
     void emitSignal0();
     void emitSignal1();
 //signals:
-    void signal0() W_SIGNAL(signal0)
-    void signal1() W_SIGNAL(signal1)
-    void signal2() W_SIGNAL(signal2)
-    void signal3() W_SIGNAL(signal3)
-    void signal4() W_SIGNAL(signal4)
-    void signal5() W_SIGNAL(signal5)
-    void signal6() W_SIGNAL(signal6)
-    void signal7() W_SIGNAL(signal7)
-    void signal8() W_SIGNAL(signal8)
-    void signal9() W_SIGNAL(signal9)
+    void signal0() W_SIGNAL(signal0);
+    void signal1() W_SIGNAL(signal1);
+    void signal2() W_SIGNAL(signal2);
+    void signal3() W_SIGNAL(signal3);
+    void signal4() W_SIGNAL(signal4);
+    void signal5() W_SIGNAL(signal5);
+    void signal6() W_SIGNAL(signal6);
+    void signal7() W_SIGNAL(signal7);
+    void signal8() W_SIGNAL(signal8);
+    void signal9() W_SIGNAL(signal9);
 
 //public slots:
-    void slot0(); W_SLOT(slot0)
-    void slot1(); W_SLOT(slot1)
-    void slot2(); W_SLOT(slot2)
-    void slot3(); W_SLOT(slot3)
-    void slot4(); W_SLOT(slot4)
-    void slot5(); W_SLOT(slot5)
-    void slot6(); W_SLOT(slot6)
-    void slot7(); W_SLOT(slot7)
-    void slot8(); W_SLOT(slot8)
-    void slot9(); W_SLOT(slot9)
+    void slot0(); W_SLOT(slot0);
+    void slot1(); W_SLOT(slot1);
+    void slot2(); W_SLOT(slot2);
+    void slot3(); W_SLOT(slot3);
+    void slot4(); W_SLOT(slot4);
+    void slot5(); W_SLOT(slot5);
+    void slot6(); W_SLOT(slot6);
+    void slot7(); W_SLOT(slot7);
+    void slot8(); W_SLOT(slot8);
+    void slot9(); W_SLOT(slot9);
 };
 
 #endif // OBJECT_H
