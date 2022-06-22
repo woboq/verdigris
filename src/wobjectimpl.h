@@ -484,7 +484,7 @@ template<class T, class Result, class Builder> consteval auto generateDataPass()
             [&f]<size_t... Is>(const index_sequence<Is...>&) {
                 (f(w_state(index<Is>, State{}, TPP{}), State{}, index<Is>), ...);
             }
-            (make_index_sequence<stateCount<L, State, TPP>()>{});
+            (make_index_sequence<stateCount<ObjI::counter, State, TPP>()>{});
         };
         foldStateIndex(SignalStateTag{}, f);
         foldStateIndex(SlotStateTag{}, f);
