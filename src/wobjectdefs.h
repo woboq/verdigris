@@ -435,26 +435,26 @@ template<typename T> struct QEnumOrQFlags { using Type = T; };
 template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
 
 /// Holds information about an enum
-template<bool HasAlias, typename Values_, typename Names, int Flags> struct MetaEnumInfo {
+template<bool HasAlias, size_t Count_, typename Values_, typename Names, int Flags> struct MetaEnumInfo {
     StringView name;
     StringView alias;
     Names names;
     using Values = Values_;
     static constexpr uint flags = Flags;
-    static constexpr auto count = Values::size();
-    static constexpr auto sequence = make_index_sequence<count>{};
+    static constexpr auto count = Count_;
+
     static constexpr auto hasAlias = HasAlias;
 };
 template<typename Enum, Enum... Value> struct enum_sequence {};
 // called from W_ENUM and W_FLAG
 template<typename Enum, int Flag, Enum... Values, typename Names>
 constexpr auto makeMetaEnumInfo(StringView name, int, enum_sequence<Enum, Values...>, Names names)
-    -> MetaEnumInfo<false, index_sequence<size_t(Values)...>, Names, Flag | EnumIsScoped<Enum>::Value> {
+    -> MetaEnumInfo<false, sizeof...(Values), enum_sequence<Enum, Values...>, Names, Flag | EnumIsScoped<Enum>::Value> {
     return {name, viewLiteral(""), names};
 }
 template<typename Enum, int Flag, Enum... Values, typename Names>
 constexpr auto makeMetaEnumInfo(StringView name, StringView alias, enum_sequence<Enum, Values...>, Names names)
-    -> MetaEnumInfo<true, index_sequence<size_t(Values)...>, Names, Flag | EnumIsScoped<Enum>::Value> {
+    -> MetaEnumInfo<true, sizeof...(Values), enum_sequence<Enum, Values...>, Names, Flag | EnumIsScoped<Enum>::Value> {
     return {name, alias, names};
 }
 

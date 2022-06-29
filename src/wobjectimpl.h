@@ -238,13 +238,13 @@ template<class State> struct EnumValuesGenerator {
     State& s;
 
     template<class Enum> constexpr void operator()(const Enum& e) {
-        generateAll(typename Enum::Values{}, e.names, Enum::sequence);
+        generateAll(typename Enum::Values{}, e.names, make_index_sequence<Enum::count>{});
     }
 
 private:
-    template<size_t... Values, typename Names, size_t... Is>
-    constexpr void generateAll(index_sequence<Values...>, const Names& names, index_sequence<Is...>) {
-        ((s.addString(names[Is]), s.addInts((uint)Values)), ...);
+    template<class Enum, Enum... Values, typename Names, size_t... Is>
+    constexpr void generateAll(enum_sequence<Enum, Values...>, const Names& names, const index_sequence<Is...>&) {
+        ((s.addString(names[Is]), s.addInts(static_cast<uint>(Values))), ...);
     }
 };
 
