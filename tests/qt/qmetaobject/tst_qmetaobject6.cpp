@@ -189,7 +189,6 @@ namespace MyNamespace {
         W_OBJECT(MyClass2Subclass)
     };
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
     class ClassWithSetterGetterSignals : public QObject
     {
         W_OBJECT(ClassWithSetterGetterSignals)
@@ -263,19 +262,16 @@ namespace MyNamespace {
         W_PROPERTY(int, value3 MEMBER m_value3 NOTIFY thisIsNotASignal)
 #endif
     };
-#endif
 }
 W_OBJECT_IMPL(MyNamespace::MyClass)
 W_OBJECT_IMPL(MyNamespace::MyClass2)
 W_OBJECT_IMPL(MyNamespace::MyClassSubclass)
 W_OBJECT_IMPL(MyNamespace::MyClassSubclass2)
 W_OBJECT_IMPL(MyNamespace::MyClass2Subclass)
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
 W_OBJECT_IMPL(MyNamespace::ClassWithSetterGetterSignals)
 W_OBJECT_IMPL(MyNamespace::ClassWithSetterGetterSignalsAddsProperties)
 W_OBJECT_IMPL(MyNamespace::ClassWithChangedSignal)
 W_OBJECT_IMPL(MyNamespace::ClassWithChangedSignalNewValue)
-#endif
 
 class tst_QMetaObject : public QObject
 {
@@ -871,7 +867,6 @@ void testFunction(){}
 
 void tst_QMetaObject::invokePointer()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 1)
     QtTestObject obj;
     QtTestObject *const nullTestObject = nullptr;
 
@@ -924,7 +919,6 @@ void tst_QMetaObject::invokePointer()
         QCOMPARE(obj.slotResult, QString("sl1:bubu"));
     }
     QCOMPARE(countedStructObjectsCount, 0);
-#if defined(__cpp_init_captures) && QT_VERSION >= QT_VERSION_CHECK(5, 13, 0)
     {
         CountedStruct str;
         std::unique_ptr<int> ptr( new int );
@@ -932,8 +926,6 @@ void tst_QMetaObject::invokePointer()
         QCOMPARE(obj.slotResult, QString("sl1:1"));
     }
     QCOMPARE(countedStructObjectsCount, 0);
-#endif
-#endif
 }
 
 void tst_QMetaObject::invokeQueuedMetaMember()
@@ -1008,7 +1000,6 @@ void tst_QMetaObject::invokeQueuedMetaMember()
 
 void tst_QMetaObject::invokeQueuedPointer()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 1)
     QtTestObject obj;
 
     // Test member function
@@ -1054,7 +1045,6 @@ void tst_QMetaObject::invokeQueuedPointer()
         QCOMPARE(var, 0);
     }
     QCOMPARE(countedStructObjectsCount, 0);
-#endif
 }
 
 
@@ -1193,7 +1183,6 @@ void tst_QMetaObject::invokeBlockingQueuedMetaMember()
 
 void tst_QMetaObject::invokeBlockingQueuedPointer()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 1)
     QtTestObject *const nullTestObject = nullptr;
 
     QThread t;
@@ -1252,7 +1241,6 @@ void tst_QMetaObject::invokeBlockingQueuedPointer()
         QCOMPARE(exp, QString("yessir"));
         QCOMPARE(obj.slotResult, QString("sl1:bubu"));
     }
-#ifdef __cpp_init_captures
     {
         std::unique_ptr<int> ptr(new int);
         QVERIFY(QMetaObject::invokeMethod(&obj,
@@ -1260,12 +1248,10 @@ void tst_QMetaObject::invokeBlockingQueuedPointer()
                                           Qt::BlockingQueuedConnection));
         QCOMPARE(obj.slotResult, QString("sl1:hehe"));
     }
-#endif
     QVERIFY(QMetaObject::invokeMethod(&obj, [&](){obj.moveToThread(QThread::currentThread());}, Qt::BlockingQueuedConnection));
     t.quit();
     QVERIFY(t.wait());
     QCOMPARE(countedStructObjectsCount, 0);
-#endif
 }
 
 
@@ -1366,13 +1352,11 @@ void tst_QMetaObject::invokeMetaConstructor()
         QVERIFY(qobject_cast<NamespaceWithConstructibleClass::ConstructibleClass*>(obj2) != 0);
     }
     // gadget shouldn't return a valid pointer
-#if QT_VERSION >= QT_VERSION_CHECK(5, 13, 0)
     {
         QCOMPARE(MyGadget::staticMetaObject.constructorCount(), 1);
         QTest::ignoreMessage(QtWarningMsg, "QMetaObject::newInstance: type MyGadget does not inherit QObject");
         QVERIFY(!MyGadget::staticMetaObject.newInstance());
     }
-#endif
 }
 
 void tst_QMetaObject::invokeTypedefTypes()
@@ -1409,10 +1393,6 @@ void tst_QMetaObject::invokeException()
 
 void tst_QMetaObject::invokeQueuedAutoRegister()
 {
-#if QT_VERSION < QT_VERSION_CHECK(5, 9, 0)
-    QSKIP("Bug fixed in Qt 5.9");
-#endif
-
     QtTestObject obj;
 
     auto shared = QSharedPointer<QtTestObject>::create(QStringLiteral("myShared-"));
@@ -2085,23 +2065,6 @@ void tst_QMetaObject::enumDebugStream_data()
 
 void tst_QMetaObject::enumDebugStream()
 {
-#if QT_VERSION < QT_VERSION_CHECK(5, 12, 0)
-    QTest::ignoreMessage(QtDebugMsg, "hello MyNamespace::MyClass::MyEnum(MyEnum2) world ");
-    MyNamespace::MyClass::MyEnum e = MyNamespace::MyClass::MyEnum2;
-    qDebug() << "hello" << e << "world";
-
-    QTest::ignoreMessage(QtDebugMsg, "Qt::WindowType(WindowTitleHint) Qt::WindowType(Window) Qt::WindowType(Desktop) Qt::WindowType(WindowSystemMenuHint)");
-    qDebug() << Qt::WindowTitleHint << Qt::Window <<Qt::Desktop << Qt::WindowSystemMenuHint;
-
-    QTest::ignoreMessage(QtDebugMsg, "hello QFlags<MyNamespace::MyClass::MyFlags>(MyFlag1) world");
-    MyNamespace::MyClass::MyFlags f1 = MyNamespace::MyClass::MyFlag1;
-    qDebug() << "hello" << f1 << "world";
-
-    MyNamespace::MyClass::MyFlags f2 = MyNamespace::MyClass::MyFlag2 | MyNamespace::MyClass::MyFlag3;
-    QTest::ignoreMessage(QtDebugMsg, "QFlags<MyNamespace::MyClass::MyFlags>(MyFlag1) QFlags<MyNamespace::MyClass::MyFlags>(MyFlag2|MyFlag3)");
-    qDebug() << f1 << f2;
-
-#elif QT_VERSION >= QT_VERSION_CHECK(5, 13, 0)
     QFETCH(int, verbosity);
 
     QFETCH(QString, normalEnumMsg);
@@ -2145,7 +2108,6 @@ void tst_QMetaObject::enumDebugStream()
     QTest::ignoreMessage(QtDebugMsg, qPrintable(flagAsEnumMsg));
     MyNamespace::MyClass::MyFlag f4 = MyNamespace::MyClass::MyFlag1;
     qDebug().verbosity(verbosity) << f4;
-#endif
 }
 
 void tst_QMetaObject::inherits_data()
@@ -2170,18 +2132,15 @@ void tst_QMetaObject::inherits_data()
 
 void tst_QMetaObject::inherits()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 7, 0)
     QFETCH(const QMetaObject *, derivedMetaObject);
     QFETCH(const QMetaObject *, baseMetaObject);
     QFETCH(bool, inheritsResult);
 
     QCOMPARE(derivedMetaObject->inherits(baseMetaObject), inheritsResult);
-#endif
 }
 
 void tst_QMetaObject::notifySignalsInParentClass()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
     MyNamespace::ClassWithSetterGetterSignalsAddsProperties obj;
     QCOMPARE(obj.metaObject()->property(obj.metaObject()->indexOfProperty("value1")).notifySignal().name(), QByteArray("value1Changed"));
     QCOMPARE(obj.metaObject()->property(obj.metaObject()->indexOfProperty("value2")).notifySignal().name(), QByteArray("value2Changed"));
@@ -2191,7 +2150,6 @@ void tst_QMetaObject::notifySignalsInParentClass()
 #if 0 // With verdigris, this is a compilation error when the NOTIFY signal is not a signal
     QTest::ignoreMessage(QtWarningMsg, "QMetaProperty::notifySignal: cannot find the NOTIFY signal thisIsNotASignal in class MyNamespace::ClassWithChangedSignalNewValue for property 'value3'");
     obj2.metaObject()->property(obj2.metaObject()->indexOfProperty("value3")).notifySignal();
-#endif
 #endif
 }
 

@@ -58,9 +58,7 @@ void tst_QMetaEnum::fromType()
     QVERIFY(meta.isValid());
     QVERIFY(!meta.isFlag());
     QCOMPARE(meta.name(), "SuperEnum");
-#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
     QCOMPARE(meta.enumName(), "SuperEnum");
-#endif
     QCOMPARE(meta.enclosingMetaObject(), &staticMetaObject);
     QCOMPARE(meta.keyCount(), 2);
 
@@ -68,9 +66,7 @@ void tst_QMetaEnum::fromType()
     QVERIFY(meta.isValid());
     QVERIFY(meta.isFlag());
     QCOMPARE(meta.name(), "Flags");
-#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
     QCOMPARE(meta.enumName(), "Flag");
-#endif
     QCOMPARE(meta.enclosingMetaObject(), &staticMetaObject);
     QCOMPARE(meta.keyCount(), 2);
 }
@@ -111,9 +107,7 @@ void tst_QMetaEnum::defaultConstructed()
 {
     QMetaEnum e;
     QVERIFY(!e.isValid());
-#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
     QVERIFY(!e.isScoped());
-#endif
     QVERIFY(!e.isFlag());
     QCOMPARE(QByteArray(e.name()), QByteArray());
 }

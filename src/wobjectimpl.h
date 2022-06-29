@@ -225,12 +225,10 @@ template<class State> struct EnumGenerator {
         auto nameIndex = s.stringCount; // required for MSVC-2019
         (void)nameIndex;
         s.addString(e.name); // name
-#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
         if constexpr (Enum::hasAlias)
             s.addString(e.alias); // alias
         else
             s.addInts(nameIndex);
-#endif
         s.addInts(Enum::flags, (uint)Enum::count, dataIndex);
         dataIndex += Enum::count * 2;
     }
@@ -437,7 +435,7 @@ template<class T, class Result, class Builder> consteval auto generateDataPass()
     constexpr int propertyOffset = methodOffset + ObjI::methodCount * (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) ? 6 : 5);
     constexpr int enumOffset =
         propertyOffset + ObjI::propertyCount * (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) ? 5 : (hasNotify ? 4 : 3));
-    constexpr int constructorOffset = enumOffset + ObjI::enumCount * (QT_VERSION >= QT_VERSION_CHECK(5, 12, 0) ? 5 : 4);
+    constexpr int constructorOffset = enumOffset + ObjI::enumCount * 5;
     constexpr int paramIndex =
         constructorOffset + ObjI::constructorCount * (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) ? 6 : 5);
     constexpr int constructorParamIndex = paramIndex + methodsParamOffset<L, T>();
