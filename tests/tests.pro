@@ -1,5 +1,5 @@
 TEMPLATE = subdirs
 
-SUBDIRS += internal basic qt templates manyproperties
+SUBDIRS += internal inherit basic qt templates manyproperties
 
 !gcc:SUBDIRS += cppapi

@@ -23,7 +23,7 @@ void tst_Inherit::connect1()
     auto obj = Object{};
     auto eventCount1 = int{};
 
-    connect(&obj, Object::myPtr(), this, [&]() {
+    connect(&obj, &Object::handleEvent1, this, [&]() {
         eventCount1++;
     });
     obj.emit1();

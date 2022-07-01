@@ -174,8 +174,9 @@ constexpr auto makeFlagInfo(
 ///     struct MySignals;
 ///     template<>
 ///     struct MySignals<0> {
+///         constexpr static auto getFunc() { return &Example::nameChanged; }
 ///         constexpr static auto signal = w_cpp::makeSignalBuilder(w_cpp::viewLiteral("nameChanged"),
-///         &Example::nameChanged).build();
+///         &MySignals::getFunc).build();
 ///     };
 ///     W_CPP_SIGNAL(MySignals)
 ///
@@ -187,7 +188,7 @@ constexpr auto makeFlagInfo(
     friend constexpr auto w_state(w_internal::Index<I>, w_internal::SignalStateTag, W_ThisType**)                      \
         W_RETURN((a<I - W_MACRO_CONCAT(a, _O)>::signal)) template<size_t I>                                            \
     requires(I >= W_MACRO_CONCAT(a, _O)) && requires { a<I - W_MACRO_CONCAT(a, _O)>::signal; }                         \
-    static void w_GetAccessSpecifierHelper(w_internal::Index<I>, W_ThisType**)
+    static void w_GetAccessSpecifierHelper(w_internal::Index<I>, w_internal::SignalStateTag, W_ThisType**)
 
 /// \macro W_CPP_SIGNAL_IMPL(type, callback, index)
 /// allows to implement a signal

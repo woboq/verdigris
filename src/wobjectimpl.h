@@ -787,9 +787,7 @@ struct FriendHelper {
             }
             else if (_c == QMetaObject::IndexOfMethod) {
                 if constexpr (std::is_same_v<QObject, O>) {
-                    auto& r = *reinterpret_cast<int*>(_a[0]);
-                    ((isSignalMethod<ObjI, MethI>(reinterpret_cast<void**>(_a[1])) ? (r = MethI, true) : false) ||
-                     ... || true);
+                    (void)((isSignalMethod<ObjI, MethI>(reinterpret_cast<void**>(_a[1])) ? (*reinterpret_cast<int*>(_a[0]) = MethI, true) : false) || ...);
                 }
                 else {
                     Q_ASSERT_X(false, "qt_static_metacall", "IndexOfMethod called on a Q_GADGET");
