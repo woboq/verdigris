@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   osx-qmake:
-    name: "OSX QMake Qt5 ${{ matrix.std_cpp }}"
+    name: "OSX QMake Qt6 ${{ matrix.std_cpp }}"
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false

@@ -255,13 +255,13 @@ inline constexpr bool is_const_member_method<Ret (Obj::*)(Args...) const noexcep
 
 /// Holds information about a method
 template<typename F, int Flags, typename ParamTypes, typename ParamNames = StringViewArray<>> struct MetaMethodInfo {
-    using Func = F;
-    Func func;
+    F getFunc;
+    using Func = decltype(F{}());
     StringView name;
     ParamTypes paramTypes;
     ParamNames paramNames;
 #if QT_VERSION >= QT_VERSION_CHECK(6, 2, 0)
-    static constexpr int flags = Flags | (is_const_member_method<F> ? 0x100 : 0);
+    static constexpr int flags = Flags | (is_const_member_method<Func> ? 0x100 : 0);
 #else
     static constexpr int flags = Flags;
 #endif
@@ -733,10 +733,14 @@ public:                                                                         
 #define W_SLOT2(NAME, ...)                                                                                             \
     static constexpr int W_MACRO_CONCAT(w_slotIndex_##NAME, __LINE__) =                                                \
         w_internal::stateCount<__COUNTER__, w_internal::SlotStateTag, W_ThisType**>();                                 \
+    static constexpr auto W_MACRO_CONCAT(w_slotFunc_##NAME, __LINE__)()                                                \
+        ->std::remove_reference_t<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME))> {                      \
+        return W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME);                                                     \
+    }                                                                                                                  \
     friend constexpr auto w_state(                                                                                     \
         w_internal::Index<W_MACRO_CONCAT(w_slotIndex_##NAME, __LINE__)>, w_internal::SlotStateTag, W_ThisType**)       \
         W_RETURN(w_internal::makeMetaSlotInfo(                                                                         \
-            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME),                                                        \
+            &W_ThisType::W_MACRO_CONCAT(w_slotFunc_##NAME, __LINE__),                                                  \
             w_internal::viewLiteral(#NAME),                                                                            \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)),                                                           \
             W_OVERLOAD_REMOVE(__VA_ARGS__))) static void                                                               \
@@ -749,12 +753,16 @@ public:                                                                         
 #define W_INVOKABLE2(NAME, ...)                                                                                        \
     static constexpr int W_MACRO_CONCAT(w_invokableIndex_##NAME, __LINE__) =                                           \
         w_internal::stateCount<__COUNTER__, w_internal::MethodStateTag, W_ThisType**>();                               \
+    static constexpr auto W_MACRO_CONCAT(w_invokableFunc_##NAME, __LINE__)()                                           \
+        ->std::remove_reference_t<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME))> {                      \
+        return W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME);                                                     \
+    }                                                                                                                  \
     friend constexpr auto w_state(                                                                                     \
         w_internal::Index<W_MACRO_CONCAT(w_invokableIndex_##NAME, __LINE__)>,                                          \
         w_internal::MethodStateTag,                                                                                    \
         W_ThisType**)                                                                                                  \
         W_RETURN(w_internal::makeMetaMethodInfo(                                                                       \
-            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME),                                                        \
+            &W_ThisType::W_MACRO_CONCAT(w_invokableFunc_##NAME, __LINE__),                                             \
             w_internal::viewLiteral(#NAME),                                                                            \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)),                                                           \
             W_OVERLOAD_REMOVE(__VA_ARGS__))) static void                                                               \
@@ -785,10 +793,14 @@ public:                                                                         
     }                                                                                                                  \
     static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME, __LINE__) =                                              \
         w_internal::stateCount<__COUNTER__, w_internal::SignalStateTag, W_ThisType**>();                               \
+    static constexpr auto W_MACRO_CONCAT(w_signalFunc_##NAME, __LINE__)()                                              \
+        ->std::remove_reference_t<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME))> {                      \
+        return W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME);                                                     \
+    }                                                                                                                  \
     friend constexpr auto w_state(                                                                                     \
         w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME, __LINE__)>, w_internal::SignalStateTag, W_ThisType**)   \
         W_RETURN(w_internal::makeMetaSignalInfo(                                                                       \
-            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME),                                                        \
+            &W_ThisType::W_MACRO_CONCAT(w_signalFunc_##NAME, __LINE__),                                                \
             w_internal::viewLiteral(#NAME),                                                                            \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)),                                                           \
             W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))) static void                                             \
@@ -808,10 +820,14 @@ public:                                                                         
     }                                                                                                                  \
     static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME, __LINE__) =                                              \
         w_internal::stateCount<__COUNTER__, w_internal::SignalStateTag, W_ThisType**>();                               \
+    static constexpr auto W_MACRO_CONCAT(w_signalFunc_##NAME, __LINE__)()                                              \
+        ->std::remove_reference_t<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME))> {                      \
+        return W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME);                                                     \
+    }                                                                                                                  \
     friend constexpr auto w_state(                                                                                     \
         w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME, __LINE__)>, w_internal::SignalStateTag, W_ThisType**)   \
         W_RETURN(w_internal::makeMetaSignalInfo(                                                                       \
-            W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME),                                                        \
+            &W_ThisType::W_MACRO_CONCAT(w_signalFunc_##NAME, __LINE__),                                                \
             w_internal::viewLiteral(#NAME),                                                                            \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)),                                                           \
             W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)),                                                          \

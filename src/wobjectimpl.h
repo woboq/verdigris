@@ -67,8 +67,7 @@ constexpr bool isPropertyMetacall(QMetaObject::Call call) noexcept {
 }
 
 template<class OPP, size_t SigIdx, auto notify>
-concept IsNotifySignal = w_state(index<SigIdx>, SignalStateTag{}, OPP{})
-.func == notify;
+concept IsNotifySignal = (w_state(index<SigIdx>, SignalStateTag{}, OPP{}).getFunc() == notify);
 
 /// Helper to get information about the notify signal of the property within object T
 template<size_t L, size_t PropIdx, typename TPP, typename OPP> consteval int resolveNotifySignal() {
@@ -308,7 +307,10 @@ template<size_t L, class T> consteval int methodsParamOffset() {
     return []<size_t... Is>(const index_sequence<Is...>&)->int {
         return (
             0 + ... +
-            int(1 + QtPrivate::FunctionPointer<decltype(ObjectInfo<T, L>::method(index<Is>).func)>::ArgumentCount * 2));
+            int(1 +
+                QtPrivate::FunctionPointer<typename decltype(ObjectInfo<T, L>::method(
+                        index<Is>))::Func>::ArgumentCount *
+                    2));
     }
     (make_index_sequence<ObjectInfo<T, L>::methodCount>{});
 }
@@ -636,10 +638,15 @@ struct FriendHelper {
     /// Helper for implementation of qt_static_metacall for QMetaObject::IndexOfMethod
     /// T is the class, and I is the index of a method.
     /// Returns I if the argument is equal to the pointer to member function of the signal of index 'I'
-    template<typename T, int I> static int indexOfMethod(void** func) {
-        constexpr auto m = ObjectInfo<T>::method(index<I>);
-        if ((m.flags & 0xc) == MethodSignal && m.func == *reinterpret_cast<decltype(m.func)*>(func)) return I;
-        return -1;
+    template<class ObjI, size_t I> static bool isSignalMethod(void** func) {
+        static constexpr auto method = ObjI::method(index<I>);
+        if constexpr ((method.flags & 0xc) == MethodSignal) {
+            using Func = typename decltype(method)::Func;
+            return (method.getFunc() == *reinterpret_cast<Func*>(func));
+        }
+        else {
+            return false;
+        }
     }
     QT_WARNING_POP
 
@@ -652,23 +659,23 @@ struct FriendHelper {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 3, 0)
         if constexpr (FP::IsPointerToMemberFunction) {
             FunctorCall<make_index_sequence<FP::ArgumentCount>, typename FP::Arguments, typename FP::ReturnType, Func>::
-                call(method.func, _o, _a);
+                call(method.getFunc(), _o, _a);
         }
         else {
             (void)_o;
             FunctorCall<make_index_sequence<FP::ArgumentCount>, typename FP::Arguments, typename FP::ReturnType, Func>::
-                call(method.func, _a);
+                call(method.getFunc(), _a);
         }
 #else
-        FP::template call<typename FP::Arguments, typename FP::ReturnType>(method.func, _o, _a);
+        FP::template call<typename FP::Arguments, typename FP::ReturnType>(method.getFunc(), _o, _a);
 #endif
     }
 
     /// Helper for implementation of qt_static_metacall for QMetaObject::RegisterMethodArgumentMetaType
     /// T is the class, and I is the index of a method.
     template<typename T, int I> static void registerMethodArgumentType(void** _a) {
-        constexpr auto f = ObjectInfo<T>::method(index<I>).func;
-        using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
+        using Func = typename decltype(ObjectInfo<T>::method(index<I>))::Func;
+        using P = QtPrivate::FunctionPointer<Func>;
         auto _t = QtPrivate::ConnectionTypes<typename P::Arguments>::types();
         uint arg = *reinterpret_cast<uint*>(_a[1]);
         *reinterpret_cast<QMetaType*>(_a[0]) = _t && arg < P::ArgumentCount ? QMetaType(_t[arg]) : QMetaType();
@@ -780,8 +787,9 @@ struct FriendHelper {
             }
             else if (_c == QMetaObject::IndexOfMethod) {
                 if constexpr (std::is_same_v<QObject, O>) {
-                    *reinterpret_cast<int*>(_a[0]) =
-                        ((1 + indexOfMethod<T, MethI>(reinterpret_cast<void**>(_a[1]))) + ... + 0) - 1;
+                    auto& r = *reinterpret_cast<int*>(_a[0]);
+                    ((isSignalMethod<ObjI, MethI>(reinterpret_cast<void**>(_a[1])) ? (r = MethI, true) : false) ||
+                     ... || true);
                 }
                 else {
                     Q_ASSERT_X(false, "qt_static_metacall", "IndexOfMethod called on a Q_GADGET");

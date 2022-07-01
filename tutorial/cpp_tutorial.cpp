@@ -88,9 +88,12 @@ private:
     struct PropertyChangedSignals {
         using Property = PropertyAt<I>;
         constexpr static auto signalName = getPropertyChangedName(Wrap<Property>{});
+        constexpr static auto getSignal() {
+            return &GenericPropertyHolder::propertyChanged<I>;
+        }
         // signal is the only thing used by the W_CPP_SIGNAL macro.
         constexpr static auto signal =
-            w_cpp::makeSignalBuilder(signalName, &GenericPropertyHolder::propertyChanged<I>).build();
+            w_cpp::makeSignalBuilder(signalName, &PropertyChangedSignals::getSignal).build();
     };
     // The W_CPP_SIGNAL macro registers our PropertyChangedSignals template to Verdigris
     W_CPP_SIGNAL(PropertyChangedSignals);

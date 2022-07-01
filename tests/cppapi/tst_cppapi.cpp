@@ -72,7 +72,10 @@ public:
     }
     template<size_t I> requires(I < 3)
     struct MySignals {
-        constexpr static auto signal = w_cpp::makeSignalBuilder(signalName<I>(), &tst_CppApi::notifyPropertyChanged<I>).build();
+        constexpr static auto getSignal() {
+            return &tst_CppApi::notifyPropertyChanged<I>;
+        }
+        constexpr static auto signal = w_cpp::makeSignalBuilder(signalName<I>(), &MySignals::getSignal).build();
     };
     W_CPP_SIGNAL(MySignals);
 
