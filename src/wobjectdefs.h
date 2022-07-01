@@ -729,47 +729,45 @@ public:                                                                         
 /// - Specifying the the access: W_Access::Protected{}, W_Access::Private{}
 ///   or W_Access::Public{}. (By default, it is auto-detected from the location of this macro.)
 /// - W_Compat: for deprecated methods (equivalent of Q_MOC_COMPAT)
-#define W_SLOT(...) W_MACRO_MSVC_EXPAND(W_SLOT2(__VA_ARGS__, w_internal::EmptyFlag))
-#define W_SLOT2(NAME, ...)                                                                                             \
-    static constexpr int W_MACRO_CONCAT(w_slotIndex_##NAME, __LINE__) =                                                \
+#define W_SLOT(...) W_MACRO_MSVC_EXPAND(W_SLOT2(__LINE__, __VA_ARGS__, w_internal::EmptyFlag))
+#define W_SLOT_N(...) W_MACRO_MSVC_EXPAND(W_SLOT2(__VA_ARGS__, w_internal::EmptyFlag))
+#define W_SLOT2(N, NAME, ...)                                                                                          \
+    static constexpr int W_MACRO_CONCAT(w_slotIndex_##NAME, N) =                                                       \
         w_internal::stateCount<__COUNTER__, w_internal::SlotStateTag, W_ThisType**>();                                 \
-    static constexpr auto W_MACRO_CONCAT(w_slotFunc_##NAME, __LINE__)()                                                \
+    static constexpr auto W_MACRO_CONCAT(w_slotFunc_##NAME, N)()                                                       \
         ->std::remove_reference_t<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME))> {                      \
         return W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME);                                                     \
     }                                                                                                                  \
     friend constexpr auto w_state(                                                                                     \
-        w_internal::Index<W_MACRO_CONCAT(w_slotIndex_##NAME, __LINE__)>, w_internal::SlotStateTag, W_ThisType**)       \
+        w_internal::Index<W_MACRO_CONCAT(w_slotIndex_##NAME, N)>, w_internal::SlotStateTag, W_ThisType**)              \
         W_RETURN(w_internal::makeMetaSlotInfo(                                                                         \
-            &W_ThisType::W_MACRO_CONCAT(w_slotFunc_##NAME, __LINE__),                                                  \
+            &W_ThisType::W_MACRO_CONCAT(w_slotFunc_##NAME, N),                                                         \
             w_internal::viewLiteral(#NAME),                                                                            \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)),                                                           \
             W_OVERLOAD_REMOVE(__VA_ARGS__))) static void                                                               \
         w_GetAccessSpecifierHelper(                                                                                    \
-            w_internal::Index<W_MACRO_CONCAT(w_slotIndex_##NAME, __LINE__)>, w_internal::SlotStateTag, W_ThisType**)
+            w_internal::Index<W_MACRO_CONCAT(w_slotIndex_##NAME, N)>, w_internal::SlotStateTag, W_ThisType**)
 
 /// \macro W_INVOKABLE( <slot name> [, (<parameters types>) ]  [, <flags>]* )
 /// Exactly like W_SLOT but for Q_INVOKABLE methods.
-#define W_INVOKABLE(...) W_MACRO_MSVC_EXPAND(W_INVOKABLE2(__VA_ARGS__, w_internal::EmptyFlag))
-#define W_INVOKABLE2(NAME, ...)                                                                                        \
-    static constexpr int W_MACRO_CONCAT(w_invokableIndex_##NAME, __LINE__) =                                           \
+#define W_INVOKABLE(...) W_MACRO_MSVC_EXPAND(W_INVOKABLE2(__LINE__, __VA_ARGS__, w_internal::EmptyFlag))
+#define W_INVOKABLE_N(...) W_MACRO_MSVC_EXPAND(W_INVOKABLE2(__VA_ARGS__, w_internal::EmptyFlag))
+#define W_INVOKABLE2(N, NAME, ...)                                                                                     \
+    static constexpr int W_MACRO_CONCAT(w_invokableIndex_##NAME, N) =                                                  \
         w_internal::stateCount<__COUNTER__, w_internal::MethodStateTag, W_ThisType**>();                               \
-    static constexpr auto W_MACRO_CONCAT(w_invokableFunc_##NAME, __LINE__)()                                           \
+    static constexpr auto W_MACRO_CONCAT(w_invokableFunc_##NAME, N)()                                                  \
         ->std::remove_reference_t<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME))> {                      \
         return W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME);                                                     \
     }                                                                                                                  \
     friend constexpr auto w_state(                                                                                     \
-        w_internal::Index<W_MACRO_CONCAT(w_invokableIndex_##NAME, __LINE__)>,                                          \
-        w_internal::MethodStateTag,                                                                                    \
-        W_ThisType**)                                                                                                  \
+        w_internal::Index<W_MACRO_CONCAT(w_invokableIndex_##NAME, N)>, w_internal::MethodStateTag, W_ThisType**)       \
         W_RETURN(w_internal::makeMetaMethodInfo(                                                                       \
-            &W_ThisType::W_MACRO_CONCAT(w_invokableFunc_##NAME, __LINE__),                                             \
+            &W_ThisType::W_MACRO_CONCAT(w_invokableFunc_##NAME, N),                                                    \
             w_internal::viewLiteral(#NAME),                                                                            \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)),                                                           \
             W_OVERLOAD_REMOVE(__VA_ARGS__))) static void                                                               \
         w_GetAccessSpecifierHelper(                                                                                    \
-            w_internal::Index<W_MACRO_CONCAT(w_invokableIndex_##NAME, __LINE__)>,                                      \
-            w_internal::MethodStateTag,                                                                                \
-            W_ThisType**)
+            w_internal::Index<W_MACRO_CONCAT(w_invokableIndex_##NAME, N)>, w_internal::MethodStateTag, W_ThisType**)
 
 /// <signal signature>
 /// \macro W_SIGNAL(<signal name> [, (<parameter types>) ] , <parameter names> )
@@ -784,58 +782,56 @@ public:                                                                         
 /// with -fvisibility-inlines-hidden (which is the default), so connecting using pointer to member
 /// functions won't work accross library boundaries. You need to explicitly export the signal with
 /// your MYLIB_EXPORT macro in front of the signal declaration.
-#define W_SIGNAL(...) W_MACRO_MSVC_EXPAND(W_SIGNAL2(__VA_ARGS__, 0))
-#define W_SIGNAL2(NAME, ...)                                                                                           \
+#define W_SIGNAL(...) W_MACRO_MSVC_EXPAND(W_SIGNAL2(__LINE__, __VA_ARGS__, 0))
+#define W_SIGNAL_N(...) W_MACRO_MSVC_EXPAND(W_SIGNAL2(__VA_ARGS__, 0))
+#define W_SIGNAL2(N, NAME, ...)                                                                                        \
     { /* W_SIGNAL need to be placed directly after the signal declaration, without semicolon. */                       \
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME));                             \
-        return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME, __LINE__)>{this}(   \
+        return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME, N)>{this}(          \
             W_OVERLOAD_REMOVE(__VA_ARGS__));                                                                           \
     }                                                                                                                  \
-    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME, __LINE__) =                                              \
+    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME, N) =                                                     \
         w_internal::stateCount<__COUNTER__, w_internal::SignalStateTag, W_ThisType**>();                               \
-    static constexpr auto W_MACRO_CONCAT(w_signalFunc_##NAME, __LINE__)()                                              \
+    static constexpr auto W_MACRO_CONCAT(w_signalFunc_##NAME, N)()                                                     \
         ->std::remove_reference_t<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME))> {                      \
         return W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME);                                                     \
     }                                                                                                                  \
     friend constexpr auto w_state(                                                                                     \
-        w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME, __LINE__)>, w_internal::SignalStateTag, W_ThisType**)   \
+        w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME, N)>, w_internal::SignalStateTag, W_ThisType**)          \
         W_RETURN(w_internal::makeMetaSignalInfo(                                                                       \
-            &W_ThisType::W_MACRO_CONCAT(w_signalFunc_##NAME, __LINE__),                                                \
+            &W_ThisType::W_MACRO_CONCAT(w_signalFunc_##NAME, N),                                                       \
             w_internal::viewLiteral(#NAME),                                                                            \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)),                                                           \
             W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))) static void                                             \
         w_GetAccessSpecifierHelper(                                                                                    \
-            w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME, __LINE__)>,                                         \
-            w_internal::SignalStateTag,                                                                                \
-            W_ThisType**)
+            w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME, N)>, w_internal::SignalStateTag, W_ThisType**)
 
 /// \macro W_SIGNAL_COMPAT
 /// Same as W_SIGNAL, but set the W_Compat flag
-#define W_SIGNAL_COMPAT(...) W_MACRO_MSVC_EXPAND(W_SIGNAL_COMPAT2(__VA_ARGS__, 0))
-#define W_SIGNAL_COMPAT2(NAME, ...)                                                                                    \
+#define W_SIGNAL_COMPAT(...) W_MACRO_MSVC_EXPAND(W_SIGNAL_COMPAT2(__LINE__, __VA_ARGS__, 0))
+#define W_SIGNAL_COMPAT_N(...) W_MACRO_MSVC_EXPAND(W_SIGNAL_COMPAT2(__VA_ARGS__, 0))
+#define W_SIGNAL_COMPAT2(N, NAME, ...)                                                                                 \
     {                                                                                                                  \
         using w_SignalType = decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME));                             \
-        return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME, __LINE__)>{this}(   \
+        return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME, N)>{this}(          \
             W_OVERLOAD_REMOVE(__VA_ARGS__));                                                                           \
     }                                                                                                                  \
-    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME, __LINE__) =                                              \
+    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME, N) =                                                     \
         w_internal::stateCount<__COUNTER__, w_internal::SignalStateTag, W_ThisType**>();                               \
-    static constexpr auto W_MACRO_CONCAT(w_signalFunc_##NAME, __LINE__)()                                              \
+    static constexpr auto W_MACRO_CONCAT(w_signalFunc_##NAME, N)()                                                     \
         ->std::remove_reference_t<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME))> {                      \
         return W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME);                                                     \
     }                                                                                                                  \
     friend constexpr auto w_state(                                                                                     \
-        w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME, __LINE__)>, w_internal::SignalStateTag, W_ThisType**)   \
+        w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME, N)>, w_internal::SignalStateTag, W_ThisType**)          \
         W_RETURN(w_internal::makeMetaSignalInfo(                                                                       \
-            &W_ThisType::W_MACRO_CONCAT(w_signalFunc_##NAME, __LINE__),                                                \
+            &W_ThisType::W_MACRO_CONCAT(w_signalFunc_##NAME, N),                                                       \
             w_internal::viewLiteral(#NAME),                                                                            \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)),                                                           \
             W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)),                                                          \
             W_Compat{})) static void                                                                                   \
         w_GetAccessSpecifierHelper(                                                                                    \
-            w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME, __LINE__)>,                                         \
-            w_internal::SignalStateTag,                                                                                \
-            W_ThisType**)
+            w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME, N)>, w_internal::SignalStateTag, W_ThisType**)
 
 /// \macro W_CONSTRUCTOR(<parameter types>)
 /// Declares that this class can be constructed with this list of argument.
