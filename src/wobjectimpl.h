@@ -872,7 +872,9 @@ struct FriendHelper {
         w_internal::FriendHelper::qt_static_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(_o, _c, _id, _a);    \
     }                                                                                                                  \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__)                                                                                \
-    const QMetaObject* W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::metaObject() const { return &staticMetaObject; }        \
+    const QMetaObject* W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::metaObject() const {                                    \
+        return this->QObject::d_ptr->metaObject ? this->QObject::d_ptr->dynamicMetaObject() : &staticMetaObject;       \
+    }                                                                                                                  \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__)                                                                                \
     void* W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_metacast(const char* _clname) {                                   \
         return w_internal::FriendHelper::qt_metacast_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(this, _clname);      \
@@ -908,7 +910,9 @@ struct FriendHelper {
         w_internal::FriendHelper::qt_static_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(_o, _c, _id, _a);    \
     }                                                                                                                  \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__)                                                                                \
-    inline const QMetaObject* W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::metaObject() const { return &staticMetaObject; } \
+    inline const QMetaObject* W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::metaObject() const {                             \
+        return this->QObject::d_ptr->metaObject ? this->QObject::d_ptr->dynamicMetaObject() : &staticMetaObject;       \
+    }                                                                                                                  \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__)                                                                                \
     inline void* W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_metacast(const char* _clname) {                            \
         return w_internal::FriendHelper::qt_metacast_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(this, _clname);      \
