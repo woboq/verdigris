@@ -114,7 +114,9 @@ private slots:
     DECLARE_TEST(selfBindingShouldNotCrash);
 
     DECLARE_TEST(qpropertyAlias);
+#if QT_VERSION >= QT_VERSION_CHECK(6,3,1)
     DECLARE_TEST(scheduleNotify);
+#endif
 };
 W_OBJECT_IMPL(tst_QProperty)
 
@@ -1523,6 +1525,11 @@ public:
     }
     QBindable<int> bindableProp3() { return QBindable<int>(&prop3Data); }
 
+public:
+    void prop2Changed(int value) W_SIGNAL(prop2Changed, value);
+    void prop3Changed() W_SIGNAL(prop3Changed);
+
+#if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
     int prop4() const
     {
         auto val = prop4Data.value();
@@ -1537,11 +1544,8 @@ public:
         prop4Data.notify();
     }
     QBindable<int> bindableProp4() { return QBindable<int>(&prop4Data); }
-
-public:
-    void prop2Changed(int value) W_SIGNAL(prop2Changed, value);
-    void prop3Changed() W_SIGNAL(prop3Changed);
     void prop4Changed(int value) W_SIGNAL(prop4Changed, value);
+#endif
 
 private:
     Q_OBJECT_COMPAT_PROPERTY(CompatPropertyTester, int, prop1Data, &CompatPropertyTester::setProp1)
@@ -1550,16 +1554,17 @@ private:
     Q_OBJECT_COMPAT_PROPERTY_WITH_ARGS(CompatPropertyTester, int, prop3Data,
                                        &CompatPropertyTester::setProp3,
                                        &CompatPropertyTester::prop3Changed, 1)
+    W_PROPERTY(int, prop1 READ prop1 WRITE setProp1 BINDABLE bindableProp1)
+    W_PROPERTY(int, prop2 READ prop2 WRITE setProp2 NOTIFY prop2Changed BINDABLE bindableProp2)
+    W_PROPERTY(int, prop3 READ prop3 WRITE setProp3 NOTIFY prop3Changed BINDABLE bindableProp3)
+#if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
     Q_OBJECT_COMPAT_PROPERTY_WITH_ARGS(CompatPropertyTester, int, prop4Data,
                                        &CompatPropertyTester::setProp4,
                                        &CompatPropertyTester::prop4Changed,
                                        &CompatPropertyTester::prop4, 0)
 
-    W_PROPERTY(int, prop1 READ prop1 WRITE setProp1 BINDABLE bindableProp1)
-    W_PROPERTY(int, prop2 READ prop2 WRITE setProp2 NOTIFY prop2Changed BINDABLE bindableProp2)
-    W_PROPERTY(int, prop3 READ prop3 WRITE setProp3 NOTIFY prop3Changed BINDABLE bindableProp3)
     W_PROPERTY(int, prop4 READ prop4 WRITE setProp4 NOTIFY prop4Changed BINDABLE bindableProp4)
-
+#endif
 };
 W_OBJECT_IMPL(CompatPropertyTester)
 
@@ -1605,6 +1610,7 @@ void tst_QProperty::compatPropertySignals()
     QCOMPARE(prop3Observer.value(), 5);
     QCOMPARE(prop3Spy.count(), 1);
 
+#if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
     // Compat property with signal, default value, and custom setter. Signal has parameter.
     QProperty<int> prop4Observer;
     prop4Observer.setBinding(tester.bindableProp4().makeBinding());
@@ -1638,6 +1644,7 @@ void tst_QProperty::compatPropertySignals()
     QCOMPARE(arguments.size(), 1);
     QCOMPARE(arguments.at(0).metaType().id(), QMetaType::Int);
     QCOMPARE(arguments.at(0).toInt(), 42);
+#endif
 }
 
 class FakeDependencyCreator : public QObject
@@ -1940,6 +1947,7 @@ void tst_QProperty::qpropertyAlias()
     QVERIFY(!alias.isValid());
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6,3,1)
 void tst_QProperty::scheduleNotify()
 {
     int notifications = 0;
@@ -1954,5 +1962,6 @@ void tst_QProperty::scheduleNotify()
     QCOMPARE(notifications, 1);
     QCOMPARE(p.value(), 0);
 }
+#endif
 
 QTEST_MAIN(tst_QProperty);
