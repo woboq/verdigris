@@ -27,8 +27,15 @@
 **
 ****************************************************************************/
 
+#if __has_include(<source_location>) && __cplusplus >= 202002L && !defined(Q_CLANG_QDOC)
 #include <source_location>
 #undef __cpp_lib_source_location // note: the QPropertyBindingSourceLocation feature is broken in Qt 6.x an all Windows plattforms
+#endif
+
+#if !defined(QT_PROPERTY_COLLECT_BINDING_LOCATION) && __has_include(<experimental/source_location>) && !defined(Q_CLANG_QDOC)
+#include <experimental/source_location>
+#undef __cpp_lib_experimental_source_location
+#endif
 
 #include <QtTest/QtTest>
 
@@ -216,7 +223,7 @@ public:
     int prop() const { return m_prop; }
     QBindable<int> bindableProp() { return &m_prop; }
 private:
-    Q_OBJECT_COMPAT_PROPERTY(ChangeDuringDtorTester, int, m_prop, &ChangeDuringDtorTester::setProp);
+    Q_OBJECT_COMPAT_PROPERTY(ChangeDuringDtorTester, int, m_prop, &ChangeDuringDtorTester::setProp)
     W_PROPERTY(int, prop READ prop WRITE setProp BINDABLE bindableProp)
 };
 W_OBJECT_IMPL(ChangeDuringDtorTester)
@@ -867,7 +874,7 @@ struct ClassWithNotifiedProperty : public QObject
     void callback() { recordedValues << property.value(); }
     int getProp() { return 0; }
 
-    Q_OBJECT_BINDABLE_PROPERTY(ClassWithNotifiedProperty, int, property, &ClassWithNotifiedProperty::callback);
+    Q_OBJECT_BINDABLE_PROPERTY(ClassWithNotifiedProperty, int, property, &ClassWithNotifiedProperty::callback)
 };
 
 void tst_QProperty::notifiedProperty()
@@ -1150,10 +1157,10 @@ public:
     int compatChangedCount = 0;
     int setCompatCalled = 0;
 
-    Q_OBJECT_BINDABLE_PROPERTY(MyQObject, int, fooData, &MyQObject::fooChanged);
-    Q_OBJECT_BINDABLE_PROPERTY(MyQObject, int, barData, &MyQObject::barChanged);
-    Q_OBJECT_BINDABLE_PROPERTY(MyQObject, int, readData);
-    Q_OBJECT_COMPUTED_PROPERTY(MyQObject, int, computedData, &MyQObject::computed);
+    Q_OBJECT_BINDABLE_PROPERTY(MyQObject, int, fooData, &MyQObject::fooChanged)
+    Q_OBJECT_BINDABLE_PROPERTY(MyQObject, int, barData, &MyQObject::barChanged)
+    Q_OBJECT_BINDABLE_PROPERTY(MyQObject, int, readData)
+    Q_OBJECT_COMPUTED_PROPERTY(MyQObject, int, computedData, &MyQObject::computed)
     Q_OBJECT_COMPAT_PROPERTY(MyQObject, int, compatData, &MyQObject::setCompat)
 
     W_PROPERTY(int, foo READ foo WRITE setFoo NOTIFY fooChanged BINDABLE bindableFoo)
@@ -1670,9 +1677,9 @@ public:
     QBindable<int> bindableProp3() { return QBindable<int>(&prop3Data); }
 
 private:
-    Q_OBJECT_COMPAT_PROPERTY(FakeDependencyCreator, int, prop1Data, &FakeDependencyCreator::setProp1, &FakeDependencyCreator::prop1Changed);
-    Q_OBJECT_COMPAT_PROPERTY(FakeDependencyCreator, int, prop2Data, &FakeDependencyCreator::setProp2, &FakeDependencyCreator::prop2Changed);
-    Q_OBJECT_COMPAT_PROPERTY(FakeDependencyCreator, int, prop3Data, &FakeDependencyCreator::setProp3, &FakeDependencyCreator::prop3Changed);
+    Q_OBJECT_COMPAT_PROPERTY(FakeDependencyCreator, int, prop1Data, &FakeDependencyCreator::setProp1, &FakeDependencyCreator::prop1Changed)
+    Q_OBJECT_COMPAT_PROPERTY(FakeDependencyCreator, int, prop2Data, &FakeDependencyCreator::setProp2, &FakeDependencyCreator::prop2Changed)
+    Q_OBJECT_COMPAT_PROPERTY(FakeDependencyCreator, int, prop3Data, &FakeDependencyCreator::setProp3, &FakeDependencyCreator::prop3Changed)
 
     W_PROPERTY(int, prop1 READ prop1 WRITE setProp1 NOTIFY prop1Changed BINDABLE bindableProp1)
     W_PROPERTY(int, prop2 READ prop2 WRITE setProp2 NOTIFY prop2Changed BINDABLE bindableProp2)

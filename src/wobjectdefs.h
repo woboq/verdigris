@@ -306,7 +306,7 @@ constexpr auto makeMetaMethodInfo(F f, StringView name, const ParamTypes& paramT
 }
 
 // Called from the W_SIGNAL macro
-template<typename F, typename ParamTypes, typename ParamNames, int... Flags>
+template<typename F, typename ParamTypes, typename ParamNames, uint... Flags>
 constexpr auto makeMetaSignalInfo(
     F f, StringView name, const ParamTypes& paramTypes, const ParamNames& paramNames, MethodFlag<Flags>...)
     -> MetaMethodInfo<F, ParamTypes, ParamNames> {
@@ -346,12 +346,12 @@ struct MetaPropertyInfo {
     using PropertyType = Type;
     StringView name;
     StringView typeStr;
-    Getter getter;
-    Setter setter;
-    Member member;
-    Notify notify;
-    Reset reset;
-    Bindable bindable;
+    Getter getter = {};
+    Setter setter = {};
+    Member member = {};
+    Notify notify = {};
+    Reset reset = {};
+    Bindable bindable = {};
     uint flags = defaultPropertyFlags();
 
     template<typename S>
