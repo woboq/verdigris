@@ -111,6 +111,14 @@ template<class T, class State, size_t I> struct Derived : T {
 template<class T, class State, size_t I>
 concept IsProtected = !std::is_final_v<T> && Derived<T, State, I>::w_accessOracle;
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 2, 0)
+template<typename Func> inline constexpr bool is_const_member_method = false;
+template<typename Ret, typename Obj, typename... Args>
+inline constexpr bool is_const_member_method<Ret (Obj::*)(Args...) const> = true;
+template<typename Ret, typename Obj, typename... Args>
+inline constexpr bool is_const_member_method<Ret (Obj::*)(Args...) const noexcept> = true;
+#endif
+
 template<class Builder, class T> struct MethodGenerator {
     Builder& s;
     int parameterIndex;
@@ -118,7 +126,12 @@ template<class Builder, class T> struct MethodGenerator {
     template<class Method, class State, size_t I> constexpr void operator()(const Method& method, State, Index<I>) {
         using FP = QtPrivate::FunctionPointer<typename Method::Func>;
         s.addString(method.name); // name
-        constexpr uint flags = adjustFlags<State, I>(Method::flags);
+        uint flags = adjustFlags<State, I>(method.flags);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 2, 0)
+        if constexpr (is_const_member_method<typename Method::Func>) {
+            flags |= MethodIsConst;
+        }
+#endif
         s.addInts(
             (uint)FP::ArgumentCount,
             parameterIndex, // parameters
@@ -149,7 +162,7 @@ private:
             // Auto-detect the access specifier
             f |= IsPublic<T, State, I> ? AccessPublic : IsProtected<T, State, I> ? AccessProtected : AccessPrivate;
         }
-        f &= static_cast<uint>(~AccessPrivate); // Because QMetaMethod::Private is 0, but not AccessPrivate;
+        f &= ~static_cast<uint>(AccessPrivate); // Because QMetaMethod::Private is 0, but not AccessPrivate;
         return f;
     }
 };
@@ -185,8 +198,7 @@ template<class State, size_t L, class T> struct PropertyGenerator {
         constexpr int moreFlags =
             QtPrivate::IsQEnumHelper<typename Prop::PropertyType>::Value ? 0 | PropertyFlags::EnumOrFlag : 0;
         constexpr int finalFlag = std::is_final<T>::value ? 0 | PropertyFlags::Final : 0;
-        constexpr int defaultFlags = 0 | PropertyFlags::Stored | PropertyFlags::Scriptable | PropertyFlags::Designable;
-        s.addInts(Prop::flags | moreFlags | finalFlag | defaultFlags);
+        s.addInts(prop.flags | moreFlags | finalFlag);
         using Notify = decltype(prop.notify);
         if constexpr (std::is_same_v<Notify, Empty>) {
             s.addInts(-1);
@@ -746,6 +758,17 @@ struct FriendHelper {
                 }
                 else {
                     throw "wrong reset!";
+                }
+            }
+            break;
+        case QMetaObject::BindableProperty:
+            if constexpr (p.bindable != nullptr) {
+                auto& t = *static_cast<class QUntypedBindable*>(_a[0]);
+                if constexpr (requires { t = (_o->*p.bindable)(); }) {
+                    t = (_o->*p.bindable)();
+                }
+                else {
+                    throw "wrong bindable";
                 }
             }
             break;

@@ -174,38 +174,51 @@ template<size_t N, size_t SN> constexpr auto viewScopedLiterals(const char (&s)[
 //-----------
 
 // From qmetaobject_p.h
-enum class PropertyFlags : int {
+enum class PropertyFlags : uint {
     Invalid = 0x00000000,
     Readable = 0x00000001,
     Writable = 0x00000002,
     Resettable = 0x00000004,
     EnumOrFlag = 0x00000008,
+    Alias = 0x00000010,
+    // Reserved for future usage = 0x00000020,
     StdCppSet = 0x00000100,
     //     Override = 0x00000200,
     Constant = 0x00000400,
     Final = 0x00000800,
     Designable = 0x00001000,
-    ResolveDesignable = 0x00002000,
     Scriptable = 0x00004000,
-    ResolveScriptable = 0x00008000,
     Stored = 0x00010000,
-    ResolveStored = 0x00020000,
-    Editable = 0x00040000,
-    ResolveEditable = 0x00080000,
     User = 0x00100000,
-    ResolveUser = 0x00200000,
-    Notify = 0x00400000,
-    Revisioned = 0x00800000
-};
-static constexpr int operator|(int a, PropertyFlags b) { return a | static_cast<int>(b); }
+    Required = 0x01000000,
+    Bindable = 0x02000000,
 
-template<int> struct MethodFlagT;
-template<int I> using MethodFlag = const MethodFlagT<I>*;
-template<int I> constexpr int methodFlagValue(MethodFlag<I>) { return I; }
+    // legacy
+    Notify = 0x00400000,
+};
+static constexpr uint operator|(uint a, PropertyFlags b) { return a | static_cast<uint>(b); }
+inline constexpr uint defaultPropertyFlags() {
+    return 0u | PropertyFlags::Designable | PropertyFlags::Scriptable | PropertyFlags::Stored;
+}
+
+template<PropertyFlags> struct SetPropertyFlagT;
+template<PropertyFlags F> using SetPropertyFlag = const SetPropertyFlagT<F>*;
+
+template<uint> struct MethodFlagT;
+template<uint I> using MethodFlag = const MethodFlagT<I>*;
+template<uint I> constexpr uint methodFlagValue(MethodFlag<I>) { return I; }
 inline constexpr auto EmptyFlag = MethodFlag<0>{};
 
-enum : int {
-    // Mirror of QMetaMethod::MethodType
+// From qmetaobject_p.h
+enum : uint {
+    // Mirror of MethodFlags::Access*
+    // From qmetaobject_p.h MethodFlags
+    AccessPrivate = 0x1000, // Note: Private has a higher number to differentiate it from the default
+    AccessProtected = 0x01,
+    AccessPublic = 0x02,
+    AccessMask = 0x03, // mask
+
+    // Mirror of MethodFlags::MethodType*
     // From qmetaobject_p.h MethodFlags
     MethodMethod = 0x00,
     MethodSignal = 0x04,
@@ -213,13 +226,45 @@ enum : int {
     MethodConstructor = 0x0c,
     // MethodTypeMask = 0x0c,
 
-    // Mirror of QMetaMethod::Access
-    // From qmetaobject_p.h MethodFlags
-    AccessPrivate = 0x1000, // Note: Private has a higher number to differentiate it from the default
-    AccessProtected = 0x01,
-    AccessPublic = 0x02,
-    AccessMask = 0x03, // mask
+    // Mirror of MethodFlags::Extras
+    MethodCompatibility = 0x10,
+    MethodCloned = 0x20,
+    MethodScriptable = 0x40,
+    MethodRevisioned = 0x80,
+    MethodIsConst = 0x100, // no use case for volatile so far
 };
+
+using Notify = const struct NotifyTag*;
+using Reset = const struct ResetTag*;
+
+struct Bindable {};
+template<typename, typename T> struct Tagged {
+    T value;
+    constexpr Tagged(T v)
+        : value{v} {}
+};
+
+template<typename Ret, typename Host>
+constexpr auto operator&(Tagged<Bindable, Bindable>, Ret (Host::*s)() const)
+    -> Tagged<Bindable, Ret (Host::*)() const> {
+    return {s};
+}
+template<typename Ret, typename Host>
+constexpr auto operator&(Bindable, Ret (Host::*s)()) -> Tagged<Bindable, Ret (Host::*)()> {
+    return {s};
+}
+
+#if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510
+template<typename Ret, typename Host>
+constexpr auto operator&(Tagged<Bindable, Bindable>, Ret (Host::*s)() const noexcept)
+    -> Tagged<Bindable, Ret (Host::*)() const noexcept> {
+    return {s};
+}
+template<typename Ret, typename Host>
+constexpr auto operator&(Bindable, Ret (Host::*s)() noexcept) -> Tagged<Bindable, Ret (Host::*)() noexcept> {
+    return {s};
+}
+#endif
 
 } // namespace w_internal
 
@@ -231,62 +276,47 @@ using Public = w_internal::MethodFlag<w_internal::AccessPublic>;
 
 } // namespace W_Access
 
-// From qmetaobject_p.h MethodFlags
-//    MethodCompatibility = 0x10,
-//    MethodCloned = 0x20,
-//    MethodScriptable = 0x40,
-//    MethodRevisioned = 0x80
-using W_Compat = w_internal::MethodFlag<0x10>;
-using W_Scriptable = w_internal::MethodFlag<0x40>;
-using W_Notify = const struct NotifyTag*;
-using W_Reset = const struct ResetTag*;
-using W_Constant = w_internal::MethodFlag<static_cast<int>(w_internal::PropertyFlags::Constant)>;
-using W_Final = w_internal::MethodFlag<static_cast<int>(w_internal::PropertyFlags::Final)>;
+using W_Compat = w_internal::MethodFlag<w_internal::MethodCompatibility>;
+using W_Scriptable = w_internal::MethodFlag<w_internal::MethodScriptable>;
 
 namespace w_internal {
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 2, 0)
-template<typename Func> inline constexpr bool is_const_member_method = false;
-template<typename Ret, typename Obj, typename... Args>
-inline constexpr bool is_const_member_method<Ret (Obj::*)(Args...) const> = true;
-template<typename Ret, typename Obj, typename... Args>
-inline constexpr bool is_const_member_method<Ret (Obj::*)(Args...) const noexcept> = true;
-#endif
-
 /// Holds information about a method
-template<typename F, int Flags, typename ParamTypes, typename ParamNames = StringViewArray<>> struct MetaMethodInfo {
-    F getFunc;
+template<typename F, typename ParamTypes, typename ParamNames = StringViewArray<>> struct MetaMethodInfo {
+    F getFunc{};
     using Func = decltype(F{}());
-    StringView name;
-    ParamTypes paramTypes;
-    ParamNames paramNames;
-#if QT_VERSION >= QT_VERSION_CHECK(6, 2, 0)
-    static constexpr int flags = Flags | (is_const_member_method<Func> ? 0x100 : 0);
-#else
-    static constexpr int flags = Flags;
-#endif
+    uint flags{};
+    StringView name{};
+    ParamTypes paramTypes{};
+    ParamNames paramNames{};
 };
 
 // Called from the W_SLOT macro
-template<typename F, typename ParamTypes, int... Flags>
+template<typename F, typename ParamTypes, uint... Flags>
 constexpr auto makeMetaSlotInfo(F f, StringView name, const ParamTypes& paramTypes, MethodFlag<Flags>...)
-    -> MetaMethodInfo<F, (Flags | ... | MethodSlot), ParamTypes> {
-    return {f, name, paramTypes, {}};
+    -> MetaMethodInfo<F, ParamTypes> {
+    return {.getFunc = f, .flags = (Flags | ... | MethodSlot), .name = name, .paramTypes = paramTypes};
 }
 
 // Called from the W_METHOD macro
-template<typename F, typename ParamTypes, int... Flags>
+template<typename F, typename ParamTypes, uint... Flags>
 constexpr auto makeMetaMethodInfo(F f, StringView name, const ParamTypes& paramTypes, MethodFlag<Flags>...)
-    -> MetaMethodInfo<F, (Flags | ... | MethodMethod), ParamTypes> {
-    return {f, name, paramTypes, {}};
+    -> MetaMethodInfo<F, ParamTypes> {
+    return {.getFunc = f, .flags = (Flags | ... | MethodMethod), .name = name, .paramTypes = paramTypes};
 }
 
 // Called from the W_SIGNAL macro
 template<typename F, typename ParamTypes, typename ParamNames, int... Flags>
 constexpr auto makeMetaSignalInfo(
     F f, StringView name, const ParamTypes& paramTypes, const ParamNames& paramNames, MethodFlag<Flags>...)
-    -> MetaMethodInfo<F, (Flags | ... | MethodSignal), ParamTypes, ParamNames> {
-    return {f, name, paramTypes, paramNames};
+    -> MetaMethodInfo<F, ParamTypes, ParamNames> {
+    return {
+        .getFunc = f,
+        .flags = (Flags | ... | MethodSignal),
+        .name = name,
+        .paramTypes = paramTypes,
+        .paramNames = paramNames,
+    };
 }
 
 /// Holds information about a constructor
@@ -311,7 +341,7 @@ template<
     typename Member = Empty,
     typename Notify = Empty,
     typename Reset = Empty,
-    int Flags = 0>
+    typename Bindable = Empty>
 struct MetaPropertyInfo {
     using PropertyType = Type;
     StringView name;
@@ -321,42 +351,104 @@ struct MetaPropertyInfo {
     Member member;
     Notify notify;
     Reset reset;
-    static constexpr uint flags = Flags;
+    Bindable bindable;
+    uint flags = defaultPropertyFlags();
 
     template<typename S>
-    constexpr auto setGetter(const S& s) const
-        -> MetaPropertyInfo<Type, S, Setter, Member, Notify, Reset, Flags | PropertyFlags::Readable> {
-        return {name, typeStr, s, setter, member, notify, reset};
+    constexpr auto setGetter(const S& s) const -> MetaPropertyInfo<Type, S, Setter, Member, Notify, Reset, Bindable> {
+        return {
+            .name = name,
+            .typeStr = typeStr,
+            .getter = s,
+            .setter = setter,
+            .member = member,
+            .notify = notify,
+            .reset = reset,
+            .bindable = bindable,
+            .flags = flags | PropertyFlags::Readable,
+        };
     }
     template<typename S>
-    constexpr auto setSetter(const S& s) const
-        -> MetaPropertyInfo<Type, Getter, S, Member, Notify, Reset, Flags | PropertyFlags::Writable> {
-        return {name, typeStr, getter, s, member, notify, reset};
+    constexpr auto setSetter(const S& s) const -> MetaPropertyInfo<Type, Getter, S, Member, Notify, Reset, Bindable> {
+        return {
+            .name = name,
+            .typeStr = typeStr,
+            .getter = getter,
+            .setter = s,
+            .member = member,
+            .notify = notify,
+            .reset = reset,
+            .bindable = bindable,
+            .flags = flags | PropertyFlags::Writable,
+        };
     }
     template<typename S>
-    constexpr auto setMember(const S& s) const -> MetaPropertyInfo<
-        Type,
-        Getter,
-        Setter,
-        S,
-        Notify,
-        Reset,
-        Flags | PropertyFlags::Writable | PropertyFlags::Readable> {
-        return {name, typeStr, getter, setter, s, notify, reset};
+    constexpr auto setMember(const S& s) const -> MetaPropertyInfo<Type, Getter, Setter, S, Notify, Reset, Bindable> {
+        return {
+            .name = name,
+            .typeStr = typeStr,
+            .getter = getter,
+            .setter = setter,
+            .member = s,
+            .notify = notify,
+            .reset = reset,
+            .bindable = bindable,
+            .flags = flags | PropertyFlags::Writable | PropertyFlags::Readable,
+        };
     }
     template<typename S>
-    constexpr auto setNotify(const S& s) const
-        -> MetaPropertyInfo<Type, Getter, Setter, Member, S, Reset, Flags | PropertyFlags::Notify> {
-        return {name, typeStr, getter, setter, member, s, reset};
+    constexpr auto setNotify(const S& s) const -> MetaPropertyInfo<Type, Getter, Setter, Member, S, Reset, Bindable> {
+        return {
+            .name = name,
+            .typeStr = typeStr,
+            .getter = getter,
+            .setter = setter,
+            .member = member,
+            .notify = s,
+            .reset = reset,
+            .bindable = bindable,
+            .flags = flags | PropertyFlags::Notify,
+        };
     }
     template<typename S>
-    constexpr auto setReset(const S& s) const
-        -> MetaPropertyInfo<Type, Getter, Setter, Member, Notify, S, Flags | PropertyFlags::Resettable> {
-        return {name, typeStr, getter, setter, member, notify, s};
+    constexpr auto setReset(const S& s) const -> MetaPropertyInfo<Type, Getter, Setter, Member, Notify, S, Bindable> {
+        return {
+            .name = name,
+            .typeStr = typeStr,
+            .getter = getter,
+            .setter = setter,
+            .member = member,
+            .notify = notify,
+            .reset = s,
+            .bindable = bindable,
+            .flags = flags | PropertyFlags::Resettable,
+        };
     }
-    template<int Flag>
-    constexpr auto addFlag() const -> MetaPropertyInfo<Type, Getter, Setter, Member, Notify, Reset, Flags | Flag> {
-        return {name, typeStr, getter, setter, member, notify, reset};
+    template<typename S>
+    constexpr auto setBindable(const S& s) const -> MetaPropertyInfo<Type, Getter, Setter, Member, Notify, Reset, S> {
+        return {
+            .name = name,
+            .typeStr = typeStr,
+            .getter = getter,
+            .setter = setter,
+            .member = member,
+            .notify = notify,
+            .reset = reset,
+            .bindable = s,
+            .flags = flags | PropertyFlags::Bindable,
+        };
+    }
+    constexpr auto setFlag(uint flag, bool enabled = true) const -> MetaPropertyInfo {
+        auto r = *this;
+        if (flag) {
+            if (enabled) {
+                r.flags |= flag;
+            }
+            else {
+                r.flags &= ~flag;
+            }
+        }
+        return r;
     }
 };
 
@@ -400,30 +492,39 @@ constexpr auto parseProperty(const PropInfo& p, Ret Obj::*s, Tail... t) {
 }
 // notify
 template<typename PropInfo, typename F, typename... Tail>
-constexpr auto parseProperty(const PropInfo& p, W_Notify, F f, Tail... t) {
+constexpr auto parseProperty(const PropInfo& p, Notify, F f, Tail... t) {
     return parseProperty(p.setNotify(f), t...);
 }
 // reset
 template<typename PropInfo, typename Obj, typename Ret, typename... Tail>
-constexpr auto parseProperty(const PropInfo& p, W_Reset, Ret (Obj::*s)(), Tail... t) {
+constexpr auto parseProperty(const PropInfo& p, Reset, Ret (Obj::*s)(), Tail... t) {
     return parseProperty(p.setReset(s), t...);
 }
 #if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510
 template<typename PropInfo, typename Obj, typename Ret, typename... Tail>
-constexpr auto parseProperty(const PropInfo& p, W_Reset, Ret (Obj::*s)() noexcept, Tail... t) {
+constexpr auto parseProperty(const PropInfo& p, Reset, Ret (Obj::*s)() noexcept, Tail... t) {
     return parseProperty(p.setReset(s), t...);
 }
 #endif
-// method flag
-template<typename PropInfo, int Flag, typename... Tail>
-constexpr auto parseProperty(const PropInfo& p, MethodFlag<Flag>, Tail... t) {
-    return parseProperty(p.template addFlag<Flag>(), t...);
+// bindable
+template<typename PropInfo, typename S, typename... Tail>
+constexpr auto parseProperty(const PropInfo& p, Tagged<Bindable, S> s, Tail... t) {
+    return parseProperty(p.setBindable(s.value), t...);
+}
+// property flag
+template<typename PropInfo, typename... Tail>
+constexpr auto parseProperty(const PropInfo& p, PropertyFlags flag, Tail... t) {
+    return parseProperty(p.setFlag(static_cast<uint>(flag)), t...);
+}
+template<typename PropInfo, PropertyFlags Flag, typename... Tail>
+constexpr auto parseProperty(const PropInfo& p, SetPropertyFlag<Flag>, bool value, Tail... t) {
+    return parseProperty(p.setFlag(static_cast<uint>(Flag), value), t...);
 }
 
 template<typename T, typename... Args>
 constexpr auto makeMetaPropertyInfo(StringView name, StringView type, Args... args) {
-    auto meta = MetaPropertyInfo<T>{name, type, {}, {}, {}, {}, {}};
-    return parseProperty(meta, args...);
+    auto propInfo = MetaPropertyInfo<T>{.name = name, .typeStr = type};
+    return parseProperty(propInfo, args...);
 }
 
 template<typename T, typename = void> struct EnumIsScoped {
@@ -865,13 +966,16 @@ public:                                                                         
 
 #define W_WRITE , &W_ThisType::
 #define W_READ , &W_ThisType::
-#define W_NOTIFY , W_Notify{}, &W_ThisType::
-#define W_RESET , W_Reset{}, &W_ThisType::
+#define W_NOTIFY , w_internal::Notify{}, &W_ThisType::
+#define W_RESET , w_internal::Reset{}, &W_ThisType::
 #define W_MEMBER , &W_ThisType::
-#define W_CONSTANT                                                                                                     \
-    , W_Constant {}
-#define W_FINAL                                                                                                        \
-    , W_Final {}
+#define W_BINDABLE , w_internal::Bindable{} & &W_ThisType::
+#define W_DESIGNABLE , w_internal::SetPropertyFlag<w_internal::PropertyFlags::Designable>{},
+#define W_SCRIPTABLE , w_internal::SetPropertyFlag<w_internal::PropertyFlags::Scriptable>{},
+#define W_STORED , w_internal::SetPropertyFlag<w_internal::PropertyFlags::Stored>{},
+#define W_USER , w_internal::SetPropertyFlag<w_internal::PropertyFlags::User>{},
+#define W_CONSTANT , w_internal::PropertyFlags::Constant
+#define W_FINAL , w_internal::PropertyFlags::Final
 
 #ifndef W_NO_PROPERTY_MACRO
 #define WRITE W_WRITE
@@ -879,6 +983,8 @@ public:                                                                         
 #define NOTIFY W_NOTIFY
 #define RESET W_RESET
 #define MEMBER W_MEMBER
+#define BINDABLE W_BINDABLE
+#define STORED W_STORED
 #define CONSTANT W_CONSTANT
 #define FINAL W_FINAL
 #endif

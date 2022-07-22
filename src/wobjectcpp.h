@@ -5,38 +5,56 @@
 
 namespace w_internal {
 
-template<
-    class F,
-    int Flags,
-    class ParamTypes = w_internal::StringViewArray<>,
-    class ParamNames = w_internal::StringViewArray<>>
+template<class F, class ParamTypes = w_internal::StringViewArray<>, class ParamNames = w_internal::StringViewArray<>>
 struct MetaMethodInfoBuilder {
-    StringView name;
-    F func;
+    F func{};
+    uint flags{};
+    StringView name{};
     ParamTypes paramTypes{};
     ParamNames paramNames{};
-    // static constexpr int flags = Flags;
 
     template<class... Args>
-    requires((std::is_same_v<std::decay_t<Args>, StringView> && ...)) constexpr auto setParamTypes(
-        Args... newParamTypes) const
-        -> MetaMethodInfoBuilder<F, Flags, w_internal::StringViewArray<sizeof...(Args)>, ParamNames> {
-        return {name, func, {newParamTypes...}, paramNames};
+    requires((std::is_same_v<std::decay_t<Args>, StringView> && ...)) //
+        constexpr auto setParamTypes(Args... newParamTypes) const
+        -> MetaMethodInfoBuilder<F, w_internal::StringViewArray<sizeof...(Args)>, ParamNames> {
+        return {
+            .func = func,
+            .flags = flags,
+            .name = name,
+            .paramTypes = {newParamTypes...},
+            .paramNames = paramNames,
+        };
     }
     template<class... Args>
-    requires((std::is_same_v<std::decay_t<Args>, StringView> && ...)) constexpr auto setParamNames(
-        Args... newParamNames) const
-        -> MetaMethodInfoBuilder<F, Flags, ParamTypes, w_internal::StringViewArray<sizeof...(Args)>> {
-        return {name, func, paramTypes, {newParamNames...}};
+    requires((std::is_same_v<std::decay_t<Args>, StringView> && ...)) //
+        constexpr auto setParamNames(Args... newParamNames) const
+        -> MetaMethodInfoBuilder<F, ParamTypes, w_internal::StringViewArray<sizeof...(Args)>> {
+        return {
+            .func = func,
+            .flags = flags,
+            .name = name,
+            .paramTypes = paramTypes,
+            .paramNames = {newParamNames...},
+        };
     }
-    template<int... fs>
-    constexpr auto addFlags(w_internal::MethodFlag<fs>...) const
-        -> MetaMethodInfoBuilder<F, (fs | ... | Flags), ParamTypes, ParamNames> {
-        return {name, func, paramTypes, paramNames};
+    template<uint... fs> constexpr auto addFlags(w_internal::MethodFlag<fs>...) const -> MetaMethodInfoBuilder {
+        return {
+            .func = func,
+            .flags = (flags | ... | fs),
+            .name = name,
+            .paramTypes = paramTypes,
+            .paramNames = paramNames,
+        };
     }
 
-    constexpr auto build() const -> w_internal::MetaMethodInfo<F, Flags, ParamTypes, ParamNames> {
-        return {func, name, paramTypes, paramNames};
+    constexpr auto build() const -> w_internal::MetaMethodInfo<F, ParamTypes, ParamNames> {
+        return {
+            .getFunc = func,
+            .flags = flags,
+            .name = name,
+            .paramTypes = paramTypes,
+            .paramNames = paramNames,
+        };
     }
 };
 
@@ -87,7 +105,10 @@ using w_internal::enum_sequence;
 /// * .setReset(F) - set the member function that resets the property value to it's default
 /// * .addFlag<F>() - add one or multiple flags for the property
 template<typename T> constexpr auto makeProperty(StringView name, StringView type) {
-    return w_internal::MetaPropertyInfo<T>{name, type, {}, {}, {}, {}, {}};
+    return w_internal::MetaPropertyInfo<T>{
+        .name = name,
+        .typeStr = type,
+    };
 }
 
 /// create a builder for a signal description
@@ -100,10 +121,12 @@ template<typename T> constexpr auto makeProperty(StringView name, StringView typ
 /// * .setParamTypes(StringView...) - set the names of for all parameter types
 /// * .addFlag(Flags...) - add some methods flags
 /// * .build() - build the final MethodInfo for this signal
-template<typename F>
-constexpr auto makeSignalBuilder(StringView name, F func)
-    -> w_internal::MetaMethodInfoBuilder<F, w_internal::MethodSignal> {
-    return {name, func};
+template<typename F> constexpr auto makeSignalBuilder(StringView name, F func) -> w_internal::MetaMethodInfoBuilder<F> {
+    return {
+        .func = func,
+        .flags = w_internal::MethodSignal,
+        .name = name,
+    };
 }
 
 /// create a compile time enum description for registraton usage
