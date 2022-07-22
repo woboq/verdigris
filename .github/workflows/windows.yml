@@ -19,11 +19,6 @@ jobs:
             qt_version: "6.2.4"
             qt_arch: win64_msvc2019_64
 
-          - host_system: windows-2019
-            vcvars: C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat
-            qt_version: "6.2.2"
-            qt_arch: win64_msvc2019_64
-
     runs-on: "${{ matrix.host_system }}"
     steps:
       - name: Cache Qt
