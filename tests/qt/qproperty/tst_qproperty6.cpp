@@ -27,12 +27,16 @@
 **
 ****************************************************************************/
 
-#if __has_include(<source_location>) && __cplusplus >= 202002L && !defined(Q_CLANG_QDOC)
+// note: the QPropertyBindingSourceLocation feature is broken in Qt 6.x on C++20
+// - QPropertyBindingSourceLocation is only compiled and exported when available
+//   but Qt is compiled with a different compiler and flags than applications
+// - This disables the feature detection and therefore circumvents the issue
+#if __has_include(<source_location>) && __cplusplus >= 202002L
 #include <source_location>
-#undef __cpp_lib_source_location // note: the QPropertyBindingSourceLocation feature is broken in Qt 6.x an all Windows plattforms
+#undef __cpp_lib_source_location
 #endif
 
-#if !defined(QT_PROPERTY_COLLECT_BINDING_LOCATION) && __has_include(<experimental/source_location>) && !defined(Q_CLANG_QDOC)
+#if !defined(QT_PROPERTY_COLLECT_BINDING_LOCATION) && __has_include(<experimental/source_location>)
 #include <experimental/source_location>
 #undef __cpp_lib_experimental_source_location
 #endif
@@ -45,6 +49,18 @@
 #include <private/qproperty_p.h>
 
 #include <wobjectimpl.h>
+
+#if QT_VERSION < QT_VERSION_CHECK(6,3,0)
+// note: this class is marked AUTOTEST_EXPORT which will only work on Qt COIN, I guess.
+// - we inline this to avoid linker issues
+inline int QPropertyBindingDataPointer::observerCount() const
+{
+    int count = 0;
+    for (auto observer = firstObserver(); observer; observer = observer.nextObserver())
+        ++count;
+    return count;
+}
+#endif
 
 struct DtorCounter {
     static inline int counter = 0;
