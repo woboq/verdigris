@@ -976,6 +976,7 @@ public:                                                                         
 #define W_USER , w_internal::SetPropertyFlag<w_internal::PropertyFlags::User>{},
 #define W_CONSTANT , w_internal::PropertyFlags::Constant
 #define W_FINAL , w_internal::PropertyFlags::Final
+#define W_REQUIRED , w_internal::PropertyFlags::Required
 
 #ifndef W_NO_PROPERTY_MACRO
 #define WRITE W_WRITE
@@ -987,6 +988,7 @@ public:                                                                         
 #define STORED W_STORED
 #define CONSTANT W_CONSTANT
 #define FINAL W_FINAL
+#define REQUIRED W_REQUIRED
 #endif
 
 #undef Q_PRIVATE_PROPERTY // the official macro is not a variadic macro, and the coma in READ would break it
