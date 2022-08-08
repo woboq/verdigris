@@ -25,6 +25,8 @@ Almost all features of Qt are working. The Qt test have been ported.
 
 Features that are not yet working:
  - Q_PLUGIN_METADATA: This would require compiling to the Qt's binary json. Out of scope for now.
+ - QML_ELEMENT: This is a Qt6 feature that automatically registers the QObjects for QML. Out of scope for now.
+ - BINDABLE: Needs to be backported to the current C++ and Qt requirements.
  - QMetaMethod::tag(): Not yet implemented, could be supported if needed, but is not really needed
                        for anything. (not even tested by Qt's auto test)
  - Q_ENUM: Working, but requires to repeat the name of every enum value. Could be improved.
@@ -41,7 +43,7 @@ You will find the headers in the 'src/' sub-directory.
 Also make sure to set your compiler in, at least, C++14 mode. With qmake, you can do that with
 `CONFIG += c++14`.
 
-Tested with Qt >= 5.5.
+Tested with Qt >= 5.9.
 Need a compiler that can do C++14 relaxed constexpr such as GCC 5.1 or Clang 3.5, or MSVC 2017
 
 ### Translations
