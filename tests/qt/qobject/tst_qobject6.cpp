@@ -28,9 +28,15 @@
 ****************************************************************************/
 
 #include <QtTest/QtTest>
+#if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
+#include <QtTest/private/qpropertytesthelper_p.h>
+#endif
 
 #include <qcoreapplication.h>
 #include <qpointer.h>
+#if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
+#include <qproperty.h>
+#endif
 #include <qtimer.h>
 #include <qregularexpression.h>
 #include <qmetaobject.h>
@@ -110,6 +116,9 @@ private slots:
     void deleteSelfInSlot(); W_SLOT(deleteSelfInSlot, W_Access::Private)
     void disconnectSelfInSlotAndDeleteAfterEmit(); W_SLOT(disconnectSelfInSlotAndDeleteAfterEmit, W_Access::Private)
     void dumpObjectInfo(); W_SLOT(dumpObjectInfo, W_Access::Private)
+#if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
+    void dumpObjectTree(); W_SLOT(dumpObjectTree, W_Access::Private)
+#endif
     void connectToSender(); W_SLOT(connectToSender, W_Access::Private)
     void qobjectConstCast(); W_SLOT(qobjectConstCast, W_Access::Private)
     void uniqConnection(); W_SLOT(uniqConnection, W_Access::Private)
@@ -163,7 +172,9 @@ private slots:
     void connectWarnings(); W_SLOT(connectWarnings, W_Access::Private)
     void qmlConnect(); W_SLOT(qmlConnect, W_Access::Private)
     void exceptions(); W_SLOT(exceptions, W_Access::Private)
+#if QT_VERSION < QT_VERSION_CHECK(6,2,0)
     void noDeclarativeParentChangedOnDestruction(); W_SLOT(noDeclarativeParentChangedOnDestruction, W_Access::Private)
+#endif
     void deleteLaterInAboutToBlockHandler(); W_SLOT(deleteLaterInAboutToBlockHandler, W_Access::Private)
     void mutableFunctor(); W_SLOT(mutableFunctor, W_Access::Private)
     void checkArgumentsForNarrowing(); W_SLOT(checkArgumentsForNarrowing, W_Access::Private)
@@ -171,6 +182,12 @@ private slots:
     void functorReferencesConnection(); W_SLOT(functorReferencesConnection, W_Access::Private)
     void disconnectDisconnects(); W_SLOT(disconnectDisconnects, W_Access::Private)
     void singleShotConnection(); W_SLOT(singleShotConnection, W_Access::Private)
+#if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
+    void objectNameBinding(); W_SLOT(objectNameBinding, W_Access::Private)
+#endif
+#if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
+    void emitToDestroyedClass(); W_SLOT(emitToDestroyedClass, W_Access::Private)
+#endif
 };
 
 struct QObjectCreatedOnShutdown
@@ -786,6 +803,10 @@ void tst_QObject::findChildren()
     op = o.findChild<QObject*>("unnamed", Qt::FindDirectChildrenOnly);
     QCOMPARE(op, static_cast<QObject *>(0));
 
+#if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
+    l = o.findChildren<QObject*>(Qt::FindDirectChildrenOnly);
+    QCOMPARE(l.size(), 5);
+#endif
     l = o.findChildren<QObject*>(QString(), Qt::FindDirectChildrenOnly);
     QCOMPARE(l.size(), 5);
     l = o.findChildren<QObject*>("", Qt::FindDirectChildrenOnly);
@@ -3541,6 +3562,34 @@ void tst_QObject::dumpObjectInfo()
     a.dumpObjectInfo(); // should not crash
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
+void tst_QObject::dumpObjectTree()
+{
+    QObject a;
+    Q_SET_OBJECT_NAME(a);
+
+    QTimer b(&a);
+    Q_SET_OBJECT_NAME(b);
+
+    QObject c(&b);
+    Q_SET_OBJECT_NAME(c);
+
+    QFile f(&a);
+    Q_SET_OBJECT_NAME(f);
+
+    const char * const output[] = {
+        "QObject::a ",
+        "    QTimer::b ",
+        "        QObject::c ",
+        "    QFile::f ",
+    };
+    for (const char *line : output)
+        QTest::ignoreMessage(QtDebugMsg, line);
+
+    a.dumpObjectTree();
+}
+#endif
+
 class ConnectToSender : public QObject
 { W_OBJECT(ConnectToSender)
     public slots:
@@ -3720,8 +3769,10 @@ void tst_QObject::interfaceIid()
              QByteArray(Bleh_iid));
     QCOMPARE(QByteArray(qobject_interface_iid<Foo::Bar *>()),
              QByteArray("com.qtest.foobar"));
+#if QT_VERSION < QT_VERSION_CHECK(6,3,0)
     QCOMPARE(QByteArray(qobject_interface_iid<FooObject *>()),
              QByteArray());
+#endif
 }
 
 void tst_QObject::deleteQObjectWhenDeletingEvent()
@@ -5438,7 +5489,11 @@ namespace ManyArgumentNamespace {
         }
     };
 
+#if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
+    struct Funct6 final {
+#else
     struct Funct6 {
+#endif
         void operator()(const QString &a, const QString &b, const QString &c, const QString&d, const QString&e, const QString&f) {
             MANYARGUMENT_COMPARE(a); MANYARGUMENT_COMPARE(b); MANYARGUMENT_COMPARE(c);
             MANYARGUMENT_COMPARE(d); MANYARGUMENT_COMPARE(e); MANYARGUMENT_COMPARE(f);
@@ -6183,8 +6238,13 @@ public:
 };
 
 class ConnectToPrivateSlotPrivate : public QObjectPrivate {
+#if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
+public:
+    Q_DECLARE_PUBLIC(ConnectToPrivateSlot)
+#else
     Q_DECLARE_PUBLIC(ConnectToPrivateSlot)
 public:
+#endif
     int receivedCount;
     QVariant receivedValue;
 
@@ -6487,10 +6547,15 @@ void tst_QObject::connectFunctorWithContextUnique()
 
     SenderObject sender;
     ReceiverObject receiver;
-    QObject::connect(&sender, &SenderObject::signal1, &receiver, &ReceiverObject::slot1);
+    QVERIFY(QObject::connect(&sender, &SenderObject::signal1, &receiver, &ReceiverObject::slot1));
     receiver.count_slot1 = 0;
 
+#if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
+    QTest::ignoreMessage(QtWarningMsg, "QObject::connect(SenderObject, ReceiverObject): unique connections require a pointer to member function of a QObject subclass");
+    QVERIFY(!QObject::connect(&sender, &SenderObject::signal1, &receiver, [&](){ receiver.slot1(); }, Qt::UniqueConnection));
+#else
     QObject::connect(&sender, &SenderObject::signal1, &receiver, SlotFunctor(), Qt::UniqueConnection);
+#endif
 
     sender.emitSignal1();
     QCOMPARE(receiver.count_slot1, 1);
@@ -7220,6 +7285,7 @@ void tst_QObject::exceptions()
 #endif
 }
 
+#if QT_VERSION < QT_VERSION_CHECK(6,2,0)
 #ifdef QT_BUILD_INTERNAL
 static bool parentChangeCalled = false;
 
@@ -7256,6 +7322,7 @@ void tst_QObject::noDeclarativeParentChangedOnDestruction()
     QSKIP("Needs QT_BUILD_INTERNAL");
 #endif
 }
+#endif
 
 struct MutableFunctor {
     int count;
@@ -7480,11 +7547,14 @@ void tst_QObject::checkArgumentsForNarrowing()
 
     // integral to integral with different signedness. smaller ones tested above
     NARROWS(signed char, unsigned char);
+
+    // Issue is reported to Green Hills, 2021-09-14.
+#if !defined(Q_CC_GHS)
     NARROWS(signed char, unsigned short);
     NARROWS(signed char, unsigned int);
     NARROWS(signed char, unsigned long);
     NARROWS(signed char, unsigned long long);
-
+#endif // Q_CC_GHS
     NARROWS(unsigned char, signed char);
     FITS(unsigned char, short);
     FITS(unsigned char, int);
@@ -7492,19 +7562,21 @@ void tst_QObject::checkArgumentsForNarrowing()
     FITS(unsigned char, long long);
 
     NARROWS(short, unsigned short);
+#if !defined(Q_CC_GHS)
     NARROWS(short, unsigned int);
     NARROWS(short, unsigned long);
     NARROWS(short, unsigned long long);
-
+#endif // Q_CC_GHS
     NARROWS(unsigned short, short);
     FITS(unsigned short, int);
     FITS(unsigned short, long);
     FITS(unsigned short, long long);
 
     NARROWS(int, unsigned int);
+#if !defined(Q_CC_GHS)
     NARROWS(int, unsigned long);
     NARROWS(int, unsigned long long);
-
+#endif // Q_CC_GHS
     NARROWS(unsigned int, int);
     NARROWS_IF(unsigned int, long, (sizeof(int) >= sizeof(long)));
     FITS(unsigned int, long long);
@@ -7562,18 +7634,22 @@ void tst_QObject::checkArgumentsForNarrowing()
         /* implicit */ operator double() const { return 42.0; }
     };
 
+#if !defined(Q_CC_GHS)
     NARROWS(ConvertingToDouble, char);
     NARROWS(ConvertingToDouble, short);
     NARROWS(ConvertingToDouble, int);
     NARROWS(ConvertingToDouble, long);
     NARROWS(ConvertingToDouble, long long);
     NARROWS(ConvertingToDouble, float);
+#endif // Q_CC_GHS
     FITS(ConvertingToDouble, double);
     FITS(ConvertingToDouble, long double);
 
 
-    // no compiler still implements this properly.
-#if 0
+    // GCC, GHS and clang don't implement this properly yet:
+    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=99625
+    // https://bugs.llvm.org/show_bug.cgi?id=49676
+#if defined(Q_CC_MSVC) && !defined(Q_CC_CLANG)  // at least since VS2017
     struct ConstructibleFromInt {
         /* implicit */ ConstructibleFromInt(int) {}
     };
@@ -7592,7 +7668,9 @@ void tst_QObject::checkArgumentsForNarrowing()
     class ForwardDeclared;
     FITS(ForwardDeclared, ForwardDeclared);
 
-#if 0 // waiting for official compiler releases that implement P1957...
+#if (defined(Q_CC_EXACTLY_GCC) && Q_CC_EXACTLY_GCC >= 1100) \
+    || (defined(Q_CC_CLANG) && Q_CC_CLANG >= 1100) \
+    || defined(Q_CC_MSVC) // at least since VS2017
     {
         // wg21.link/P1957
         NARROWS(char*, bool);
@@ -8368,6 +8446,80 @@ void tst_QObject::singleShotConnection()
     }
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
+void tst_QObject::objectNameBinding()
+{
+    QObject obj;
+    QTestPrivate::testReadWritePropertyBasics<QObject, QString>(obj, "test1", "test2",
+                                                                "objectName");
+}
+#endif
+#if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
+namespace EmitToDestroyedClass {
+static int assertionCallCount = 0;
+static int wouldHaveAssertedCount = 0;
+struct WouldAssert : std::exception {};
+class Base : public QObject
+{
+    W_OBJECT(Base)
+public:
+    ~Base()
+    {
+        try {
+            emit theSignal();
+        } catch (const WouldAssert &) {
+            ++wouldHaveAssertedCount;
+        }
+    }
+
+    void theSignal()  W_SIGNAL(theSignal)
+};
+
+class Derived : public Base
+{
+    W_OBJECT(Derived)
+public:
+    ~Derived() { }
+
+    void doNothing() {} W_SLOT(doNothing)
+};
+
+} // namespace EmitToDestroyedClass
+
+QT_BEGIN_NAMESPACE
+namespace QtPrivate {
+template<> void assertObjectType<EmitToDestroyedClass::Derived>(QObject *o)
+{
+    // override the assertion so we don't assert and so something does happen
+    // when assertions are disabled. By throwing, we also prevent the UB from
+    // happening.
+    using namespace EmitToDestroyedClass;
+    ++assertionCallCount;
+    if (!qobject_cast<Derived *>(o))
+        throw WouldAssert();
+}
+} // namespace QtPrivate
+QT_END_NAMESPACE
+
+void tst_QObject::emitToDestroyedClass()
+{
+    using namespace EmitToDestroyedClass;
+    std::unique_ptr ptr = std::make_unique<Derived>();
+    QObject::connect(ptr.get(), &Base::theSignal, ptr.get(), &Derived::doNothing);
+    QCOMPARE(assertionCallCount, 0);
+    QCOMPARE(wouldHaveAssertedCount, 0);
+
+    // confirm our replacement function did get called
+    emit ptr->theSignal();
+    QCOMPARE(assertionCallCount, 1);
+    QCOMPARE(wouldHaveAssertedCount, 0);
+
+    ptr.reset();
+    QCOMPARE(assertionCallCount, 2);
+    QCOMPARE(wouldHaveAssertedCount, 1);
+}
+#endif
+
 // Test for QtPrivate::HasQ_OBJECT_Macro
 static_assert(QtPrivate::HasQ_OBJECT_Macro<tst_QObject>::Value);
 static_assert(!QtPrivate::HasQ_OBJECT_Macro<SiblingDeleter>::Value);
@@ -8427,3 +8579,7 @@ W_OBJECT_IMPL(CountedExceptionThrower)
 W_OBJECT_IMPL(ReceiverDisconnecting)
 W_OBJECT_IMPL(ExceptionThrower)
 W_OBJECT_IMPL(DeleteThisReceiver)
+#if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
+W_OBJECT_IMPL(EmitToDestroyedClass::Base)
+W_OBJECT_IMPL(EmitToDestroyedClass::Derived)
+#endif

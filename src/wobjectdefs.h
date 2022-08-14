@@ -290,16 +290,28 @@ constexpr std::integral_constant<int, int(w_internal::PropertyFlags::Final)> W_F
 
 namespace w_internal {
 
+#if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
+template <class Func> struct isConstMemberMethod : std::false_type {};
+template <class Ret, class Obj, class...Args> struct isConstMemberMethod<Ret (Obj::*)(Args...) const> : std::true_type {};
+template <class Ret, class Obj, class...Args> struct isConstMemberMethod<Ret (Obj::*)(Args...) const noexcept> : std::true_type {};
+#endif
+
 /// Holds information about a method
 template<typename F, int Flags, typename IC, typename ParamTypes, typename ParamNames = StringViewArray<>>
 struct MetaMethodInfo {
-    F func;
+    using Func = F;
+    Func func;
     StringView name;
     ParamTypes paramTypes;
     ParamNames paramNames;
     static constexpr int argCount = QtPrivate::FunctionPointer<F>::ArgumentCount;
-    static constexpr auto argSequence = make_index_sequence<argCount>{};
+    using ArgSequence = make_index_sequence<argCount>;
+    static constexpr auto argSequence = ArgSequence{};
+#if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
+    static constexpr int flags = Flags + (isConstMemberMethod<F>::value ? 0x100 : 0);
+#else
     static constexpr int flags = Flags;
+#endif
     using IntegralConstant = IC;
 };
 
@@ -338,7 +350,7 @@ constexpr MetaConstructorInfo<Args...> makeMetaConstructorInfo(StringView name)
 { return { name }; }
 
 struct Empty{
-    constexpr operator bool() const { return false; }
+    constexpr bool operator!=(std::nullptr_t) const { return false; }
 };
 
 /// Holds information about a property

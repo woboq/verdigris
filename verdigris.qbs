@@ -63,7 +63,6 @@ Project {
             ".github/workflows/clang.yml",
             ".github/workflows/gcc.yml",
             ".github/workflows/windows.yml",
-            ".travis.yml",
             "ChangeLog",
             "LICENSE.LGPLv3",
             "README.md",

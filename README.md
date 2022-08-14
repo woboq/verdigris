@@ -10,8 +10,8 @@ Blog post with some implementation details: https://woboq.com/blog/verdigris-imp
 
 Browse code online: https://code.woboq.org/woboq/verdigris
 
-Travis: [![Travis Build Status](https://travis-ci.org/woboq/verdigris.svg?branch=master)](https://travis-ci.org/woboq/verdigris)
-Appveyor: 
+Github Actions: [![Clang Tests](https://github.com/woboq/verdigris/actions/workflows/clang.yml/badge.svg?branch=master)](https://github.com/woboq/verdigris/actions/workflows/clang.yml) [![Gcc Tests](https://github.com/woboq/verdigris/actions/workflows/gcc.yml/badge.svg?branch=master)](https://github.com/woboq/verdigris/actions/workflows/gcc.yml) [![Windows Tests](https://github.com/woboq/verdigris/actions/workflows/windows.yml/badge.svg?branch=master)](https://github.com/woboq/verdigris/actions/workflows/windows.yml)
+Appveyor:
 [![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/povubj5thvlsu6sy/branch/master?svg=true)](https://ci.appveyor.com/project/ogoffart/verdigris)
 
 ## Documentation
@@ -32,7 +32,7 @@ Features that are not yet working:
 **New features compared to Qt with moc:**
  - Support for templated QObject.
  - Support for QObject nested in another class.
- 
+
 ## How to Use
 
 The library consist of only two headers files. You can either copy these header files in your
@@ -73,10 +73,10 @@ This table show the correspondence between Qt macro and Verdigris macro:
   It uses Verdigris in productions. Verdigris allowed ossia score to use template with their QObject's, and solve some trouble with the build system.
 
 
-<img align="right" src="https://woboq.com/logos/isotronic.png"> 
+<img align="right" src="https://woboq.com/logos/isotronic.png">
 
 * [ISOTRONIC GmbH](https://isotronic.de/), a provider for visual inspection QA systems for automatic glass vial manufacturing, uses Verdigris in production:
-> The transition from standard Qt affected more than 100 source code files and was done in not much more than a day. The reason for the switch was to be able to use a build system that has no interface for Qt's MOC process. In the rare cases of questions or problems the Verdigris team was quick and competent in resolving the issues. After more than 6 months of real-world experience we are still very happy with that decision. 
+> The transition from standard Qt affected more than 100 source code files and was done in not much more than a day. The reason for the switch was to be able to use a build system that has no interface for Qt's MOC process. In the rare cases of questions or problems the Verdigris team was quick and competent in resolving the issues. After more than 6 months of real-world experience we are still very happy with that decision.
 
 * If you are using Verdigris and want to appear here, please open an issue, or a pull request
 

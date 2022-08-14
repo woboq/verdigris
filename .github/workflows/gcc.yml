@@ -1,37 +1,64 @@
 name: Gcc Tests
 
-on: push
+on: [push, pull_request]
 
 jobs:
-  linux-qmake:
-    name: "${{ matrix.host_system }} QMake Gcc ${{ matrix.gcc_version }} Qt ${{ matrix.qt_version }} ${{ matrix.std_cpp }}"
+  docker-qbs:
+    name: "Docker Qbs ${{ matrix.image }}"
     strategy:
       fail-fast: false
       matrix:
         include:
+        - image: arbmind/qbs-gcc-qt:1.22.1-12-6.3.1
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Build & Test
+        run: >-
+          docker run --rm -v ${GITHUB_WORKSPACE}:/build -w /build
+          ${{ matrix.image }}
+          build
+          --file /build/verdigris.qbs
+          --build-directory /tmp/build
+          -p autotest-runner
+
+  linux-qmake:
+    name: "${{ matrix.host_system }} QMake Gcc ${{ matrix.gcc_version }} Qt ${{ matrix.qt_version }} ${{ matrix.std_cpp }}"
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host_system: ubuntu-22.04
+            gcc_version: 11
+            qt_version: 6.3.0
+            qt_arch: gcc_64
+            std_cpp: C++17
+            experimental: false
+
           - host_system: ubuntu-20.04
             gcc_version: 11
             qt_version: 6.2.2
             qt_arch: gcc_64
             std_cpp: C++17
+            experimental: false
 
           - host_system: ubuntu-20.04
             gcc_version: 10
             qt_version: 6.0.0
             qt_arch: gcc_64
             std_cpp: C++17
+            experimental: false
 
           - host_system: ubuntu-20.04
             gcc_version: 9
             qt_version: 5.15.2
             qt_arch: gcc_64
             std_cpp: C++17
-
-          - host_system: ubuntu-18.04
-            gcc_version: 7
-            qt_version: 5.9.1
-            qt_arch: gcc_64
-            std_cpp: C++14
+            experimental: false
 
     runs-on: "${{ matrix.host_system }}"
     steps:
