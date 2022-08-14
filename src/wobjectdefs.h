@@ -350,7 +350,7 @@ constexpr MetaConstructorInfo<Args...> makeMetaConstructorInfo(StringView name)
 { return { name }; }
 
 struct Empty{
-    constexpr operator bool() const { return false; }
+    constexpr bool operator!=(std::nullptr_t) const { return false; }
 };
 
 /// Holds information about a property

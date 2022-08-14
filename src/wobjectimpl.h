@@ -26,6 +26,12 @@
 
 namespace w_internal {
 
+#if __cplusplus > 201700L
+#define W_IF_CONSTEXPR constexpr
+#else
+#define W_IF_CONSTEXPR
+#endif
+
 // Match MetaDataFlags constants form the MetaDataFlags in qmetaobject_p.h
 enum : uint { IsUnresolvedType = 0x80000000, IsUnresolvedNotifySignal = 0x70000000 };
 
@@ -474,11 +480,7 @@ struct EnumGenerator {
         (void)nameIndex;
         s.addString(e.name); // name
 #if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
-#if __cplusplus > 201700L
-        if constexpr (Enum::hasAlias) s.addString(e.alias); // alias
-#else
-        if (Enum::hasAlias) s.addString(e.alias); // alias
-#endif
+        if W_IF_CONSTEXPR (Enum::hasAlias) s.addString(e.alias); // alias
         else s.addInts(nameIndex);
 #endif
         s.addInts(Enum::flags, (uint)Enum::count, dataIndex);
@@ -1175,22 +1177,22 @@ QT_WARNING_POP
         using Type = typename decltype(p)::PropertyType;
         switch(+_c) {
         case QMetaObject::ReadProperty:
-            if (p.getter) {
+            if W_IF_CONSTEXPR (p.getter != nullptr) {
                 propGet(p.getter, _o, *reinterpret_cast<Type*>(_a[0]));
-            } else if (p.member) {
+            } else if W_IF_CONSTEXPR (p.member != nullptr) {
                 propGet(p.member, _o, *reinterpret_cast<Type*>(_a[0]));
             }
             break;
         case QMetaObject::WriteProperty:
-            if (p.setter) {
+            if W_IF_CONSTEXPR (p.setter != nullptr) {
                 propSet(p.setter, _o, *reinterpret_cast<Type*>(_a[0]));
-            } else if (p.member) {
+            } else if W_IF_CONSTEXPR (p.member != nullptr) {
                 propSet(p.member, _o, *reinterpret_cast<Type*>(_a[0]));
                 propNotify(p.notify, p.member, _o);
             }
             break;
         case QMetaObject::ResetProperty:
-            if (p.reset) {
+            if W_IF_CONSTEXPR (p.reset != nullptr) {
                 propReset(p.reset, _o);
             }
             break;
