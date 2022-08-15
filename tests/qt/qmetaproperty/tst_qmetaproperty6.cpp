@@ -52,14 +52,14 @@ class tst_QMetaProperty : public QObject
 
 private slots:
 #define DECLARE_TEST(NAME) void NAME(); W_SLOT(NAME)
-    DECLARE_TEST(hasStdCppSet)
-    DECLARE_TEST(isConstant)
-    DECLARE_TEST(isFinal)
-    DECLARE_TEST(gadget)
-    DECLARE_TEST(readAndWriteWithLazyRegistration)
-    DECLARE_TEST(mapProperty)
-    DECLARE_TEST(conversion)
-    DECLARE_TEST(enumsFlags)
+    DECLARE_TEST(hasStdCppSet);
+    DECLARE_TEST(isConstant);
+    DECLARE_TEST(isFinal);
+    DECLARE_TEST(gadget);
+    DECLARE_TEST(readAndWriteWithLazyRegistration);
+    DECLARE_TEST(mapProperty);
+    DECLARE_TEST(conversion);
+    DECLARE_TEST(enumsFlags);
 #undef DECLARE_TEST
 
 public:
@@ -79,14 +79,14 @@ public:
     QMap<int, int> map;
     CustomType custom;
 
-    W_PROPERTY(EnumType, value WRITE setValue READ getValue)
-    W_PROPERTY(EnumType, value2 WRITE set_value READ get_value)
-    W_PROPERTY(QString, value7 MEMBER value7 RESET resetValue7)
-    W_PROPERTY(int, value8 READ value8)
-    W_PROPERTY(int, value9 READ value9 CONSTANT)
-    W_PROPERTY(int, value10 READ value10 FINAL)
-    W_PROPERTY((QMap<int, int>), map MEMBER map)
-    W_PROPERTY(CustomType, custom MEMBER custom)
+    W_PROPERTY(EnumType, value WRITE setValue READ getValue);
+    W_PROPERTY(EnumType, value2 WRITE set_value READ get_value);
+    W_PROPERTY(QString, value7 MEMBER value7 RESET resetValue7);
+    W_PROPERTY(int, value8 READ value8);
+    W_PROPERTY(int, value9 READ value9 CONSTANT);
+    W_PROPERTY(int, value10 READ value10 FINAL);
+    W_PROPERTY((QMap<int, int>), map MEMBER map);
+    W_PROPERTY(CustomType, custom MEMBER custom);
 
 };
 
@@ -139,7 +139,7 @@ public:
     QString getValue() { return m_value; }
     void resetValue() { m_value = QLatin1String("reset"); }
     W_GADGET(MyGadget)
-    W_PROPERTY(QString, value READ getValue WRITE setValue RESET resetValue)
+    W_PROPERTY(QString, value READ getValue WRITE setValue RESET resetValue);
 };
 
 W_GADGET_IMPL(MyGadget)
@@ -181,8 +181,8 @@ struct TypeLazyRegistration : QObject
     W_OBJECT(TypeLazyRegistration)
     CustomReadObject *_read;
     CustomWriteObject *_write;
-    W_PROPERTY(CustomReadObject *,read MEMBER _read)
-    W_PROPERTY(CustomWriteObject *,write MEMBER _write)
+    W_PROPERTY(CustomReadObject *,read MEMBER _read);
+    W_PROPERTY(CustomWriteObject *,write MEMBER _write);
 public:
     TypeLazyRegistration()
         : _read()
@@ -195,10 +195,10 @@ class EnumFlagsTester : public QObject
     W_OBJECT(EnumFlagsTester)
 public:
     enum TestEnum { e1, e2 };
-    W_ENUM(TestEnum, e1, e2)
+    W_ENUM(TestEnum, e1, e2);
 
     enum TestFlag { flag1 = 0x1, flag2 = 0x2 };
-    W_DECLARE_FLAGS(TestFlags, TestFlag)
+    W_DECLARE_FLAGS(TestFlags, TestFlag);
 
 public:
     using QObject::QObject;
@@ -210,8 +210,8 @@ public:
     void setFlagProperty(TestFlags f) { m_flags = f; }
 
 private:
-    W_PROPERTY(TestEnum, enumProperty WRITE setEnumProperty READ enumProperty)
-    W_PROPERTY(TestFlags, flagProperty WRITE setFlagProperty READ flagProperty)
+    W_PROPERTY(TestEnum, enumProperty WRITE setEnumProperty READ enumProperty);
+    W_PROPERTY(TestFlags, flagProperty WRITE setFlagProperty READ flagProperty);
 
 private:
     TestEnum m_enum = e1;

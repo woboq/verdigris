@@ -1,59 +1,60 @@
 #pragma once
+#ifndef Q_MOC_RUN // don't define anything when moc is run
+
 #include "wobjectdefs.h"
 
 namespace w_internal {
-#if __cplusplus <= 201700L
-template<bool... Bs>
-constexpr bool all() {
-    bool b = true;
-    ordered2<bool>({(b = b && Bs)...});
-    return b;
-}
-#endif
 
-template<class F, int Flags, class IC = int, class ParamTypes = w_internal::StringViewArray<>, class ParamNames = w_internal::StringViewArray<>>
+template<class F, class ParamTypes = w_internal::StringViewArray<>, class ParamNames = w_internal::StringViewArray<>>
 struct MetaMethodInfoBuilder {
-    StringView name;
-    F func;
+    F func{};
+    uint flags{};
+    StringView name{};
     ParamTypes paramTypes{};
     ParamNames paramNames{};
-    static constexpr int flags = Flags;
-    using IntegralConstant = IC;
 
-#if __cplusplus > 201700L
-    template<class... Args, class = std::enable_if_t<(std::is_same_v<std::decay_t<Args>, StringView> && ...)>>
-#else
-    template<class... Args, class = std::enable_if_t<w_internal::all<std::is_same<std::decay_t<Args>, StringView>::value...>()>>
-#endif
-    constexpr auto setParamTypes(Args... paramTypes) const
-        -> MetaMethodInfoBuilder<F, Flags, IC, w_internal::StringViewArray<sizeof... (Args)>, ParamNames> {
-        return {name, func, {paramTypes...}, paramNames};
+    template<class... Args>
+    requires((std::is_same_v<std::decay_t<Args>, StringView> && ...)) //
+        constexpr auto setParamTypes(Args... newParamTypes) const
+        -> MetaMethodInfoBuilder<F, w_internal::StringViewArray<sizeof...(Args)>, ParamNames> {
+        return {
+            .func = func,
+            .flags = flags,
+            .name = name,
+            .paramTypes = {newParamTypes...},
+            .paramNames = paramNames,
+        };
     }
-#if __cplusplus > 201700L
-    template<class... Args, class = std::enable_if_t<(std::is_same_v<std::decay_t<Args>, StringView> && ...)>>
-#else
-    template<class... Args, class = std::enable_if_t<w_internal::all<std::is_same<std::decay_t<Args>, StringView>::value...>()>>
-#endif
-    constexpr auto setParamNames(Args... paramNames) const
-        -> MetaMethodInfoBuilder<F, Flags, IC, ParamTypes, w_internal::StringViewArray<sizeof... (Args)>> {
-        return {name, func, paramTypes, {paramNames...}};
+    template<class... Args>
+    requires((std::is_same_v<std::decay_t<Args>, StringView> && ...)) //
+        constexpr auto setParamNames(Args... newParamNames) const
+        -> MetaMethodInfoBuilder<F, ParamTypes, w_internal::StringViewArray<sizeof...(Args)>> {
+        return {
+            .func = func,
+            .flags = flags,
+            .name = name,
+            .paramTypes = paramTypes,
+            .paramNames = {newParamNames...},
+        };
     }
-    template<int... fs>
-    constexpr auto addFlags(w_internal::W_MethodFlags<fs>...) const
-#if __cplusplus > 201700L
-        -> MetaMethodInfoBuilder<F, (fs | ... | Flags), IC, ParamTypes, ParamNames> {
-#else
-        -> MetaMethodInfoBuilder<F, w_internal::summed<fs ..., Flags>, IC, ParamTypes, ParamNames> {
-#endif
-            return {name, func, paramTypes, paramNames};
-    }
-    template<class IC2>
-    constexpr auto setIntegralConstant() const -> MetaMethodInfoBuilder<F, Flags, IC2, ParamTypes, ParamNames> {
-        return {name, func, paramTypes, paramNames};
+    template<uint... fs> constexpr auto addFlags(w_internal::MethodFlag<fs>...) const -> MetaMethodInfoBuilder {
+        return {
+            .func = func,
+            .flags = (flags | ... | fs),
+            .name = name,
+            .paramTypes = paramTypes,
+            .paramNames = paramNames,
+        };
     }
 
-    constexpr auto build() const -> w_internal::MetaMethodInfo<F, Flags, IC, ParamTypes, ParamNames> {
-        return {func, name, paramTypes, paramNames};
+    constexpr auto build() const -> w_internal::MetaMethodInfo<F, ParamTypes, ParamNames> {
+        return {
+            .getFunc = func,
+            .flags = flags,
+            .name = name,
+            .paramTypes = paramTypes,
+            .paramNames = paramNames,
+        };
     }
 };
 
@@ -103,9 +104,11 @@ using w_internal::enum_sequence;
 /// * .setNotify(F) - set the member function that represents the changed signal for the property
 /// * .setReset(F) - set the member function that resets the property value to it's default
 /// * .addFlag<F>() - add one or multiple flags for the property
-template<typename T>
-constexpr auto makeProperty(StringView name, StringView type) {
-    return w_internal::MetaPropertyInfo<T>{ name, type, {}, {}, {}, {}, {} };
+template<typename T> constexpr auto makeProperty(StringView name, StringView type) {
+    return w_internal::MetaPropertyInfo<T>{
+        .name = name,
+        .typeStr = type,
+    };
 }
 
 /// create a builder for a signal description
@@ -117,11 +120,13 @@ constexpr auto makeProperty(StringView name, StringView type) {
 /// * .setParamNames(StringView...) - set the names for all the function parameters (optional)
 /// * .setParamTypes(StringView...) - set the names of for all parameter types
 /// * .addFlag(Flags...) - add some methods flags
-/// * .setIntegralConstant<T>() - set a compile time integral value type as a unique identifier
 /// * .build() - build the final MethodInfo for this signal
-template<typename F>
-constexpr auto makeSignalBuilder(StringView name, F func) -> w_internal::MetaMethodInfoBuilder<F, W_MethodType::Signal.value> {
-    return {name, func};
+template<typename F> constexpr auto makeSignalBuilder(StringView name, F func) -> w_internal::MetaMethodInfoBuilder<F> {
+    return {
+        .func = func,
+        .flags = w_internal::MethodSignal,
+        .name = name,
+    };
 }
 
 /// create a compile time enum description for registraton usage
@@ -131,9 +136,13 @@ constexpr auto makeSignalBuilder(StringView name, F func) -> w_internal::MetaMet
 /// \arg memberValueSequence the compile time enum_sequence of all enum member values
 /// \arg memberNames the compile time StringViewArray of all enum member names
 ///
-/// \note to correct map between values and names, member values in memberValueSequence must be in the same order as member names in memberNames
+/// \note to correct map between values and names, member values in memberValueSequence must be in the same order as
+/// member names in memberNames
 template<typename Enum, Enum... Values>
-constexpr auto makeEnumInfo(StringView name, w_internal::enum_sequence<Enum, Values...> memberValueSequence, w_internal::StringViewArray<sizeof...(Values)> memberNames) {
+constexpr auto makeEnumInfo(
+    StringView name,
+    w_internal::enum_sequence<Enum, Values...> memberValueSequence,
+    w_internal::StringViewArray<sizeof...(Values)> memberNames) {
     return w_internal::makeMetaEnumInfo<Enum, false>(name, 0, memberValueSequence, memberNames);
 }
 
@@ -145,9 +154,14 @@ constexpr auto makeEnumInfo(StringView name, w_internal::enum_sequence<Enum, Val
 /// \arg memberValueSequence the compile time enum_sequence of all enum member values
 /// \arg memberNames the compile time StringViewArray of all enum member names
 ///
-/// \note to correct map between values and names, member values in memberValueSequence must be in the same order as member names in memberNames
+/// \note to correct map between values and names, member values in memberValueSequence must be in the same order as
+/// member names in memberNames
 template<typename Enum, Enum... Values>
-constexpr auto makeFlagInfo(StringView name, StringView enumAliasName, w_internal::enum_sequence<Enum, Values...> memberValueSequence, w_internal::StringViewArray<sizeof...(Values)> memberNames) {
+constexpr auto makeFlagInfo(
+    StringView name,
+    StringView enumAliasName,
+    w_internal::enum_sequence<Enum, Values...> memberValueSequence,
+    w_internal::StringViewArray<sizeof...(Values)> memberNames) {
     return w_internal::makeMetaEnumInfo<Enum, true>(name, enumAliasName, memberValueSequence, memberNames);
 }
 
@@ -161,16 +175,16 @@ constexpr auto makeFlagInfo(StringView name, StringView enumAliasName, w_interna
 ///     struct MyProperties;
 ///     template<>
 ///     struct MyProperties<0> {
-///         constexpr static auto property = w_cpp::makeProperty<QString>(w_cpp::viewLiteral("name"), w_cpp::viewLiteral("QString"))
+///         constexpr static auto property = w_cpp::makeProperty<QString>(w_cpp::viewLiteral("name"),
+///         w_cpp::viewLiteral("QString"))
 ///             .setGetter(&Example::getName);
 ///     };
 ///     W_CPP_PROPERTY(MyProperties)
 ///
 /// \note you have to ensure that the struct is only valid for some `I`s.
-#define W_CPP_PROPERTY(a) \
-    static constexpr size_t W_MACRO_CONCAT(a,_O) = w_internal::stateCount<__COUNTER__, w_internal::PropertyStateTag, W_ThisType**>; \
-    template<size_t I> \
-    friend constexpr auto w_state(w_internal::Index<I>, w_internal::PropertyStateTag, W_ThisType**) W_RETURN((a<I-W_MACRO_CONCAT(a,_O)>::property))
+#define W_CPP_PROPERTY(a)                                                                                              \
+    static constexpr size_t W_MACRO_CONCAT(a, _O) = W_STATE_COUNT(PropertyState);                                      \
+    template<size_t I> W_STATE_STORE(PropertyState, I, (a<I - W_MACRO_CONCAT(a, _O)>::property))
 
 /// \macro W_CPP_SIGNAL(callback)
 /// allows to register multiple signals from a templated structure using regular C++.
@@ -180,25 +194,30 @@ constexpr auto makeFlagInfo(StringView name, StringView enumAliasName, w_interna
 ///     struct MySignals;
 ///     template<>
 ///     struct MySignals<0> {
-///         constexpr static auto signal = w_cpp::makeSignalBuilder(w_cpp::viewLiteral("nameChanged"), &Example::nameChanged).build();
+///         constexpr static auto getFunc() { return &Example::nameChanged; }
+///         constexpr static auto signal = w_cpp::makeSignalBuilder(w_cpp::viewLiteral("nameChanged"),
+///         &MySignals::getFunc).build();
 ///     };
 ///     W_CPP_SIGNAL(MySignals)
 ///
 /// \note you have to ensure that the struct is only valid for some `I`s.
-#define W_CPP_SIGNAL(a) \
-    static constexpr size_t W_MACRO_CONCAT(a,_O) = w_internal::stateCount<__COUNTER__, w_internal::SignalStateTag, W_ThisType**>; \
-    template<size_t I> \
-    friend constexpr auto w_state(w_internal::Index<I>, w_internal::SignalStateTag, W_ThisType**) W_RETURN((a<I-W_MACRO_CONCAT(a,_O)>::signal))
+#define W_CPP_SIGNAL(a)                                                                                                \
+    static constexpr size_t W_MACRO_CONCAT(a, _O) = W_STATE_COUNT(SignalState);                                        \
+    template<size_t I> W_STATE_STORE(SignalState, I, (a<I - W_MACRO_CONCAT(a, _O)>::signal));                          \
+    template<size_t I>                                                                                                 \
+    requires(I >= W_MACRO_CONCAT(a, _O)) && requires { a<I - W_MACRO_CONCAT(a, _O)>::signal; }                         \
+    W_ACCESS_HELPER(SignalState, I)
 
 /// \macro W_CPP_SIGNAL_IMPL(type, callback, index)
 /// allows to implement a signal
 ///
 /// example usage:
 ///     template<size_t I>
-///     void notifyPropertyChanged() W_CPP_SIGNAL_IMPL(decltype (&tst_CppApi::notifyPropertyChanged<I>), MySignals, I, 0)
+///     void notifyPropertyChanged() W_CPP_SIGNAL_IMPL(decltype (&tst_CppApi::notifyPropertyChanged<I>), MySignals, I,
+///     0)
 ///
-#define W_CPP_SIGNAL_IMPL(type, a, i, ...) \
-    constexpr int index = W_ThisType::W_MACRO_CONCAT(a,_O) + i; \
+#define W_CPP_SIGNAL_IMPL(type, a, i, ...)                                                                             \
+    constexpr int index = W_ThisType::W_MACRO_CONCAT(a, _O) + i;                                                       \
     return w_internal::SignalImplementation<type, index>{this}(__VA_ARGS__)
 
 /// \macro W_CPP_ENUM(type, callback)
@@ -220,18 +239,18 @@ constexpr auto makeFlagInfo(StringView name, StringView enumAliasName, w_interna
 ///     };
 ///     W_CPP_ENUM(Level, MyEnums)
 ///
-#define W_CPP_ENUM(type, a) \
-    W_STATE_APPEND(EnumState, a<type>::enumInfo) \
+#define W_CPP_ENUM(type, a)                                                                                            \
+    W_STATE_APPEND(EnumState, a<type>::enumInfo);                                                                      \
     Q_ENUM(type)
 
 /// \macro W_CPP_ENUM_NS(type, callback)
-/// allows to register a enum type for a namespace that was declarated with W_NAMESPACE from a templated structure using regular C++.
-/// additionally enum can be declared outside namespace where it is registered.
+/// allows to register a enum type for a namespace that was declarated with W_NAMESPACE from a templated structure using
+/// regular C++. additionally enum can be declared outside namespace where it is registered.
 ///
 /// example usage:
 ///     Similar to usage of W_CPP_ENUM but you must use W_CPP_ENUM_NS instead of W_CPP_ENUM
-#define W_CPP_ENUM_NS(type, a) \
-    W_STATE_APPEND_NS(EnumState, a<type>::enumInfo) \
+#define W_CPP_ENUM_NS(type, a)                                                                                         \
+    W_STATE_APPEND_NS(EnumState, a<type>::enumInfo);                                                                   \
     Q_ENUM_NS(type)
 
 /// \macro W_CPP_FLAG(type, callback)
@@ -255,16 +274,27 @@ constexpr auto makeFlagInfo(StringView name, StringView enumAliasName, w_interna
 ///     };
 ///     W_CPP_FLAG(Filters, MyEnums)
 ///
-#define W_CPP_FLAG(type, a) \
-    W_STATE_APPEND(EnumState, a<type>::flagInfo) \
+#define W_CPP_FLAG(type, a)                                                                                            \
+    W_STATE_APPEND(EnumState, a<type>::flagInfo);                                                                      \
     Q_FLAG(type)
 
 /// \macro W_CPP_FLAG_NS(type, callback)
-/// allows to register a enum type as QFlags for a namespace that was declarated with W_NAMESPACE from a templated structure using regular C++.
-/// additionally enum can be declared outside namespace where it is registered.
+/// allows to register a enum type as QFlags for a namespace that was declarated with W_NAMESPACE from a templated
+/// structure using regular C++. additionally enum can be declared outside namespace where it is registered.
 ///
 /// example usage:
 ///     Similar to usage of W_CPP_FLAG but you must use W_CPP_FLAG_NS instead of W_CPP_FLAG
-#define W_CPP_FLAG_NS(type, a) \
-    W_STATE_APPEND_NS(EnumState, a<type>::flagInfo) \
+#define W_CPP_FLAG_NS(type, a)                                                                                         \
+    W_STATE_APPEND_NS(EnumState, a<type>::flagInfo);                                                                   \
     Q_FLAG_NS(type)
+
+#else // Q_MOC_RUN
+// just to avoid parse errors when moc is run over things that it should ignore
+#define W_CPP_PROPERTY(a)
+#define W_CPP_SIGNAL(a)
+#define W_CPP_SIGNAL_IMPL(type, a, i, ...)
+#define W_CPP_ENUM(type, a)
+#define W_CPP_ENUM_NS(type, a)
+#define W_CPP_FLAG(type, a)
+#define W_CPP_FLAG_NS(type, a)
+#endif

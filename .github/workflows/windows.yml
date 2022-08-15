@@ -19,31 +19,6 @@ jobs:
             qt_version: "6.2.4"
             qt_arch: win64_msvc2019_64
 
-          - host_system: windows-2019
-            vcvars: C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat
-            qt_version: "6.2.2"
-            qt_arch: win64_msvc2019_64
-
-          - host_system: windows-2019
-            vcvars: C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat
-            qt_version: "5.15.2"
-            qt_arch: win64_msvc2019_64
-
-          - host_system: windows-2019
-            vcvars: C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat
-            qt_version: "5.14.2"
-            qt_arch: win64_msvc2015_64
-
-          - host_system: windows-2019
-            vcvars: C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat
-            qt_version: "5.12.9"
-            qt_arch: win64_msvc2017_64
-
-          - host_system: windows-2019
-            vcvars: C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat
-            qt_version: "5.9.9"
-            qt_arch: win64_msvc2017_64
-
     runs-on: "${{ matrix.host_system }}"
     steps:
       - name: Cache Qt
@@ -93,23 +68,8 @@ jobs:
 
           - host_system: windows-2019
             cl_version: "14.29"
-            qt_version: "6.2.2"
+            qt_version: "6.2.4"
             qt_arch: win64_msvc2019_64
-
-          - host_system: windows-2019
-            cl_version: "14.29"
-            qt_version: "6.0.0"
-            qt_arch: win64_msvc2019_64
-
-          - host_system: windows-2019
-            cl_version: "14.29"
-            qt_version: "5.15.2"
-            qt_arch: win64_msvc2019_64
-
-          - host_system: windows-2019
-            cl_version: "14.29"
-            qt_version: "5.12.9"
-            qt_arch: win64_msvc2017_64
 
     runs-on: "${{ matrix.host_system }}"
     steps:

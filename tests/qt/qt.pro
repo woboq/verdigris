@@ -1,3 +1,3 @@
 TEMPLATE = subdirs
 
-SUBDIRS = qmetaobject qobject qmetamethod qmetaproperty qmetaenum
+SUBDIRS = qmetaobject qobject qmetamethod qmetaproperty qmetaenum qproperty

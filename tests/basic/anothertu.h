@@ -36,14 +36,14 @@ struct InlineGadget {
     W_GADGET(InlineGadget)
 public:
     int m_foo;
-    W_PROPERTY(int, foo MEMBER m_foo)
+    W_PROPERTY(int, foo MEMBER m_foo);
 };
 
 struct InlineObject : QObject {
     W_OBJECT(InlineObject)
 public:
     int m_foo;
-    W_PROPERTY(int, foo MEMBER m_foo)
+    W_PROPERTY(int, foo MEMBER m_foo);
 };
 
 #ifdef Q_NAMESPACE // Since Qt 5.8

@@ -1,13 +1,14 @@
 import qbs
 
 Project {
-    name: "tests"
+    name: "Qt"
 
     references: [
         "qmetaenum",
         "qmetamethod",
         "qmetaobject",
         "qmetaproperty",
-        "qobject"
+        "qobject",
+        "qproperty",
     ]
 }

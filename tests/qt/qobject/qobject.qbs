@@ -31,20 +31,9 @@ Project {
             )
         }
 
-        Group {
-            name: "qt5"
-            condition: Qt.core.versionMajor === 5
-            files: [
-                "tst_qobject5.cpp",
-            ]
-        }
-        Group {
-            name: "qt6"
-            condition: Qt.core.versionMajor === 6
-            files: [
-                "tst_qobject6.cpp",
-            ]
-        }
+        files: [
+            "tst_qobject6.cpp",
+        ]
     }
 
 }

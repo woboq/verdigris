@@ -4,22 +4,23 @@ on: [push, pull_request]
 
 jobs:
   osx-qmake:
-    name: "OSX QMake Qt5 ${{ matrix.std_cpp }}"
+    name: "OSX QMake Qt6 ${{ matrix.std_cpp }}"
+    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
         include:
-        - std_cpp: C++17
-        - std_cpp: C++14
+        - experimental: true # seems clang version is too old
+          std_cpp: C++20
 
-    runs-on: "macos-10.15"
+    runs-on: "macos-12"
     env:
       QMAKESPEC: macx-clang
     steps:
       - name: Install Qt
         run: |
-          HOMEBREW_NO_AUTO_UPDATE=1 brew install qt5
-          brew link qt5 --force
+          HOMEBREW_NO_AUTO_UPDATE=1 brew install qt6
+          brew link qt6 --force
           which qmake
           qmake --version
 
@@ -38,8 +39,6 @@ jobs:
         include:
         - image: arbmind/qbs-clang-libstdcpp-qt:1.22.0-14-11-6.3.0
         - image: arbmind/qbs-clang-libstdcpp-qt:1.21.0-13-10-6.2.4
-        - image: arbmind/qbs-clang13-qt515:latest
-        - image: arbmind/qbs-clang8-qt512:1
 
     runs-on: ubuntu-latest
     steps:
@@ -61,35 +60,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - host_system: ubuntu-20.04
-            clang_version: 12
+          - host_system: ubuntu-22.04
+            clang_version: 14
             qt_version: 6.3.0
             qt_arch: gcc_64
             std_cpp: C++20
 
-          - host_system: ubuntu-20.04
-            clang_version: 12
-            qt_version: 6.2.2
+          - host_system: ubuntu-22.04
+            clang_version: 13
+            qt_version: 6.2.4
             qt_arch: gcc_64
             std_cpp: C++20
-
-          - host_system: ubuntu-20.04
-            clang_version: 11
-            qt_version: 6.0.0
-            qt_arch: gcc_64
-            std_cpp: C++17
-
-          - host_system: ubuntu-20.04
-            clang_version: 10
-            qt_version: 5.15.2
-            qt_arch: gcc_64
-            std_cpp: C++17
-
-          - host_system: ubuntu-18.04
-            clang_version: 9
-            qt_version: 5.12.3
-            qt_arch: gcc_64
-            std_cpp: C++14
 
     runs-on: "${{ matrix.host_system }}"
     env:

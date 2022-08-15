@@ -55,7 +55,7 @@ class MyGadget
     W_GADGET(MyGadget)
 public:
     MyGadget() {}
-    W_CONSTRUCTOR()
+    W_CONSTRUCTOR();
 };
 
 W_GADGET_IMPL(MyGadget)
@@ -92,8 +92,8 @@ namespace MyNamespace {
             MyFlag2 = 0x20,
             MyFlag3 = 0x40
         };
-        W_DECLARE_FLAGS(MyFlags, MyFlag)
-        W_DECLARE_FLAGS(MyScopedFlags, MyScopedFlag)
+        W_DECLARE_FLAGS(MyFlags, MyFlag);
+        W_DECLARE_FLAGS(MyScopedFlags, MyScopedFlag);
 
         MyEnum myEnum() const { return m_enum; }
         void setMyEnum(MyEnum val) { m_enum = val; }
@@ -107,18 +107,18 @@ namespace MyNamespace {
               m_flags(MyFlag1|MyFlag2)
                 { }
     private:
-        W_ENUM(MyEnum, MyEnum1, MyEnum2, MyEnum3)
-        W_ENUM(MyScopedEnum, MyScopedEnum::Enum1, MyScopedEnum::Enum2, MyScopedEnum::Enum3)
-        W_ENUM(MyAnotherEnum,MyAnotherEnum1,MyAnotherEnum2,MyAnotherEnum3)
-        W_FLAG(MyFlags,MyFlag1,MyFlag2,MyFlag3)
-        W_FLAG(MyScopedFlags, MyScopedFlag::MyFlag1, MyScopedFlag::MyFlag2, MyScopedFlag::MyFlag3)
+        W_ENUM(MyEnum, MyEnum1, MyEnum2, MyEnum3);
+        W_ENUM(MyScopedEnum, MyScopedEnum::Enum1, MyScopedEnum::Enum2, MyScopedEnum::Enum3);
+        W_ENUM(MyAnotherEnum,MyAnotherEnum1,MyAnotherEnum2,MyAnotherEnum3);
+        W_FLAG(MyFlags,MyFlag1,MyFlag2,MyFlag3);
+        W_FLAG(MyScopedFlags, MyScopedFlag::MyFlag1, MyScopedFlag::MyFlag2, MyScopedFlag::MyFlag3);
 
 
         MyEnum m_enum;
         MyFlags m_flags;
 
-        W_PROPERTY(MyEnum, myEnum READ myEnum WRITE setMyEnum)
-        W_PROPERTY(MyFlags, myFlags READ myFlags WRITE setMyFlags)
+        W_PROPERTY(MyEnum, myEnum READ myEnum WRITE setMyEnum);
+        W_PROPERTY(MyFlags, myFlags READ myFlags WRITE setMyFlags);
 
 
     };
@@ -146,7 +146,7 @@ namespace MyNamespace {
             MyFlag2 = 0x02,
             MyFlag3 = 0x04
         };
-        Q_DECLARE_FLAGS(MyFlags, MyFlag)
+        W_DECLARE_FLAGS(MyFlags, MyFlag);
 
         MyEnum myEnum() const { return m_enum; }
         void setMyEnum(MyEnum val) { m_enum = val; }
@@ -161,15 +161,15 @@ namespace MyNamespace {
         { }
     private:
 
-        W_ENUM(MyEnum, MyEnum1, MyEnum2, MyEnum3)
-        W_ENUM(MyAnotherEnum,MyAnotherEnum1,MyAnotherEnum2,MyAnotherEnum3)
-        W_FLAG(MyFlags,MyFlag1,MyFlag2,MyFlag3)
+        W_ENUM(MyEnum, MyEnum1, MyEnum2, MyEnum3);
+        W_ENUM(MyAnotherEnum,MyAnotherEnum1,MyAnotherEnum2,MyAnotherEnum3);
+        W_FLAG(MyFlags,MyFlag1,MyFlag2,MyFlag3);
 
         MyEnum m_enum;
         MyFlags m_flags;
 
-        W_PROPERTY(MyEnum, myEnum READ myEnum WRITE setMyEnum)
-        W_PROPERTY(MyFlags, myFlags READ myFlags WRITE setMyFlags)
+        W_PROPERTY(MyEnum, myEnum READ myEnum WRITE setMyEnum);
+        W_PROPERTY(MyFlags, myFlags READ myFlags WRITE setMyFlags);
 
     };
 
@@ -189,7 +189,6 @@ namespace MyNamespace {
         W_OBJECT(MyClass2Subclass)
     };
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
     class ClassWithSetterGetterSignals : public QObject
     {
         W_OBJECT(ClassWithSetterGetterSignals)
@@ -212,8 +211,8 @@ namespace MyNamespace {
             }
 
         Q_SIGNALS:
-            void value1Changed() W_SIGNAL(value1Changed)
-            void value2Changed() W_SIGNAL(value2Changed)
+            void value1Changed() W_SIGNAL(value1Changed);
+            void value2Changed() W_SIGNAL(value2Changed);
 
         private:
             int m_value1 = 0;
@@ -223,8 +222,8 @@ namespace MyNamespace {
     class ClassWithSetterGetterSignalsAddsProperties : public ClassWithSetterGetterSignals
     {
         W_OBJECT(ClassWithSetterGetterSignalsAddsProperties)
-        W_PROPERTY(int, value1 READ value1 WRITE setValue1 NOTIFY value1Changed)
-        W_PROPERTY(int, value2 READ value2 WRITE setValue2 NOTIFY value2Changed)
+        W_PROPERTY(int, value1 READ value1 WRITE setValue1 NOTIFY value1Changed);
+        W_PROPERTY(int, value2 READ value2 WRITE setValue2 NOTIFY value2Changed);
     };
 
     class ClassWithChangedSignal : public QObject
@@ -243,7 +242,7 @@ namespace MyNamespace {
             void thisIsNotASignal() { }
 
         Q_SIGNALS:
-            void propertiesChanged() W_SIGNAL(propertiesChanged)
+            void propertiesChanged() W_SIGNAL(propertiesChanged);
 
         private:
             int m_value1 = 0;
@@ -257,25 +256,22 @@ namespace MyNamespace {
         private:
             int m_value2 = 0;
 
-        W_PROPERTY(int, value2 MEMBER m_value2 NOTIFY propertiesChanged)
+        W_PROPERTY(int, value2 MEMBER m_value2 NOTIFY propertiesChanged);
 #if 0 // With verdigris, this is a compilation error when the NOTIFY signal is not a signal
             int m_value3 = 0;
-        W_PROPERTY(int, value3 MEMBER m_value3 NOTIFY thisIsNotASignal)
+        W_PROPERTY(int, value3 MEMBER m_value3 NOTIFY thisIsNotASignal);
 #endif
     };
-#endif
 }
 W_OBJECT_IMPL(MyNamespace::MyClass)
 W_OBJECT_IMPL(MyNamespace::MyClass2)
 W_OBJECT_IMPL(MyNamespace::MyClassSubclass)
 W_OBJECT_IMPL(MyNamespace::MyClassSubclass2)
 W_OBJECT_IMPL(MyNamespace::MyClass2Subclass)
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
 W_OBJECT_IMPL(MyNamespace::ClassWithSetterGetterSignals)
 W_OBJECT_IMPL(MyNamespace::ClassWithSetterGetterSignalsAddsProperties)
 W_OBJECT_IMPL(MyNamespace::ClassWithChangedSignal)
 W_OBJECT_IMPL(MyNamespace::ClassWithChangedSignalNewValue)
-#endif
 
 class tst_QMetaObject : public QObject
 {
@@ -316,85 +312,85 @@ public:
 
 private slots:
 #define DECLARE_TEST(NAME) void NAME(); W_SLOT(NAME)
-    DECLARE_TEST(connectSlotsByName)
-    DECLARE_TEST(invokeMetaMember)
-    DECLARE_TEST(invokePointer)
-    DECLARE_TEST(invokeQueuedMetaMember)
-    DECLARE_TEST(invokeQueuedPointer)
-    DECLARE_TEST(invokeBlockingQueuedMetaMember)
-    DECLARE_TEST(invokeBlockingQueuedPointer)
-    DECLARE_TEST(invokeCustomTypes)
-    DECLARE_TEST(invokeMetaConstructor)
-    DECLARE_TEST(invokeTypedefTypes)
-    DECLARE_TEST(invokeException)
-    DECLARE_TEST(invokeQueuedAutoRegister)
-    DECLARE_TEST(qtMetaObjectInheritance)
-    DECLARE_TEST(normalizedSignature_data)
-    DECLARE_TEST(normalizedSignature)
-    DECLARE_TEST(normalizedType_data)
-    DECLARE_TEST(normalizedType)
-    DECLARE_TEST(customPropertyType)
-    DECLARE_TEST(checkScope_data)
-    DECLARE_TEST(checkScope)
-    DECLARE_TEST(propertyNotify)
-    DECLARE_TEST(propertyConstant)
-    DECLARE_TEST(propertyFinal)
+    DECLARE_TEST(connectSlotsByName);
+    DECLARE_TEST(invokeMetaMember);
+    DECLARE_TEST(invokePointer);
+    DECLARE_TEST(invokeQueuedMetaMember);
+    DECLARE_TEST(invokeQueuedPointer);
+    DECLARE_TEST(invokeBlockingQueuedMetaMember);
+    DECLARE_TEST(invokeBlockingQueuedPointer);
+    DECLARE_TEST(invokeCustomTypes);
+    DECLARE_TEST(invokeMetaConstructor);
+    DECLARE_TEST(invokeTypedefTypes);
+    DECLARE_TEST(invokeException);
+    DECLARE_TEST(invokeQueuedAutoRegister);
+    DECLARE_TEST(qtMetaObjectInheritance);
+    DECLARE_TEST(normalizedSignature_data);
+    DECLARE_TEST(normalizedSignature);
+    DECLARE_TEST(normalizedType_data);
+    DECLARE_TEST(normalizedType);
+    DECLARE_TEST(customPropertyType);
+    DECLARE_TEST(checkScope_data);
+    DECLARE_TEST(checkScope);
+    DECLARE_TEST(propertyNotify);
+    DECLARE_TEST(propertyConstant);
+    DECLARE_TEST(propertyFinal);
 
 #if QT_VERSION >= QT_VERSION_CHECK(6,2,0)
-    DECLARE_TEST(metaType)
+    DECLARE_TEST(metaType);
 #endif
 
-    DECLARE_TEST(stdSet)
-    DECLARE_TEST(classInfo)
+    DECLARE_TEST(stdSet);
+    DECLARE_TEST(classInfo);
 
-    DECLARE_TEST(metaMethod)
+    DECLARE_TEST(metaMethod);
 
-    DECLARE_TEST(indexOfMethod_data)
-    DECLARE_TEST(indexOfMethod)
+    DECLARE_TEST(indexOfMethod_data);
+    DECLARE_TEST(indexOfMethod);
 
 #if QT_VERSION >= QT_VERSION_CHECK(6,1,0)
-    DECLARE_TEST(firstMethod_data)
-    DECLARE_TEST(firstMethod)
+    DECLARE_TEST(firstMethod_data);
+    DECLARE_TEST(firstMethod);
 #endif
 
-    DECLARE_TEST(indexOfMethodPMF)
+    DECLARE_TEST(indexOfMethodPMF);
 
 #ifdef QT_BUILD_INTERNAL
-    DECLARE_TEST(signalOffset_data)
-    DECLARE_TEST(signalOffset)
-    DECLARE_TEST(signalCount_data)
-    DECLARE_TEST(signalCount)
-    DECLARE_TEST(signal_data)
-    DECLARE_TEST(signal)
-    DECLARE_TEST(signalIndex_data)
-    DECLARE_TEST(signalIndex)
+    DECLARE_TEST(signalOffset_data);
+    DECLARE_TEST(signalOffset);
+    DECLARE_TEST(signalCount_data);
+    DECLARE_TEST(signalCount);
+    DECLARE_TEST(signal_data);
+    DECLARE_TEST(signal);
+    DECLARE_TEST(signalIndex_data);
+    DECLARE_TEST(signalIndex);
 #endif
-    DECLARE_TEST(enumDebugStream_data)
-    DECLARE_TEST(enumDebugStream)
+    DECLARE_TEST(enumDebugStream_data);
+    DECLARE_TEST(enumDebugStream);
 
-    DECLARE_TEST(inherits_data)
-    DECLARE_TEST(inherits)
+    DECLARE_TEST(inherits_data);
+    DECLARE_TEST(inherits);
 
-    DECLARE_TEST(notifySignalsInParentClass)
+    DECLARE_TEST(notifySignalsInParentClass);
 #undef DECLARE_TEST
 
 signals:
     void value6Changed()
-    W_SIGNAL(value6Changed)
+    W_SIGNAL(value6Changed);
     void value7Changed(const QString &_)
-    W_SIGNAL(value7Changed,_)
+    W_SIGNAL(value7Changed,_);
 
 
-    W_PROPERTY(EnumType, value WRITE setValue READ getValue)
-    W_PROPERTY(EnumType, value2 WRITE set_value READ get_value)
-    W_PROPERTY(MyStruct, value3 WRITE setVal3 READ val3)
-    W_PROPERTY(QList<QVariant>, value4 WRITE setVal4 READ val4)
-    W_PROPERTY(QVariantList, value5 WRITE setVal5 READ val5)
-    W_PROPERTY(int, value6 READ value6 NOTIFY value6Changed)
-    W_PROPERTY(MyStruct, value7 READ value7 WRITE setVal7 NOTIFY value7Changed)
-    W_PROPERTY(int, value8 READ value8)
-    W_PROPERTY(int, value9 READ value9 CONSTANT)
-    W_PROPERTY(int, value10 READ value10 FINAL)
+    W_PROPERTY(EnumType, value WRITE setValue READ getValue);
+    W_PROPERTY(EnumType, value2 WRITE set_value READ get_value);
+    W_PROPERTY(MyStruct, value3 WRITE setVal3 READ val3);
+    W_PROPERTY(QList<QVariant>, value4 WRITE setVal4 READ val4);
+    W_PROPERTY(QVariantList, value5 WRITE setVal5 READ val5);
+    W_PROPERTY(int, value6 READ value6 NOTIFY value6Changed);
+    W_PROPERTY(MyStruct, value7 READ value7 WRITE setVal7 NOTIFY value7Changed);
+    W_PROPERTY(int, value8 READ value8);
+    W_PROPERTY(int, value9 READ value9 CONSTANT);
+    W_PROPERTY(int, value10 READ value10 FINAL);
 
 };
 
@@ -444,9 +440,9 @@ public slots:
         if (!obj || obj != child)
             qWarning() << "on_child1_destroyed invoked with wrong child object";
     }
-    W_SLOT(on_child1_destroyed)
+    W_SLOT(on_child1_destroyed);
     void on_child2_destroyed() { ++invokeCount2; }
-    W_SLOT(on_child2_destroyed)
+    W_SLOT(on_child2_destroyed);
 };
 
 W_OBJECT_IMPL(CTestObject)
@@ -478,9 +474,9 @@ private slots:
         if (!obj || obj != child)
             qWarning() << "on_child1_destroyed invoked with wrong child object";
     }
-    W_SLOT(on_child1_destroyed,(QObject*))
+    W_SLOT(on_child1_destroyed,(QObject*));
     void on_child1_destroyed() { ++invokeCount2; }
-    W_SLOT(on_child1_destroyed,())
+    W_SLOT(on_child1_destroyed,());
 };
 
 W_OBJECT_IMPL(CTestObjectOverloads)
@@ -550,58 +546,58 @@ public:
     QtTestObject();
     QtTestObject(const QString &s) : slotResult(s) {}
     QtTestObject(QObject *parent);
-    W_CONSTRUCTOR(QObject*)
+    W_CONSTRUCTOR(QObject*);
 
 public slots:
     void sl0();
-    W_SLOT(sl0)
+    W_SLOT(sl0);
     QString sl1(QString s1);
-    W_SLOT(sl1)
+    W_SLOT(sl1);
     void sl2(QString s1, QString s2);
-    W_SLOT(sl2)
+    W_SLOT(sl2);
     void sl3(QString s1, QString s2, QString s3);
-    W_SLOT(sl3)
+    W_SLOT(sl3);
     void sl4(QString s1, QString s2, QString s3, const QString s4);
-    W_SLOT(sl4)
+    W_SLOT(sl4);
     void sl5(QString s1, QString s2, QString s3, QString s4, const QString &s5);
-    W_SLOT(sl5)
+    W_SLOT(sl5);
     void sl6(QString s1, QString s2, QString s3, QString s4, const QString s5, QString s6);
-    W_SLOT(sl6)
+    W_SLOT(sl6);
     void sl7(QString s1, QString s2, QString s3, QString s4, QString s5, QString s6, QString s7);
-    W_SLOT(sl7)
+    W_SLOT(sl7);
     void sl8(QString s1, QString s2, QString s3, QString s4, QString s5, QString s6, QString s7,
             QString s8);
-    W_SLOT(sl8)
+    W_SLOT(sl8);
     void sl9(QString s1, QString s2, QString s3, QString s4, QString s5, QString s6, QString s7,
             QString s8, QString s9);
-    W_SLOT(sl9)
+    W_SLOT(sl9);
     void sl10(QString s1, QString s2, QString s3, QString s4, QString s5, QString s6, QString s7,
             QString s8, QString s9, QString s10);
-    W_SLOT(sl10)
+    W_SLOT(sl10);
     QObject *sl11();
-    W_SLOT(sl11)
+    W_SLOT(sl11);
     const char *sl12();
-    W_SLOT(sl12)
+    W_SLOT(sl12);
     QList<QString> sl13(QList<QString> l1);
-    W_SLOT(sl13)
+    W_SLOT(sl13);
     qint64 sl14();
-    W_SLOT(sl14)
+    W_SLOT(sl14);
     void testSender();
-    W_SLOT(testSender)
+    W_SLOT(testSender);
 
     void testReference(QString &str);
-    W_SLOT(testReference)
+    W_SLOT(testReference);
     void testLongLong(qint64 ll1, quint64 ll2);
-    W_SLOT(testLongLong)
+    W_SLOT(testLongLong);
     void moveToThread(QThread *t)
     { QObject::moveToThread(t); }
-    W_SLOT(moveToThread)
+    W_SLOT(moveToThread);
 
     void slotWithUnregisteredParameterType(MyUnregisteredType);
-    W_SLOT(slotWithUnregisteredParameterType)
+    W_SLOT(slotWithUnregisteredParameterType);
 
     void slotWithOneUnregisteredParameterType(QString a1, MyUnregisteredType a2);
-    W_SLOT(slotWithOneUnregisteredParameterType)
+    W_SLOT(slotWithOneUnregisteredParameterType);
 
     CountedStruct throwingSlot(const CountedStruct &, CountedStruct s2) {
 #ifndef QT_NO_EXCEPTIONS
@@ -609,7 +605,7 @@ public slots:
 #endif
         return s2;
     }
-    W_SLOT(throwingSlot)
+    W_SLOT(throwingSlot);
 
     void slotWithRegistrableArgument(QtTestObject *o1, QPointer<QtTestObject> o2,
                                      QSharedPointer<QtTestObject> o3, QWeakPointer<QtTestObject> o4,
@@ -621,7 +617,7 @@ public slots:
     }
     W_SLOT(slotWithRegistrableArgument, (QtTestObject*, QPointer<QtTestObject>,
                                      QSharedPointer<QtTestObject>, QWeakPointer<QtTestObject>,
-                                     QList<QtTestObject*>,QList<QtTestObject*>))
+                                     QList<QtTestObject*>,QList<QtTestObject*>));
 
 public:
     static void staticFunction0();
@@ -629,12 +625,12 @@ public:
 
 signals:
     void sig0()
-    W_SIGNAL(sig0)
+    W_SIGNAL(sig0);
     QString sig1(QString s1)
-    W_SIGNAL(sig1,s1)
+    W_SIGNAL(sig1,s1);
     void sig10(QString s1, QString s2, QString s3, QString s4, QString s5, QString s6, QString s7,
                QString s8, QString s9, QString s10)
-    W_SIGNAL(sig10,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10)
+    W_SIGNAL(sig10,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10);
 
 protected:
     QtTestObject(QVariant) {}
@@ -702,7 +698,7 @@ void QtTestObject::testLongLong(qint64 ll1, quint64 ll2)
 
 void QtTestObject::testSender()
 {
-    slotResult = QString::asprintf("%p", sender());
+    slotResult = QString::asprintf("%p", static_cast<void*>(sender()));
 }
 
 void QtTestObject::slotWithUnregisteredParameterType(MyUnregisteredType)
@@ -871,7 +867,6 @@ void testFunction(){}
 
 void tst_QMetaObject::invokePointer()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 1)
     QtTestObject obj;
     QtTestObject *const nullTestObject = nullptr;
 
@@ -924,7 +919,6 @@ void tst_QMetaObject::invokePointer()
         QCOMPARE(obj.slotResult, QString("sl1:bubu"));
     }
     QCOMPARE(countedStructObjectsCount, 0);
-#if defined(__cpp_init_captures) && QT_VERSION >= QT_VERSION_CHECK(5, 13, 0)
     {
         CountedStruct str;
         std::unique_ptr<int> ptr( new int );
@@ -932,8 +926,6 @@ void tst_QMetaObject::invokePointer()
         QCOMPARE(obj.slotResult, QString("sl1:1"));
     }
     QCOMPARE(countedStructObjectsCount, 0);
-#endif
-#endif
 }
 
 void tst_QMetaObject::invokeQueuedMetaMember()
@@ -1008,7 +1000,6 @@ void tst_QMetaObject::invokeQueuedMetaMember()
 
 void tst_QMetaObject::invokeQueuedPointer()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 1)
     QtTestObject obj;
 
     // Test member function
@@ -1054,7 +1045,6 @@ void tst_QMetaObject::invokeQueuedPointer()
         QCOMPARE(var, 0);
     }
     QCOMPARE(countedStructObjectsCount, 0);
-#endif
 }
 
 
@@ -1193,7 +1183,6 @@ void tst_QMetaObject::invokeBlockingQueuedMetaMember()
 
 void tst_QMetaObject::invokeBlockingQueuedPointer()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 1)
     QtTestObject *const nullTestObject = nullptr;
 
     QThread t;
@@ -1252,7 +1241,6 @@ void tst_QMetaObject::invokeBlockingQueuedPointer()
         QCOMPARE(exp, QString("yessir"));
         QCOMPARE(obj.slotResult, QString("sl1:bubu"));
     }
-#ifdef __cpp_init_captures
     {
         std::unique_ptr<int> ptr(new int);
         QVERIFY(QMetaObject::invokeMethod(&obj,
@@ -1260,12 +1248,10 @@ void tst_QMetaObject::invokeBlockingQueuedPointer()
                                           Qt::BlockingQueuedConnection));
         QCOMPARE(obj.slotResult, QString("sl1:hehe"));
     }
-#endif
     QVERIFY(QMetaObject::invokeMethod(&obj, [&](){obj.moveToThread(QThread::currentThread());}, Qt::BlockingQueuedConnection));
     t.quit();
     QVERIFY(t.wait());
     QCOMPARE(countedStructObjectsCount, 0);
-#endif
 }
 
 
@@ -1299,11 +1285,11 @@ public:
 
 public slots:
     void sl1(MyType myType);
-    W_SLOT(sl1)
+    W_SLOT(sl1);
 
 signals:
     void sig_custom(const CustomString &string)
-    W_SIGNAL(sig_custom,string)
+    W_SIGNAL(sig_custom,string);
 
 public:
     int sum;
@@ -1335,7 +1321,7 @@ class ConstructibleClass : public QObject
 public:
     ConstructibleClass(QObject *parent = 0)
         : QObject(parent) {}
-    W_CONSTRUCTOR(QObject*)
+    W_CONSTRUCTOR(QObject*);
 };
 
 }
@@ -1366,13 +1352,11 @@ void tst_QMetaObject::invokeMetaConstructor()
         QVERIFY(qobject_cast<NamespaceWithConstructibleClass::ConstructibleClass*>(obj2) != 0);
     }
     // gadget shouldn't return a valid pointer
-#if QT_VERSION >= QT_VERSION_CHECK(5, 13, 0)
     {
         QCOMPARE(MyGadget::staticMetaObject.constructorCount(), 1);
         QTest::ignoreMessage(QtWarningMsg, "QMetaObject::newInstance: type MyGadget does not inherit QObject");
         QVERIFY(!MyGadget::staticMetaObject.newInstance());
     }
-#endif
 }
 
 void tst_QMetaObject::invokeTypedefTypes()
@@ -1409,10 +1393,6 @@ void tst_QMetaObject::invokeException()
 
 void tst_QMetaObject::invokeQueuedAutoRegister()
 {
-#if QT_VERSION < QT_VERSION_CHECK(5, 9, 0)
-    QSKIP("Bug fixed in Qt 5.9");
-#endif
-
     QtTestObject obj;
 
     auto shared = QSharedPointer<QtTestObject>::create(QStringLiteral("myShared-"));
@@ -1745,7 +1725,7 @@ void tst_QMetaObject::metaType()
 class ClassInfoTestObjectA : public QObject
 {
     W_OBJECT(ClassInfoTestObjectA)
-    W_CLASSINFO("Author", "Christopher Pike")
+    W_CLASSINFO("Author", "Christopher Pike");
 };
 
 W_OBJECT_IMPL(ClassInfoTestObjectA)
@@ -1843,15 +1823,15 @@ void tst_QMetaObject::indexOfMethod()
 class Base : public QObject {
     W_OBJECT(Base)
 public:
-    int test() {return 0;} W_SLOT(test)
-    int baseOnly() {return 0;} W_SLOT(baseOnly)
+    int test() {return 0;} W_SLOT(test);
+    int baseOnly() {return 0;} W_SLOT(baseOnly);
 };
 
 class Derived : public Base {
     W_OBJECT(Derived)
 
 public:
-    int test() {return 1;} W_SLOT(test)
+    int test() {return 1;} W_SLOT(test);
 };
 
 void tst_QMetaObject::firstMethod_data()
@@ -1875,6 +1855,9 @@ void tst_QMetaObject::firstMethod()
 #ifdef QT_BUILD_INTERNAL
     QMetaMethod firstMethod = QMetaObjectPrivate::firstMethod(&Derived::staticMetaObject, name);
     QCOMPARE(firstMethod, method);
+#else
+    Q_UNUSED(name);
+    Q_UNUSED(method);
 #endif
 }
 
@@ -2082,23 +2065,6 @@ void tst_QMetaObject::enumDebugStream_data()
 
 void tst_QMetaObject::enumDebugStream()
 {
-#if QT_VERSION < QT_VERSION_CHECK(5, 12, 0)
-    QTest::ignoreMessage(QtDebugMsg, "hello MyNamespace::MyClass::MyEnum(MyEnum2) world ");
-    MyNamespace::MyClass::MyEnum e = MyNamespace::MyClass::MyEnum2;
-    qDebug() << "hello" << e << "world";
-
-    QTest::ignoreMessage(QtDebugMsg, "Qt::WindowType(WindowTitleHint) Qt::WindowType(Window) Qt::WindowType(Desktop) Qt::WindowType(WindowSystemMenuHint)");
-    qDebug() << Qt::WindowTitleHint << Qt::Window <<Qt::Desktop << Qt::WindowSystemMenuHint;
-
-    QTest::ignoreMessage(QtDebugMsg, "hello QFlags<MyNamespace::MyClass::MyFlags>(MyFlag1) world");
-    MyNamespace::MyClass::MyFlags f1 = MyNamespace::MyClass::MyFlag1;
-    qDebug() << "hello" << f1 << "world";
-
-    MyNamespace::MyClass::MyFlags f2 = MyNamespace::MyClass::MyFlag2 | MyNamespace::MyClass::MyFlag3;
-    QTest::ignoreMessage(QtDebugMsg, "QFlags<MyNamespace::MyClass::MyFlags>(MyFlag1) QFlags<MyNamespace::MyClass::MyFlags>(MyFlag2|MyFlag3)");
-    qDebug() << f1 << f2;
-
-#elif QT_VERSION >= QT_VERSION_CHECK(5, 13, 0)
     QFETCH(int, verbosity);
 
     QFETCH(QString, normalEnumMsg);
@@ -2142,7 +2108,6 @@ void tst_QMetaObject::enumDebugStream()
     QTest::ignoreMessage(QtDebugMsg, qPrintable(flagAsEnumMsg));
     MyNamespace::MyClass::MyFlag f4 = MyNamespace::MyClass::MyFlag1;
     qDebug().verbosity(verbosity) << f4;
-#endif
 }
 
 void tst_QMetaObject::inherits_data()
@@ -2167,18 +2132,15 @@ void tst_QMetaObject::inherits_data()
 
 void tst_QMetaObject::inherits()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 7, 0)
     QFETCH(const QMetaObject *, derivedMetaObject);
     QFETCH(const QMetaObject *, baseMetaObject);
     QFETCH(bool, inheritsResult);
 
     QCOMPARE(derivedMetaObject->inherits(baseMetaObject), inheritsResult);
-#endif
 }
 
 void tst_QMetaObject::notifySignalsInParentClass()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
     MyNamespace::ClassWithSetterGetterSignalsAddsProperties obj;
     QCOMPARE(obj.metaObject()->property(obj.metaObject()->indexOfProperty("value1")).notifySignal().name(), QByteArray("value1Changed"));
     QCOMPARE(obj.metaObject()->property(obj.metaObject()->indexOfProperty("value2")).notifySignal().name(), QByteArray("value2Changed"));
@@ -2188,7 +2150,6 @@ void tst_QMetaObject::notifySignalsInParentClass()
 #if 0 // With verdigris, this is a compilation error when the NOTIFY signal is not a signal
     QTest::ignoreMessage(QtWarningMsg, "QMetaProperty::notifySignal: cannot find the NOTIFY signal thisIsNotASignal in class MyNamespace::ClassWithChangedSignalNewValue for property 'value3'");
     obj2.metaObject()->property(obj2.metaObject()->indexOfProperty("value3")).notifySignal();
-#endif
 #endif
 }
 

@@ -27,7 +27,7 @@ class tst_CppApi : public QObject
             w_cpp::StringViewArray<3>{
                 {w_cpp::viewLiteral("Easy"), w_cpp::viewLiteral("Normal"), w_cpp::viewLiteral("Hard")}});
     };
-    W_CPP_ENUM(Level, EnumInfos)
+    W_CPP_ENUM(Level, EnumInfos);
 
     enum XXX { X1, X2, X3 = 45 };
     template<>
@@ -38,16 +38,16 @@ class tst_CppApi : public QObject
             w_cpp::StringViewArray<3>{
                 {w_cpp::viewLiteral("X1"), w_cpp::viewLiteral("X2"), w_cpp::viewLiteral("X3")}});
     };
-    W_CPP_ENUM(XXX, EnumInfos)
+    W_CPP_ENUM(XXX, EnumInfos);
 
 private slots:
     void enumBase();
-    W_SLOT(enumBase, W_Access::Private)
+    W_SLOT(enumBase, W_Access::Private{});
 
     void firstTest();
-    W_SLOT(firstTest, W_Access::Private)
+    W_SLOT(firstTest, W_Access::Private{});
     void notifyTest();
-    W_SLOT(notifyTest, W_Access::Private)
+    W_SLOT(notifyTest, W_Access::Private{});
 
 private:
     QString m_name{};
@@ -64,38 +64,23 @@ public:
         W_CPP_SIGNAL_IMPL(decltype (&tst_CppApi::notifyPropertyChanged<I>), MySignals, I, 0);
     }
 
-#if __cplusplus > 201700L
     template<size_t I>
     static constexpr auto signalName() {
         if constexpr (I == 0) return w_cpp::viewLiteral("nameChanged");
         else if constexpr (I == 1) return w_cpp::viewLiteral("ageChanged");
         else if constexpr (I == 2) return w_cpp::viewLiteral("levelChanged");
     }
-    template<size_t I, class = std::enable_if_t<(I < 3)>>
+    template<size_t I> requires(I < 3)
     struct MySignals {
-        constexpr static auto signal = w_cpp::makeSignalBuilder(signalName<I>(), &tst_CppApi::notifyPropertyChanged<I>).build();
+        constexpr static auto getSignal() {
+            return &tst_CppApi::notifyPropertyChanged<I>;
+        }
+        constexpr static auto signal = w_cpp::makeSignalBuilder(signalName<I>(), &MySignals::getSignal).build();
     };
-#else
-    template<size_t I>
-    struct MySignals;
-    template<>
-    struct MySignals<0> {
-        constexpr static auto signal = w_cpp::makeSignalBuilder(w_cpp::viewLiteral("nameChanged"), &tst_CppApi::notifyPropertyChanged<0>).build();
-    };
-    template<>
-    struct MySignals<1> {
-        constexpr static auto signal = w_cpp::makeSignalBuilder(w_cpp::viewLiteral("ageChanged"), &tst_CppApi::notifyPropertyChanged<1>).build();
-    };
-    template<>
-    struct MySignals<2> {
-        constexpr static auto signal = w_cpp::makeSignalBuilder(w_cpp::viewLiteral("levelChanged"), &tst_CppApi::notifyPropertyChanged<2>).build();
-    };
-#endif
-    W_CPP_SIGNAL(MySignals)
+    W_CPP_SIGNAL(MySignals);
 
 private:
-#if __cplusplus > 201700L
-    template<size_t I, class = std::enable_if_t<(I < 2)>>
+    template<size_t I> requires(I < 2)
     struct MyProperties {
         constexpr static auto property = []{
             using namespace w_cpp;
@@ -116,29 +101,7 @@ private:
             }
         }();
     };
-#else
-    template<size_t I>
-    struct MyProperties;
-    template<>
-    struct MyProperties<0> {
-        constexpr static auto property = w_cpp::makeProperty<QString>(w_cpp::viewLiteral("name"), w_cpp::viewLiteral("QString"))
-                .setGetter(&tst_CppApi::getName)
-                .setNotify(&tst_CppApi::notifyPropertyChanged<0>);
-    };
-    template<>
-    struct MyProperties<1> {
-        constexpr static auto property = w_cpp::makeProperty<int>(w_cpp::viewLiteral("age"), w_cpp::viewLiteral("int"))
-                .setMember(&tst_CppApi::m_age)
-                .setNotify(&tst_CppApi::notifyPropertyChanged<1>);
-    };
-    template<>
-    struct MyProperties<2> {
-        constexpr static auto property = w_cpp::makeProperty<Level>(w_cpp::viewLiteral("level"), w_cpp::viewLiteral("Level"))
-                .setGetter(&tst_CppApi::getLevel)
-                .setNotify(&tst_CppApi::notifyPropertyChanged<2>);
-    };
-#endif
-    W_CPP_PROPERTY(MyProperties)
+    W_CPP_PROPERTY(MyProperties);
 };
 
 void tst_CppApi::firstTest()
