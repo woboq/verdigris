@@ -27,7 +27,7 @@ class tst_CppApi : public QObject
             w_cpp::StringViewArray<3>{
                 {w_cpp::viewLiteral("Easy"), w_cpp::viewLiteral("Normal"), w_cpp::viewLiteral("Hard")}});
     };
-    W_CPP_ENUM(Level, EnumInfos)
+    W_CPP_ENUM(Level, EnumInfos);
 
     enum XXX { X1, X2, X3 = 45 };
     template<>
@@ -38,7 +38,7 @@ class tst_CppApi : public QObject
             w_cpp::StringViewArray<3>{
                 {w_cpp::viewLiteral("X1"), w_cpp::viewLiteral("X2"), w_cpp::viewLiteral("X3")}});
     };
-    W_CPP_ENUM(XXX, EnumInfos)
+    W_CPP_ENUM(XXX, EnumInfos);
 
 private slots:
     void enumBase();

@@ -240,7 +240,7 @@ public:
     QBindable<int> bindableProp() { return &m_prop; }
 private:
     Q_OBJECT_COMPAT_PROPERTY(ChangeDuringDtorTester, int, m_prop, &ChangeDuringDtorTester::setProp)
-    W_PROPERTY(int, prop READ prop WRITE setProp BINDABLE bindableProp)
+    W_PROPERTY(int, prop READ prop WRITE setProp BINDABLE bindableProp);
 };
 W_OBJECT_IMPL(ChangeDuringDtorTester)
 
@@ -578,8 +578,8 @@ public:
     QBindable<int> bindableEagerProp2() {return QBindable<int>(&eagerData2);}
     Q_OBJECT_COMPAT_PROPERTY(BindingLoopTester, int, eagerData2, &BindingLoopTester::setEagerProp2)
 private:
-    W_PROPERTY(int, eagerProp READ eagerProp WRITE setEagerProp BINDABLE bindableEagerProp)
-    W_PROPERTY(int, eagerProp2 READ eagerProp2 WRITE setEagerProp2 BINDABLE bindableEagerProp2)
+    W_PROPERTY(int, eagerProp READ eagerProp WRITE setEagerProp BINDABLE bindableEagerProp);
+    W_PROPERTY(int, eagerProp2 READ eagerProp2 WRITE setEagerProp2 BINDABLE bindableEagerProp2);
 };
 W_OBJECT_IMPL(BindingLoopTester)
 
@@ -642,11 +642,11 @@ public:
     GEN(4)
     GEN(5)
 #undef GEN
-    W_PROPERTY(int, prop1 READ prop1 WRITE setProp1 BINDABLE bindableProp1)
-    W_PROPERTY(int, prop2 READ prop2 WRITE setProp2 BINDABLE bindableProp2)
-    W_PROPERTY(int, prop3 READ prop3 WRITE setProp3 BINDABLE bindableProp3)
-    W_PROPERTY(int, prop4 READ prop4 WRITE setProp4 BINDABLE bindableProp4)
-    W_PROPERTY(int, prop5 READ prop5 WRITE setProp5 BINDABLE bindableProp5)
+    W_PROPERTY(int, prop1 READ prop1 WRITE setProp1 BINDABLE bindableProp1);
+    W_PROPERTY(int, prop2 READ prop2 WRITE setProp2 BINDABLE bindableProp2);
+    W_PROPERTY(int, prop3 READ prop3 WRITE setProp3 BINDABLE bindableProp3);
+    W_PROPERTY(int, prop4 READ prop4 WRITE setProp4 BINDABLE bindableProp4);
+    W_PROPERTY(int, prop5 READ prop5 WRITE setProp5 BINDABLE bindableProp5);
 };
 W_OBJECT_IMPL(ReallocTester)
 
@@ -1179,11 +1179,11 @@ public:
     Q_OBJECT_COMPUTED_PROPERTY(MyQObject, int, computedData, &MyQObject::computed)
     Q_OBJECT_COMPAT_PROPERTY(MyQObject, int, compatData, &MyQObject::setCompat)
 
-    W_PROPERTY(int, foo READ foo WRITE setFoo NOTIFY fooChanged BINDABLE bindableFoo)
-    W_PROPERTY(int, bar READ bar WRITE setBar NOTIFY barChanged BINDABLE bindableBar)
-    W_PROPERTY(int, read READ read)
-    W_PROPERTY(int, computed READ computed STORED false)
-    W_PROPERTY(int, compat READ compat WRITE setCompat NOTIFY compatChanged)
+    W_PROPERTY(int, foo READ foo WRITE setFoo NOTIFY fooChanged BINDABLE bindableFoo);
+    W_PROPERTY(int, bar READ bar WRITE setBar NOTIFY barChanged BINDABLE bindableBar);
+    W_PROPERTY(int, read READ read);
+    W_PROPERTY(int, computed READ computed STORED false);
+    W_PROPERTY(int, compat READ compat WRITE setCompat NOTIFY compatChanged);
 };
 W_OBJECT_IMPL(MyQObject)
 
@@ -1577,16 +1577,16 @@ private:
     Q_OBJECT_COMPAT_PROPERTY_WITH_ARGS(CompatPropertyTester, int, prop3Data,
                                        &CompatPropertyTester::setProp3,
                                        &CompatPropertyTester::prop3Changed, 1)
-    W_PROPERTY(int, prop1 READ prop1 WRITE setProp1 BINDABLE bindableProp1)
-    W_PROPERTY(int, prop2 READ prop2 WRITE setProp2 NOTIFY prop2Changed BINDABLE bindableProp2)
-    W_PROPERTY(int, prop3 READ prop3 WRITE setProp3 NOTIFY prop3Changed BINDABLE bindableProp3)
+    W_PROPERTY(int, prop1 READ prop1 WRITE setProp1 BINDABLE bindableProp1);
+    W_PROPERTY(int, prop2 READ prop2 WRITE setProp2 NOTIFY prop2Changed BINDABLE bindableProp2);
+    W_PROPERTY(int, prop3 READ prop3 WRITE setProp3 NOTIFY prop3Changed BINDABLE bindableProp3);
 #if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
     Q_OBJECT_COMPAT_PROPERTY_WITH_ARGS(CompatPropertyTester, int, prop4Data,
                                        &CompatPropertyTester::setProp4,
                                        &CompatPropertyTester::prop4Changed,
                                        &CompatPropertyTester::prop4, 0)
 
-    W_PROPERTY(int, prop4 READ prop4 WRITE setProp4 NOTIFY prop4Changed BINDABLE bindableProp4)
+    W_PROPERTY(int, prop4 READ prop4 WRITE setProp4 NOTIFY prop4Changed BINDABLE bindableProp4);
 #endif
 };
 W_OBJECT_IMPL(CompatPropertyTester)
@@ -1697,9 +1697,9 @@ private:
     Q_OBJECT_COMPAT_PROPERTY(FakeDependencyCreator, int, prop2Data, &FakeDependencyCreator::setProp2, &FakeDependencyCreator::prop2Changed)
     Q_OBJECT_COMPAT_PROPERTY(FakeDependencyCreator, int, prop3Data, &FakeDependencyCreator::setProp3, &FakeDependencyCreator::prop3Changed)
 
-    W_PROPERTY(int, prop1 READ prop1 WRITE setProp1 NOTIFY prop1Changed BINDABLE bindableProp1)
-    W_PROPERTY(int, prop2 READ prop2 WRITE setProp2 NOTIFY prop2Changed BINDABLE bindableProp2)
-    W_PROPERTY(int, prop3 READ prop3 WRITE setProp3 NOTIFY prop3Changed BINDABLE bindableProp3)
+    W_PROPERTY(int, prop1 READ prop1 WRITE setProp1 NOTIFY prop1Changed BINDABLE bindableProp1);
+    W_PROPERTY(int, prop2 READ prop2 WRITE setProp2 NOTIFY prop2Changed BINDABLE bindableProp2);
+    W_PROPERTY(int, prop3 READ prop3 WRITE setProp3 NOTIFY prop3Changed BINDABLE bindableProp3);
 };
 W_OBJECT_IMPL(FakeDependencyCreator)
 
@@ -1768,9 +1768,9 @@ public:
                                        &PropertyWithInitializationTester::setProp3,
                                        CustomType(10, 20))
 
-    W_PROPERTY(int, prop1 READ prop1 WRITE setProp1 NOTIFY prop1Changed BINDABLE bindableProp1)
-    W_PROPERTY(CustomType, prop2 READ prop2 WRITE setProp2 BINDABLE bindableProp2)
-    W_PROPERTY(CustomType, prop3 READ prop3 WRITE setProp3 BINDABLE bindableProp3)
+    W_PROPERTY(int, prop1 READ prop1 WRITE setProp1 NOTIFY prop1Changed BINDABLE bindableProp1);
+    W_PROPERTY(CustomType, prop2 READ prop2 WRITE setProp2 BINDABLE bindableProp2);
+    W_PROPERTY(CustomType, prop3 READ prop3 WRITE setProp3 BINDABLE bindableProp3);
 };
 W_OBJECT_IMPL(PropertyWithInitializationTester)
 

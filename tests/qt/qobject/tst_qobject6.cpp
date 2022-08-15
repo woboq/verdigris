@@ -1669,18 +1669,18 @@ private:
     qreal m_qreal;
     CustomString m_customString;
 
-    W_ENUM(Alpha, Alpha0, Alpha1, Alpha2)
-    W_ENUM(Priority, High, Low, VeryHigh, VeryLow)
+    W_ENUM(Alpha, Alpha0, Alpha1, Alpha2);
+    W_ENUM(Priority, High, Low, VeryHigh, VeryLow);
 
-    W_PROPERTY(Alpha, alpha READ alpha WRITE setAlpha)
-    W_PROPERTY(Priority, priority READ priority WRITE setPriority)
-    W_PROPERTY(int, number READ number WRITE setNumber)
-    W_PROPERTY(QString, string READ string WRITE setString)
-    W_PROPERTY(QVariant, variant READ variant WRITE setVariant)
-    W_PROPERTY(CustomType*, custom READ custom WRITE setCustom)
-    W_PROPERTY(float, myFloat READ myFloat WRITE setMyFloat)
-    W_PROPERTY(qreal, myQReal READ myQReal WRITE setMyQReal)
-    W_PROPERTY(CustomString, customString READ customString WRITE setCustomString )
+    W_PROPERTY(Alpha, alpha READ alpha WRITE setAlpha);
+    W_PROPERTY(Priority, priority READ priority WRITE setPriority);
+    W_PROPERTY(int, number READ number WRITE setNumber);
+    W_PROPERTY(QString, string READ string WRITE setString);
+    W_PROPERTY(QVariant, variant READ variant WRITE setVariant);
+    W_PROPERTY(CustomType*, custom READ custom WRITE setCustom);
+    W_PROPERTY(float, myFloat READ myFloat WRITE setMyFloat);
+    W_PROPERTY(qreal, myQReal READ myQReal WRITE setMyQReal);
+    W_PROPERTY(CustomString, customString READ customString WRITE setCustomString );
 
 };
 
@@ -2427,7 +2427,7 @@ QT_END_NAMESPACE
 class FooObject: public QObject, public Foo::Bar
 {
     W_OBJECT(FooObject)
-    W_INTERFACE(Foo::Bar)
+    W_INTERFACE(Foo::Bar);
 public:
     int rtti() const override { return 42; }
 };
@@ -2435,7 +2435,7 @@ public:
 class BlehObject : public QObject, public Foo::Bleh
 {
     W_OBJECT(BlehObject)
-    W_INTERFACE(Foo::Bleh)
+    W_INTERFACE(Foo::Bleh);
 public:
     int rtti() const override { return 43; }
 };
@@ -4379,7 +4379,7 @@ class Constructable: public QObject
 
 public:
     Constructable(){}
-    W_CONSTRUCTOR()
+    W_CONSTRUCTOR();
 
 };
 

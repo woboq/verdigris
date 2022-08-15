@@ -55,7 +55,7 @@ class MyGadget
     W_GADGET(MyGadget)
 public:
     MyGadget() {}
-    W_CONSTRUCTOR()
+    W_CONSTRUCTOR();
 };
 
 W_GADGET_IMPL(MyGadget)
@@ -92,8 +92,8 @@ namespace MyNamespace {
             MyFlag2 = 0x20,
             MyFlag3 = 0x40
         };
-        W_DECLARE_FLAGS(MyFlags, MyFlag)
-        W_DECLARE_FLAGS(MyScopedFlags, MyScopedFlag)
+        W_DECLARE_FLAGS(MyFlags, MyFlag);
+        W_DECLARE_FLAGS(MyScopedFlags, MyScopedFlag);
 
         MyEnum myEnum() const { return m_enum; }
         void setMyEnum(MyEnum val) { m_enum = val; }
@@ -107,18 +107,18 @@ namespace MyNamespace {
               m_flags(MyFlag1|MyFlag2)
                 { }
     private:
-        W_ENUM(MyEnum, MyEnum1, MyEnum2, MyEnum3)
-        W_ENUM(MyScopedEnum, MyScopedEnum::Enum1, MyScopedEnum::Enum2, MyScopedEnum::Enum3)
-        W_ENUM(MyAnotherEnum,MyAnotherEnum1,MyAnotherEnum2,MyAnotherEnum3)
-        W_FLAG(MyFlags,MyFlag1,MyFlag2,MyFlag3)
-        W_FLAG(MyScopedFlags, MyScopedFlag::MyFlag1, MyScopedFlag::MyFlag2, MyScopedFlag::MyFlag3)
+        W_ENUM(MyEnum, MyEnum1, MyEnum2, MyEnum3);
+        W_ENUM(MyScopedEnum, MyScopedEnum::Enum1, MyScopedEnum::Enum2, MyScopedEnum::Enum3);
+        W_ENUM(MyAnotherEnum,MyAnotherEnum1,MyAnotherEnum2,MyAnotherEnum3);
+        W_FLAG(MyFlags,MyFlag1,MyFlag2,MyFlag3);
+        W_FLAG(MyScopedFlags, MyScopedFlag::MyFlag1, MyScopedFlag::MyFlag2, MyScopedFlag::MyFlag3);
 
 
         MyEnum m_enum;
         MyFlags m_flags;
 
-        W_PROPERTY(MyEnum, myEnum READ myEnum WRITE setMyEnum)
-        W_PROPERTY(MyFlags, myFlags READ myFlags WRITE setMyFlags)
+        W_PROPERTY(MyEnum, myEnum READ myEnum WRITE setMyEnum);
+        W_PROPERTY(MyFlags, myFlags READ myFlags WRITE setMyFlags);
 
 
     };
@@ -146,7 +146,7 @@ namespace MyNamespace {
             MyFlag2 = 0x02,
             MyFlag3 = 0x04
         };
-        Q_DECLARE_FLAGS(MyFlags, MyFlag)
+        W_DECLARE_FLAGS(MyFlags, MyFlag);
 
         MyEnum myEnum() const { return m_enum; }
         void setMyEnum(MyEnum val) { m_enum = val; }
@@ -161,15 +161,15 @@ namespace MyNamespace {
         { }
     private:
 
-        W_ENUM(MyEnum, MyEnum1, MyEnum2, MyEnum3)
-        W_ENUM(MyAnotherEnum,MyAnotherEnum1,MyAnotherEnum2,MyAnotherEnum3)
-        W_FLAG(MyFlags,MyFlag1,MyFlag2,MyFlag3)
+        W_ENUM(MyEnum, MyEnum1, MyEnum2, MyEnum3);
+        W_ENUM(MyAnotherEnum,MyAnotherEnum1,MyAnotherEnum2,MyAnotherEnum3);
+        W_FLAG(MyFlags,MyFlag1,MyFlag2,MyFlag3);
 
         MyEnum m_enum;
         MyFlags m_flags;
 
-        W_PROPERTY(MyEnum, myEnum READ myEnum WRITE setMyEnum)
-        W_PROPERTY(MyFlags, myFlags READ myFlags WRITE setMyFlags)
+        W_PROPERTY(MyEnum, myEnum READ myEnum WRITE setMyEnum);
+        W_PROPERTY(MyFlags, myFlags READ myFlags WRITE setMyFlags);
 
     };
 
@@ -222,8 +222,8 @@ namespace MyNamespace {
     class ClassWithSetterGetterSignalsAddsProperties : public ClassWithSetterGetterSignals
     {
         W_OBJECT(ClassWithSetterGetterSignalsAddsProperties)
-        W_PROPERTY(int, value1 READ value1 WRITE setValue1 NOTIFY value1Changed)
-        W_PROPERTY(int, value2 READ value2 WRITE setValue2 NOTIFY value2Changed)
+        W_PROPERTY(int, value1 READ value1 WRITE setValue1 NOTIFY value1Changed);
+        W_PROPERTY(int, value2 READ value2 WRITE setValue2 NOTIFY value2Changed);
     };
 
     class ClassWithChangedSignal : public QObject
@@ -256,10 +256,10 @@ namespace MyNamespace {
         private:
             int m_value2 = 0;
 
-        W_PROPERTY(int, value2 MEMBER m_value2 NOTIFY propertiesChanged)
+        W_PROPERTY(int, value2 MEMBER m_value2 NOTIFY propertiesChanged);
 #if 0 // With verdigris, this is a compilation error when the NOTIFY signal is not a signal
             int m_value3 = 0;
-        W_PROPERTY(int, value3 MEMBER m_value3 NOTIFY thisIsNotASignal)
+        W_PROPERTY(int, value3 MEMBER m_value3 NOTIFY thisIsNotASignal);
 #endif
     };
 }
@@ -381,16 +381,16 @@ signals:
     W_SIGNAL(value7Changed,_);
 
 
-    W_PROPERTY(EnumType, value WRITE setValue READ getValue)
-    W_PROPERTY(EnumType, value2 WRITE set_value READ get_value)
-    W_PROPERTY(MyStruct, value3 WRITE setVal3 READ val3)
-    W_PROPERTY(QList<QVariant>, value4 WRITE setVal4 READ val4)
-    W_PROPERTY(QVariantList, value5 WRITE setVal5 READ val5)
-    W_PROPERTY(int, value6 READ value6 NOTIFY value6Changed)
-    W_PROPERTY(MyStruct, value7 READ value7 WRITE setVal7 NOTIFY value7Changed)
-    W_PROPERTY(int, value8 READ value8)
-    W_PROPERTY(int, value9 READ value9 CONSTANT)
-    W_PROPERTY(int, value10 READ value10 FINAL)
+    W_PROPERTY(EnumType, value WRITE setValue READ getValue);
+    W_PROPERTY(EnumType, value2 WRITE set_value READ get_value);
+    W_PROPERTY(MyStruct, value3 WRITE setVal3 READ val3);
+    W_PROPERTY(QList<QVariant>, value4 WRITE setVal4 READ val4);
+    W_PROPERTY(QVariantList, value5 WRITE setVal5 READ val5);
+    W_PROPERTY(int, value6 READ value6 NOTIFY value6Changed);
+    W_PROPERTY(MyStruct, value7 READ value7 WRITE setVal7 NOTIFY value7Changed);
+    W_PROPERTY(int, value8 READ value8);
+    W_PROPERTY(int, value9 READ value9 CONSTANT);
+    W_PROPERTY(int, value10 READ value10 FINAL);
 
 };
 
@@ -546,7 +546,7 @@ public:
     QtTestObject();
     QtTestObject(const QString &s) : slotResult(s) {}
     QtTestObject(QObject *parent);
-    W_CONSTRUCTOR(QObject*)
+    W_CONSTRUCTOR(QObject*);
 
 public slots:
     void sl0();
@@ -1321,7 +1321,7 @@ class ConstructibleClass : public QObject
 public:
     ConstructibleClass(QObject *parent = 0)
         : QObject(parent) {}
-    W_CONSTRUCTOR(QObject*)
+    W_CONSTRUCTOR(QObject*);
 };
 
 }
@@ -1725,7 +1725,7 @@ void tst_QMetaObject::metaType()
 class ClassInfoTestObjectA : public QObject
 {
     W_OBJECT(ClassInfoTestObjectA)
-    W_CLASSINFO("Author", "Christopher Pike")
+    W_CLASSINFO("Author", "Christopher Pike");
 };
 
 W_OBJECT_IMPL(ClassInfoTestObjectA)

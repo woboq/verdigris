@@ -183,11 +183,8 @@ constexpr auto makeFlagInfo(
 ///
 /// \note you have to ensure that the struct is only valid for some `I`s.
 #define W_CPP_PROPERTY(a)                                                                                              \
-    static constexpr size_t W_MACRO_CONCAT(a, _O) =                                                                    \
-        w_internal::stateCount<__COUNTER__, w_internal::PropertyStateTag, W_ThisType**>();                             \
-    template<size_t I>                                                                                                 \
-    friend constexpr auto w_state(w_internal::Index<I>, w_internal::PropertyStateTag, W_ThisType**)                    \
-        W_RETURN((a<I - W_MACRO_CONCAT(a, _O)>::property))
+    static constexpr size_t W_MACRO_CONCAT(a, _O) = W_STATE_COUNT(PropertyState);                                      \
+    template<size_t I> W_STATE_STORE(PropertyState, I, (a<I - W_MACRO_CONCAT(a, _O)>::property))
 
 /// \macro W_CPP_SIGNAL(callback)
 /// allows to register multiple signals from a templated structure using regular C++.
@@ -205,13 +202,11 @@ constexpr auto makeFlagInfo(
 ///
 /// \note you have to ensure that the struct is only valid for some `I`s.
 #define W_CPP_SIGNAL(a)                                                                                                \
-    static constexpr size_t W_MACRO_CONCAT(a, _O) =                                                                    \
-        w_internal::stateCount<__COUNTER__, w_internal::SignalStateTag, W_ThisType**>();                               \
+    static constexpr size_t W_MACRO_CONCAT(a, _O) = W_STATE_COUNT(SignalState);                                        \
+    template<size_t I> W_STATE_STORE(SignalState, I, (a<I - W_MACRO_CONCAT(a, _O)>::signal));                          \
     template<size_t I>                                                                                                 \
-    friend constexpr auto w_state(w_internal::Index<I>, w_internal::SignalStateTag, W_ThisType**)                      \
-        W_RETURN((a<I - W_MACRO_CONCAT(a, _O)>::signal)) template<size_t I>                                            \
     requires(I >= W_MACRO_CONCAT(a, _O)) && requires { a<I - W_MACRO_CONCAT(a, _O)>::signal; }                         \
-    static void w_GetAccessSpecifierHelper(w_internal::Index<I>, w_internal::SignalStateTag, W_ThisType**)
+    W_ACCESS_HELPER(SignalState, I)
 
 /// \macro W_CPP_SIGNAL_IMPL(type, callback, index)
 /// allows to implement a signal
@@ -245,7 +240,7 @@ constexpr auto makeFlagInfo(
 ///     W_CPP_ENUM(Level, MyEnums)
 ///
 #define W_CPP_ENUM(type, a)                                                                                            \
-    W_STATE_APPEND(EnumState, a<type>::enumInfo)                                                                       \
+    W_STATE_APPEND(EnumState, a<type>::enumInfo);                                                                      \
     Q_ENUM(type)
 
 /// \macro W_CPP_ENUM_NS(type, callback)
@@ -255,7 +250,7 @@ constexpr auto makeFlagInfo(
 /// example usage:
 ///     Similar to usage of W_CPP_ENUM but you must use W_CPP_ENUM_NS instead of W_CPP_ENUM
 #define W_CPP_ENUM_NS(type, a)                                                                                         \
-    W_STATE_APPEND_NS(EnumState, a<type>::enumInfo)                                                                    \
+    W_STATE_APPEND_NS(EnumState, a<type>::enumInfo);                                                                   \
     Q_ENUM_NS(type)
 
 /// \macro W_CPP_FLAG(type, callback)
@@ -280,7 +275,7 @@ constexpr auto makeFlagInfo(
 ///     W_CPP_FLAG(Filters, MyEnums)
 ///
 #define W_CPP_FLAG(type, a)                                                                                            \
-    W_STATE_APPEND(EnumState, a<type>::flagInfo)                                                                       \
+    W_STATE_APPEND(EnumState, a<type>::flagInfo);                                                                      \
     Q_FLAG(type)
 
 /// \macro W_CPP_FLAG_NS(type, callback)
@@ -290,7 +285,7 @@ constexpr auto makeFlagInfo(
 /// example usage:
 ///     Similar to usage of W_CPP_FLAG but you must use W_CPP_FLAG_NS instead of W_CPP_FLAG
 #define W_CPP_FLAG_NS(type, a)                                                                                         \
-    W_STATE_APPEND_NS(EnumState, a<type>::flagInfo)                                                                    \
+    W_STATE_APPEND_NS(EnumState, a<type>::flagInfo);                                                                   \
     Q_FLAG_NS(type)
 
 #else // Q_MOC_RUN

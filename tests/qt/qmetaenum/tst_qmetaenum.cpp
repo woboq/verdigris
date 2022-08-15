@@ -39,9 +39,9 @@ class tst_QMetaEnum : public QObject
 public:
     enum SuperEnum { SuperValue1 = 1 , SuperValue2 = 2 };
     enum Flag { Flag1 = 1 , Flag2 = 2 };
-    W_DECLARE_FLAGS(Flags, Flag)
-    W_ENUM(SuperEnum, SuperValue1, SuperValue2)
-    W_FLAG(Flags, Flag1, Flag2)
+    W_DECLARE_FLAGS(Flags, Flag);
+    W_ENUM(SuperEnum, SuperValue1, SuperValue2);
+    W_FLAG(Flags, Flag1, Flag2);
 
 private:
     void fromType(); W_SLOT(fromType);

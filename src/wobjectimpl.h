@@ -100,13 +100,11 @@ template<class State> struct ClassInfoGenerator {
 /// auto-detect the access specifiers
 template<class T, class State, size_t I>
 concept IsPublic = requires(T** tpp) {
-    T::w_GetAccessSpecifierHelper(index<I>, State{}, tpp);
+    T::w_accessHelper(index<I>, State{}, tpp);
 };
 
 template<class T, class State, size_t I> struct Derived : T {
-    static constexpr bool w_accessOracle = requires(T * *tpp) {
-        T::w_GetAccessSpecifierHelper(index<I>, State{}, tpp);
-    };
+    static constexpr bool w_accessOracle = requires(T * *tpp) { T::w_accessHelper(index<I>, State{}, tpp); };
 };
 template<class T, class State, size_t I>
 concept IsProtected = !std::is_final_v<T> && Derived<T, State, I>::w_accessOracle;

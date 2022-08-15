@@ -72,7 +72,7 @@ template<typename O, typename T1, void (O::*)(const T1&), void (O::*F2)(const T1
 class FunctionTemplateParameter : public QObject {
     W_OBJECT(FunctionTemplateParameter)
     QString member;
-    W_PROPERTY(QString, member MEMBER member)
+    W_PROPERTY(QString, member MEMBER member);
 public:
 //signals:
     void hello() W_SIGNAL(hello);
@@ -220,13 +220,13 @@ public:
     W_INVOKABLE(readData);
     void writeData(const T &d) { data = d; }
     W_INVOKABLE(writeData);
-    W_PROPERTY(T, data READ readData WRITE writeData)
+    W_PROPERTY(T, data READ readData WRITE writeData);
 
     QVariant readVariant() { return QVariant::fromValue(data); }
     W_INVOKABLE(readVariant);
     void writeVariant(const QVariant &d) { data = qvariant_cast<T>(d); }
     W_INVOKABLE(writeVariant);
-    W_PROPERTY(QVariant, variant READ readVariant WRITE writeVariant)
+    W_PROPERTY(QVariant, variant READ readVariant WRITE writeVariant);
 };
 
 template<typename T> void testGadget(const T &val1)

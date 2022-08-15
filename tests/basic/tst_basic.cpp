@@ -91,7 +91,7 @@ void tst_Basic::firstTest()
 
 class BTestObj  : public QObject
 {   W_OBJECT(BTestObj)
-    W_CONSTRUCTOR()
+    W_CONSTRUCTOR();
     QString value;
 public:
     void setValue(const QString &s) { value = s; emit valueChanged(s); }
@@ -103,7 +103,7 @@ public:
     QString getValue() const { return value; }
 
     enum XXX { X1, X2, X3 = 45 };
-    W_ENUM(XXX, X1, X2, X3)
+    W_ENUM(XXX, X1, X2, X3);
 
     void setValueNoex(const QString &s) noexcept { value = s; emit valueChanged(s); }
     W_SLOT(setValueNoex);
@@ -122,15 +122,15 @@ public: /*signals*/
     void anotherSignal()
     W_SIGNAL(anotherSignal);
 public:
-    W_PROPERTY(QString, value1, &BTestObj::setValue, &BTestObj::getValue )
+    W_PROPERTY(QString, value1, &BTestObj::setValue, &BTestObj::getValue);
     QString member;
-    W_PROPERTY(QString, member1, &BTestObj::member)
-    W_PROPERTY(QString, all, &BTestObj::value, &BTestObj::setValue, &BTestObj::getValue)
+    W_PROPERTY(QString, member1, &BTestObj::member);
+    W_PROPERTY(QString, all, &BTestObj::value, &BTestObj::setValue, &BTestObj::getValue);
 
-    W_PROPERTY(QString, notify1 MEMBER member NOTIFY simpleSignal)
-    W_PROPERTY(QString, notify2 MEMBER member NOTIFY anotherSignal)
+    W_PROPERTY(QString, notify1 MEMBER member NOTIFY simpleSignal);
+    W_PROPERTY(QString, notify2 MEMBER member NOTIFY anotherSignal);
 
-    W_PROPERTY(QString, valueNoex, &BTestObj::setValueNoex, &BTestObj::getValueNoex)
+    W_PROPERTY(QString, valueNoex, &BTestObj::setValueNoex, &BTestObj::getValueNoex);
 };
 
 
@@ -238,7 +238,7 @@ void tst_Basic::subObject()
 class AbstractClass : public QObject {
     W_OBJECT(AbstractClass)
     int prop;
-    W_PROPERTY(int, prop MEMBER prop)
+    W_PROPERTY(int, prop MEMBER prop);
 
 public:
     void mySignal() W_SIGNAL(mySignal);
@@ -249,7 +249,7 @@ W_OBJECT_IMPL(AbstractClass)
 class ConcreateClass : public AbstractClass {
     W_OBJECT(ConcreateClass)
     int prop2;
-    W_PROPERTY(int, prop2 MEMBER prop2)
+    W_PROPERTY(int, prop2 MEMBER prop2);
 
 public:
     void mySignal2() W_SIGNAL(mySignal2);
@@ -408,7 +408,7 @@ public:
     int foo() { return 0;}
     void setFoo(int) { }
     void fooChanged(int v) W_SIGNAL(fooChanged, v);
-    W_PROPERTY(int, foo READ foo WRITE setFoo NOTIFY fooChanged)
+    W_PROPERTY(int, foo READ foo WRITE setFoo NOTIFY fooChanged);
 };
 W_OBJECT_IMPL(TestFinalObject)
 
@@ -417,7 +417,7 @@ struct TestFinalGadget final {
 public:
     int foo() { return 0;}
     void setFoo(int) { }
-    W_PROPERTY(int, foo READ foo WRITE setFoo)
+    W_PROPERTY(int, foo READ foo WRITE setFoo);
 };
 W_GADGET_IMPL(TestFinalGadget)
 

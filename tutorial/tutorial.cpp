@@ -171,12 +171,12 @@ public:
      */
 
     InvokableTutorial(int, int) {}
-    W_CONSTRUCTOR(int, int)
+    W_CONSTRUCTOR(int, int);
 
     InvokableTutorial(void*, void* =nullptr) {}
-    W_CONSTRUCTOR(void*, void*)
+    W_CONSTRUCTOR(void*, void*);
     // Because of the default argument we can also do that:  (only in this macro)
-    W_CONSTRUCTOR(void*)
+    W_CONSTRUCTOR(void*);
 };
 
 // For gadget there is also a different IMPL macro
@@ -210,21 +210,21 @@ public:
     W_SIGNAL(valueChanged);
 
     // Just like in Qt only with one additional comma after the type
-    W_PROPERTY(QString, prop1 READ value WRITE setValue NOTIFY valueChanged)
+    W_PROPERTY(QString, prop1 READ value WRITE setValue NOTIFY valueChanged);
 
     // Is equivalent to:
     W_PROPERTY(QString, prop2, &PropertyTutorial::value, &PropertyTutorial::setValue,
-               w_internal::Notify{}, &PropertyTutorial::valueChanged)
+               w_internal::Notify{}, &PropertyTutorial::valueChanged);
     // The setter and getter are matched by signature. add W_Notify before the notify signal
 
     // By member:
-    W_PROPERTY(QString, prop3 MEMBER m_value NOTIFY valueChanged)
+    W_PROPERTY(QString, prop3 MEMBER m_value NOTIFY valueChanged);
     //equivalent to
-    W_PROPERTY(QString, prop4, &PropertyTutorial::m_value, w_internal::Notify{}, &PropertyTutorial::valueChanged)
+    W_PROPERTY(QString, prop4, &PropertyTutorial::m_value, w_internal::Notify{}, &PropertyTutorial::valueChanged);
 
     // Optionally, you can put parentheses around the type, useful if it contains a comma
     QMap<int, int> m_map;
-    W_PROPERTY((QMap<int,int>), map  MEMBER m_map)
+    W_PROPERTY((QMap<int,int>), map  MEMBER m_map);
 };
 
 W_OBJECT_IMPL(PropertyTutorial)
@@ -243,7 +243,7 @@ public:
       but now that's all we have */
     enum MyEnum { Blue, Red, Green, Yellow = 45, Violet = Blue + Green*3 };
 
-    W_ENUM(MyEnum, Blue, Red, Green, Yellow)
+    W_ENUM(MyEnum, Blue, Red, Green, Yellow);
 
     // CS_ENUM is a bit better, but i don't believe CopperSpice works with complex expressions
     // such as "Blue + Green*3".

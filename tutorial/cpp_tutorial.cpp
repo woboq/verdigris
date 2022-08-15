@@ -129,7 +129,7 @@ private:
                 .setSetter(&GenericPropertyHolder::setPropertyValue<I>)
                 .setNotify(&GenericPropertyHolder::propertyChanged<I>);
     };
-    W_CPP_PROPERTY(RegisterProperties)
+    W_CPP_PROPERTY(RegisterProperties);
 };
 
 // Generate the QObject implementation for all instances of the template

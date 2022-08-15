@@ -207,7 +207,7 @@ template<PropertyFlags F> using SetPropertyFlag = const SetPropertyFlagT<F>*;
 template<uint> struct MethodFlagT;
 template<uint I> using MethodFlag = const MethodFlagT<I>*;
 template<uint I> constexpr uint methodFlagValue(MethodFlag<I>) { return I; }
-inline constexpr auto EmptyFlag = MethodFlag<0>{};
+using EmptyFlag = MethodFlag<0>;
 
 // From qmetaobject_p.h
 enum : uint {
@@ -329,7 +329,7 @@ template<typename... Args> constexpr auto makeMetaConstructorInfo(StringView nam
     return {name};
 }
 
-struct Empty{
+struct Empty {
     constexpr bool operator!=(std::nullptr_t) const { return false; }
 };
 
@@ -532,8 +532,10 @@ template<typename T, typename = void> struct EnumIsScoped {
 };
 template<typename T> struct EnumIsScoped<QFlags<T>, void> : EnumIsScoped<typename QFlags<T>::enum_type> {};
 
-template<typename T> struct QEnumOrQFlags { using Type = T; };
-template<typename T> struct QEnumOrQFlags<QFlags<T>> { using Type = T; };
+template<typename T> using EnumPtr = T*;
+template<typename T> auto extractFlagEnum(T*) -> T;
+template<typename T> auto extractFlagEnum(QFlags<T>*) -> T;
+template<typename T> using ExtractFlagEnum = decltype(extractFlagEnum(EnumPtr<T>{}));
 
 /// Holds information about an enum
 template<bool HasAlias, size_t Count_, typename Values_, typename Names, int Flags> struct MetaEnumInfo {
@@ -708,9 +710,6 @@ struct FriendHelper;
 #define W_OVERLOAD_REMOVE_HELPER(...) _
 #define W_OVERLOAD_REMOVE_HELPER_W_OVERLOAD_REMOVE_HELPER ,
 
-#define W_RETURN(R)                                                                                                    \
-    ->decltype(R) { return R; }
-
 namespace w_internal {
 
 /// We store state in overloads for this method.
@@ -764,21 +763,31 @@ using InterfaceStateTag = const struct InterfaceState*;
     static constexpr auto W_UnscopedName =                                                                             \
         w_internal::viewLiteral(#TYPE); /* so we don't repeat it in W_CONSTRUCTOR */                                   \
     friend struct w_internal::FriendHelper;                                                                            \
-    template<typename W_Flag> static inline constexpr int w_flagAlias(W_Flag) { return 0; }                            \
+    static inline constexpr int w_flagAlias(void*) { return 0; }                                                       \
                                                                                                                        \
 public:                                                                                                                \
     struct W_MetaObjectCreatorHelper
 
-#define W_STATE_APPEND(STATE, ...)                                                                                     \
-    friend constexpr auto w_state(                                                                                     \
-        w_internal::Index<w_internal::stateCount<__COUNTER__, w_internal::STATE##Tag, W_ThisType**>()>,                \
-        w_internal::STATE##Tag,                                                                                        \
-        W_ThisType**) W_RETURN((__VA_ARGS__))
-#define W_STATE_APPEND_NS(STATE, ...)                                                                                  \
-    static constexpr auto w_state(                                                                                     \
-        w_internal::Index<w_internal::stateCount<__COUNTER__, w_internal::STATE##Tag, W_ThisType**>()>,                \
-        w_internal::STATE##Tag,                                                                                        \
-        W_ThisType**) W_RETURN((__VA_ARGS__))
+#define W_STATE_COUNT(STATE) w_internal::stateCount<__COUNTER__, w_internal::STATE##Tag, W_ThisType**>()
+
+#define W_STATE_STORE(STATE, COUNT, ...)                                                                               \
+    friend constexpr auto w_state(w_internal::Index<COUNT>, w_internal::STATE##Tag, W_ThisType**)                      \
+        ->decltype((__VA_ARGS__)) {                                                                                    \
+        return (__VA_ARGS__);                                                                                          \
+    }                                                                                                                  \
+    friend struct w_internal::FriendHelper
+
+#define W_STATE_STORE_NS(STATE, COUNT, ...)                                                                            \
+    static constexpr auto w_state(w_internal::Index<COUNT>, w_internal::STATE##Tag, W_ThisType**)                      \
+        ->decltype((__VA_ARGS__)) {                                                                                    \
+        return (__VA_ARGS__);                                                                                          \
+    }
+
+#define W_STATE_APPEND(STATE, ...) W_STATE_STORE(STATE, W_STATE_COUNT(STATE), __VA_ARGS__)
+#define W_STATE_APPEND_NS(STATE, ...) W_STATE_STORE_NS(STATE, W_STATE_COUNT(STATE), __VA_ARGS__)
+
+#define W_ACCESS_HELPER(STATE, COUNT)                                                                                  \
+    static void w_accessHelper(w_internal::Index<COUNT>, w_internal::STATE##Tag, W_ThisType**)
 
 // public macros
 
@@ -812,7 +821,7 @@ public:                                                                         
         static constexpr auto qt_static_metacall = nullptr;                                                            \
     };                                                                                                                 \
     static constexpr auto W_UnscopedName = w_internal::viewLiteral(#NAMESPACE);                                        \
-    template<typename W_Flag> Q_DECL_UNUSED static inline constexpr int w_flagAlias(W_Flag) {                          \
+    Q_DECL_UNUSED static inline constexpr int w_flagAlias(void*) {                                                     \
         Q_UNUSED(W_UnscopedName)                                                                                       \
         return 0;                                                                                                      \
     }                                                                                                                  \
@@ -830,45 +839,43 @@ public:                                                                         
 /// - Specifying the the access: W_Access::Protected{}, W_Access::Private{}
 ///   or W_Access::Public{}. (By default, it is auto-detected from the location of this macro.)
 /// - W_Compat: for deprecated methods (equivalent of Q_MOC_COMPAT)
-#define W_SLOT(...) W_MACRO_MSVC_EXPAND(W_SLOT2(__LINE__, __VA_ARGS__, w_internal::EmptyFlag))
-#define W_SLOT_N(...) W_MACRO_MSVC_EXPAND(W_SLOT2(__VA_ARGS__, w_internal::EmptyFlag))
+#define W_SLOT(...) W_MACRO_MSVC_EXPAND(W_SLOT2(__LINE__, __VA_ARGS__, w_internal::EmptyFlag{}))
+#define W_SLOT_N(...) W_MACRO_MSVC_EXPAND(W_SLOT2(__VA_ARGS__, w_internal::EmptyFlag{}))
 #define W_SLOT2(N, NAME, ...)                                                                                          \
-    static constexpr int W_MACRO_CONCAT(w_slotIndex_##NAME, N) =                                                       \
-        w_internal::stateCount<__COUNTER__, w_internal::SlotStateTag, W_ThisType**>();                                 \
+    static constexpr int W_MACRO_CONCAT(w_slotIndex_##NAME, N) = W_STATE_COUNT(SlotState);                             \
     static constexpr auto W_MACRO_CONCAT(w_slotFunc_##NAME, N)()                                                       \
         ->std::remove_reference_t<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME))> {                      \
         return W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME);                                                     \
     }                                                                                                                  \
-    friend constexpr auto w_state(                                                                                     \
-        w_internal::Index<W_MACRO_CONCAT(w_slotIndex_##NAME, N)>, w_internal::SlotStateTag, W_ThisType**)              \
-        W_RETURN(w_internal::makeMetaSlotInfo(                                                                         \
+    W_STATE_STORE(                                                                                                     \
+        SlotState,                                                                                                     \
+        W_MACRO_CONCAT(w_slotIndex_##NAME, N),                                                                         \
+        w_internal::makeMetaSlotInfo(                                                                                  \
             &W_ThisType::W_MACRO_CONCAT(w_slotFunc_##NAME, N),                                                         \
             w_internal::viewLiteral(#NAME),                                                                            \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)),                                                           \
-            W_OVERLOAD_REMOVE(__VA_ARGS__))) static void                                                               \
-        w_GetAccessSpecifierHelper(                                                                                    \
-            w_internal::Index<W_MACRO_CONCAT(w_slotIndex_##NAME, N)>, w_internal::SlotStateTag, W_ThisType**)
+            W_OVERLOAD_REMOVE(__VA_ARGS__)));                                                                          \
+    W_ACCESS_HELPER(SlotState, W_MACRO_CONCAT(w_slotIndex_##NAME, N))
 
 /// \macro W_INVOKABLE( <slot name> [, (<parameters types>) ]  [, <flags>]* )
 /// Exactly like W_SLOT but for Q_INVOKABLE methods.
-#define W_INVOKABLE(...) W_MACRO_MSVC_EXPAND(W_INVOKABLE2(__LINE__, __VA_ARGS__, w_internal::EmptyFlag))
-#define W_INVOKABLE_N(...) W_MACRO_MSVC_EXPAND(W_INVOKABLE2(__VA_ARGS__, w_internal::EmptyFlag))
+#define W_INVOKABLE(...) W_MACRO_MSVC_EXPAND(W_INVOKABLE2(__LINE__, __VA_ARGS__, w_internal::EmptyFlag{}))
+#define W_INVOKABLE_N(...) W_MACRO_MSVC_EXPAND(W_INVOKABLE2(__VA_ARGS__, w_internal::EmptyFlag{}))
 #define W_INVOKABLE2(N, NAME, ...)                                                                                     \
-    static constexpr int W_MACRO_CONCAT(w_invokableIndex_##NAME, N) =                                                  \
-        w_internal::stateCount<__COUNTER__, w_internal::MethodStateTag, W_ThisType**>();                               \
+    static constexpr int W_MACRO_CONCAT(w_invokableIndex_##NAME, N) = W_STATE_COUNT(MethodState);                      \
     static constexpr auto W_MACRO_CONCAT(w_invokableFunc_##NAME, N)()                                                  \
         ->std::remove_reference_t<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME))> {                      \
         return W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME);                                                     \
     }                                                                                                                  \
-    friend constexpr auto w_state(                                                                                     \
-        w_internal::Index<W_MACRO_CONCAT(w_invokableIndex_##NAME, N)>, w_internal::MethodStateTag, W_ThisType**)       \
-        W_RETURN(w_internal::makeMetaMethodInfo(                                                                       \
+    W_STATE_STORE(                                                                                                     \
+        MethodState,                                                                                                   \
+        W_MACRO_CONCAT(w_invokableIndex_##NAME, N),                                                                    \
+        w_internal::makeMetaMethodInfo(                                                                                \
             &W_ThisType::W_MACRO_CONCAT(w_invokableFunc_##NAME, N),                                                    \
             w_internal::viewLiteral(#NAME),                                                                            \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)),                                                           \
-            W_OVERLOAD_REMOVE(__VA_ARGS__))) static void                                                               \
-        w_GetAccessSpecifierHelper(                                                                                    \
-            w_internal::Index<W_MACRO_CONCAT(w_invokableIndex_##NAME, N)>, w_internal::MethodStateTag, W_ThisType**)
+            W_OVERLOAD_REMOVE(__VA_ARGS__)));                                                                          \
+    W_ACCESS_HELPER(MethodState, W_MACRO_CONCAT(w_invokableIndex_##NAME, N))
 
 /// <signal signature>
 /// \macro W_SIGNAL(<signal name> [, (<parameter types>) ] , <parameter names> )
@@ -891,21 +898,20 @@ public:                                                                         
         return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME, N)>{this}(          \
             W_OVERLOAD_REMOVE(__VA_ARGS__));                                                                           \
     }                                                                                                                  \
-    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME, N) =                                                     \
-        w_internal::stateCount<__COUNTER__, w_internal::SignalStateTag, W_ThisType**>();                               \
+    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME, N) = W_STATE_COUNT(SignalState);                         \
     static constexpr auto W_MACRO_CONCAT(w_signalFunc_##NAME, N)()                                                     \
         ->std::remove_reference_t<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME))> {                      \
         return W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME);                                                     \
     }                                                                                                                  \
-    friend constexpr auto w_state(                                                                                     \
-        w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME, N)>, w_internal::SignalStateTag, W_ThisType**)          \
-        W_RETURN(w_internal::makeMetaSignalInfo(                                                                       \
+    W_STATE_STORE(                                                                                                     \
+        SignalState,                                                                                                   \
+        W_MACRO_CONCAT(w_signalIndex_##NAME, N),                                                                       \
+        w_internal::makeMetaSignalInfo(                                                                                \
             &W_ThisType::W_MACRO_CONCAT(w_signalFunc_##NAME, N),                                                       \
             w_internal::viewLiteral(#NAME),                                                                            \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)),                                                           \
-            W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)))) static void                                             \
-        w_GetAccessSpecifierHelper(                                                                                    \
-            w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME, N)>, w_internal::SignalStateTag, W_ThisType**)
+            W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__))));                                                        \
+    W_ACCESS_HELPER(SignalState, W_MACRO_CONCAT(w_signalIndex_##NAME, N))
 
 /// \macro W_SIGNAL_COMPAT
 /// Same as W_SIGNAL, but set the W_Compat flag
@@ -917,22 +923,21 @@ public:                                                                         
         return w_internal::SignalImplementation<w_SignalType, W_MACRO_CONCAT(w_signalIndex_##NAME, N)>{this}(          \
             W_OVERLOAD_REMOVE(__VA_ARGS__));                                                                           \
     }                                                                                                                  \
-    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME, N) =                                                     \
-        w_internal::stateCount<__COUNTER__, w_internal::SignalStateTag, W_ThisType**>();                               \
+    static constexpr int W_MACRO_CONCAT(w_signalIndex_##NAME, N) = W_STATE_COUNT(SignalState);                         \
     static constexpr auto W_MACRO_CONCAT(w_signalFunc_##NAME, N)()                                                     \
         ->std::remove_reference_t<decltype(W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME))> {                      \
         return W_OVERLOAD_RESOLVE(__VA_ARGS__)(&W_ThisType::NAME);                                                     \
     }                                                                                                                  \
-    friend constexpr auto w_state(                                                                                     \
-        w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME, N)>, w_internal::SignalStateTag, W_ThisType**)          \
-        W_RETURN(w_internal::makeMetaSignalInfo(                                                                       \
+    W_STATE_STORE(                                                                                                     \
+        SignalState,                                                                                                   \
+        W_MACRO_CONCAT(w_signalIndex_##NAME, N),                                                                       \
+        w_internal::makeMetaSignalInfo(                                                                                \
             &W_ThisType::W_MACRO_CONCAT(w_signalFunc_##NAME, N),                                                       \
             w_internal::viewLiteral(#NAME),                                                                            \
             W_PARAM_TOSTRING(W_OVERLOAD_TYPES(__VA_ARGS__)),                                                           \
             W_PARAM_TOSTRING(W_OVERLOAD_REMOVE(__VA_ARGS__)),                                                          \
-            W_Compat{})) static void                                                                                   \
-        w_GetAccessSpecifierHelper(                                                                                    \
-            w_internal::Index<W_MACRO_CONCAT(w_signalIndex_##NAME, N)>, w_internal::SignalStateTag, W_ThisType**)
+            W_Compat{}));                                                                                              \
+    W_ACCESS_HELPER(SignalState, W_MACRO_CONCAT(w_signalIndex_##NAME, N))
 
 /// \macro W_CONSTRUCTOR(<parameter types>)
 /// Declares that this class can be constructed with this list of argument.
@@ -997,50 +1002,50 @@ public:                                                                         
 /// \macro W_ENUM(<name>, <values>)
 /// Similar to Q_ENUM, but one must also manually write all the values.
 #define W_ENUM(NAME, ...)                                                                                              \
+    Q_ENUM(NAME)                                                                                                       \
     W_STATE_APPEND(                                                                                                    \
         EnumState,                                                                                                     \
         w_internal::makeMetaEnumInfo<NAME, false>(                                                                     \
             w_internal::viewLiteral(#NAME),                                                                            \
-            w_flagAlias(NAME{}),                                                                                       \
+            w_flagAlias(w_internal::EnumPtr<NAME>{}),                                                                  \
             w_internal::enum_sequence<NAME, __VA_ARGS__>{},                                                            \
-            W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__)))                                                               \
-    Q_ENUM(NAME)
+            W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__)))
 
 /// \macro W_ENUM_NS(<name>, <values>)
 /// Similar to Q_ENUM_NS, like W_ENUM
 #define W_ENUM_NS(NAME, ...)                                                                                           \
+    Q_ENUM_NS(NAME)                                                                                                    \
     W_STATE_APPEND_NS(                                                                                                 \
         EnumState,                                                                                                     \
         w_internal::makeMetaEnumInfo<NAME, false>(                                                                     \
             w_internal::viewLiteral(#NAME),                                                                            \
-            w_flagAlias(NAME{}),                                                                                       \
+            w_flagAlias(w_internal::EnumPtr<NAME>{}),                                                                  \
             w_internal::enum_sequence<NAME, __VA_ARGS__>{},                                                            \
-            W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__)))                                                               \
-    Q_ENUM_NS(NAME)
+            W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__)))
 
 /// \macro W_FLAG(<name>, <values>)
 /// Similar to Q_FLAG, but one must also manually write all the values.
 #define W_FLAG(NAME, ...)                                                                                              \
+    Q_FLAG(NAME)                                                                                                       \
     W_STATE_APPEND(                                                                                                    \
         EnumState,                                                                                                     \
-        w_internal::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type, true>(                                     \
+        w_internal::makeMetaEnumInfo<w_internal::ExtractFlagEnum<NAME>, true>(                                         \
             w_internal::viewLiteral(#NAME),                                                                            \
-            w_flagAlias(NAME{}),                                                                                       \
-            w_internal::enum_sequence<w_internal::QEnumOrQFlags<NAME>::Type, __VA_ARGS__>{},                           \
-            W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__)))                                                               \
-    Q_FLAG(NAME)
+            w_flagAlias(w_internal::EnumPtr<NAME>{}),                                                                  \
+            w_internal::enum_sequence<w_internal::ExtractFlagEnum<NAME>, __VA_ARGS__>{},                               \
+            W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__)))
 
 /// \macro W_FLAG_NS(<name>, <values>)
 /// Similar to Q_FLAG_NS, like W_FLAG.
 #define W_FLAG_NS(NAME, ...)                                                                                           \
+    Q_FLAG_NS(NAME)                                                                                                    \
     W_STATE_APPEND_NS(                                                                                                 \
         EnumState,                                                                                                     \
-        w_internal::makeMetaEnumInfo<w_internal::QEnumOrQFlags<NAME>::Type, true>(                                     \
+        w_internal::makeMetaEnumInfo<w_internal::ExtractFlagEnum<NAME>, true>(                                         \
             w_internal::viewLiteral(#NAME),                                                                            \
-            w_flagAlias(NAME{}),                                                                                       \
-            w_internal::enum_sequence<w_internal::QEnumOrQFlags<NAME>::Type, __VA_ARGS__>{},                           \
-            W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__)))                                                               \
-    Q_FLAG_NS(NAME)
+            w_flagAlias(w_internal::EnumPtr<NAME>{}),                                                                  \
+            w_internal::enum_sequence<w_internal::ExtractFlagEnum<NAME>, __VA_ARGS__>{},                               \
+            W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__)))
 
 /// Same as Q_CLASSINFO.  Note, Q_CLASSINFO_NS is required for namespace
 #define W_CLASSINFO(A, B)                                                                                              \
@@ -1061,8 +1066,9 @@ public:                                                                         
 
 /// Same as Q_DECLARE_FLAGS
 #define W_DECLARE_FLAGS(Flags, Enum)                                                                                   \
-    Q_DECLARE_FLAGS(Flags, Enum)                                                                                       \
-    static inline constexpr w_internal::StringView w_flagAlias(Flags) { return w_internal::viewLiteral(#Enum); }
+    using Flags = QFlags<Enum>;                                                                                        \
+    static inline constexpr w_internal::StringView w_flagAlias(Flags*) { return w_internal::viewLiteral(#Enum); }      \
+    friend struct w_internal::FriendHelper
 
 /// \macro W_REGISTER_ARGTYPE(TYPE)
 /// Registers TYPE so it can be used as a parameter of a signal/slot or return value.
