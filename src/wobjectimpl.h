@@ -1153,7 +1153,7 @@ QT_WARNING_POP
     static void registerMethodArgumentType(int _id, void **_a) {
         if (_id == I) {
             using ObjI = typename T::W_MetaObjectCreatorHelper::ObjectInfo;
-            constexpr auto f = ObjI::method(index<I>).func;
+            [[maybe_unused]] constexpr auto f = ObjI::method(index<I>).func;
             using P = QtPrivate::FunctionPointer<std::remove_const_t<decltype(f)>>;
             auto _t = QtPrivate::ConnectionTypes<typename P::Arguments>::types();
             uint arg = *reinterpret_cast<uint*>(_a[1]);
