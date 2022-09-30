@@ -33,47 +33,47 @@ class tst_Basic : public QObject
 
 private slots:
     void firstTest();
-    W_SLOT(firstTest, W_Access::Private)
+    W_SLOT(firstTest, W_Access::Private{});
 
     void signalSlot_data();
-    W_SLOT(signalSlot_data, W_Access::Private)
+    W_SLOT(signalSlot_data, W_Access::Private{});
     void signalSlot();
-    W_SLOT(signalSlot, W_Access::Private)
+    W_SLOT(signalSlot, W_Access::Private{});
 
     void property_data();
-    W_SLOT(property_data, W_Access::Private)
+    W_SLOT(property_data, W_Access::Private{});
     void property();
-    W_SLOT(property, W_Access::Private)
+    W_SLOT(property, W_Access::Private{});
 
     void signalArgs();
-    W_SLOT(signalArgs, W_Access::Private)
+    W_SLOT(signalArgs, W_Access::Private{});
 
     void overloadForm();
-    W_SLOT(overloadForm,(), W_Access::Private)
+    W_SLOT(overloadForm,(), W_Access::Private{});
 
     void enumBase();
-    W_SLOT(enumBase, W_Access::Private)
+    W_SLOT(enumBase, W_Access::Private{});
 
     void subObject();
-    W_SLOT(subObject, W_Access::Private)
+    W_SLOT(subObject, W_Access::Private{});
 
     void abstractParent();
-    W_SLOT(abstractParent, W_Access::Private)
+    W_SLOT(abstractParent, W_Access::Private{});
 
     void testQNamespace();
-    W_SLOT(testQNamespace, W_Access::Private)
+    W_SLOT(testQNamespace, W_Access::Private{});
 
     void testAccess();
-    W_SLOT(testAccess, W_Access::Private)
+    W_SLOT(testAccess, W_Access::Private{});
 
     void testAnotherTU();
-    W_SLOT(testAnotherTU, W_Access::Private)
+    W_SLOT(testAnotherTU, W_Access::Private{});
 
     void testFinal();
-    W_SLOT(testFinal, W_Access::Private)
+    W_SLOT(testFinal, W_Access::Private{});
 
     void overloadedAddressOperator();
-    W_SLOT(overloadedAddressOperator, W_Access::Private)
+    W_SLOT(overloadedAddressOperator, W_Access::Private{});
 };
 
 #include <wobjectimpl.h>
@@ -91,46 +91,46 @@ void tst_Basic::firstTest()
 
 class BTestObj  : public QObject
 {   W_OBJECT(BTestObj)
-    W_CONSTRUCTOR()
+    W_CONSTRUCTOR();
     QString value;
 public:
     void setValue(const QString &s) { value = s; emit valueChanged(s); }
-    W_SLOT(setValue)
+    W_SLOT(setValue);
 
     void resetValue() { value = QString(); }
-    W_SLOT(resetValue)
+    W_SLOT(resetValue);
 
     QString getValue() const { return value; }
 
     enum XXX { X1, X2, X3 = 45 };
-    W_ENUM(XXX, X1, X2, X3)
+    W_ENUM(XXX, X1, X2, X3);
 
     void setValueNoex(const QString &s) noexcept { value = s; emit valueChanged(s); }
-    W_SLOT(setValueNoex)
+    W_SLOT(setValueNoex);
     QString getValueNoex() const noexcept { return value; }
 
 public: /*signals*/
     void valueChanged(const QString &s)
-    W_SIGNAL(valueChanged, s)
+    W_SIGNAL(valueChanged, s);
 
     void simpleSignal()
-    W_SIGNAL(simpleSignal)
+    W_SIGNAL(simpleSignal);
 
     void signalSeveralArgs(int a, const QString &b, char * c = nullptr)
-    W_SIGNAL(signalSeveralArgs, a, b, c)
+    W_SIGNAL(signalSeveralArgs, a, b, c);
 
     void anotherSignal()
-    W_SIGNAL(anotherSignal)
+    W_SIGNAL(anotherSignal);
 public:
-    W_PROPERTY(QString, value1, &BTestObj::setValue, &BTestObj::getValue )
+    W_PROPERTY(QString, value1, &BTestObj::setValue, &BTestObj::getValue);
     QString member;
-    W_PROPERTY(QString, member1, &BTestObj::member)
-    W_PROPERTY(QString, all, &BTestObj::value, &BTestObj::setValue, &BTestObj::getValue)
+    W_PROPERTY(QString, member1, &BTestObj::member);
+    W_PROPERTY(QString, all, &BTestObj::value, &BTestObj::setValue, &BTestObj::getValue);
 
-    W_PROPERTY(QString, notify1 MEMBER member NOTIFY simpleSignal)
-    W_PROPERTY(QString, notify2 MEMBER member NOTIFY anotherSignal)
+    W_PROPERTY(QString, notify1 MEMBER member NOTIFY simpleSignal);
+    W_PROPERTY(QString, notify2 MEMBER member NOTIFY anotherSignal);
 
-    W_PROPERTY(QString, valueNoex, &BTestObj::setValueNoex, &BTestObj::getValueNoex)
+    W_PROPERTY(QString, valueNoex, &BTestObj::setValueNoex, &BTestObj::getValueNoex);
 };
 
 
@@ -196,9 +196,9 @@ class OverloadForm  : public QObject
 {   W_OBJECT(OverloadForm)
 public:
     int over1(My, int x) { return x; }
-    W_SLOT(over1,(My,int))
+    W_SLOT(over1,(My,int));
     int over1() const { return 34; }
-    W_INVOKABLE(over1,())
+    W_INVOKABLE(over1,());
 };
 
 
@@ -225,7 +225,7 @@ void tst_Basic::enumBase()
 struct tst_Basic::SubObject : QObject {
     W_OBJECT(SubObject)
 public:
-    void mySignal() W_SIGNAL(mySignal)
+    void mySignal() W_SIGNAL(mySignal);
 };
 
 W_OBJECT_IMPL(tst_Basic::SubObject)
@@ -238,21 +238,21 @@ void tst_Basic::subObject()
 class AbstractClass : public QObject {
     W_OBJECT(AbstractClass)
     int prop;
-    W_PROPERTY(int, prop MEMBER prop)
+    W_PROPERTY(int, prop MEMBER prop);
 
 public:
-    void mySignal() W_SIGNAL(mySignal)
-    virtual void pureSlot() = 0; W_SLOT(pureSlot)
+    void mySignal() W_SIGNAL(mySignal);
+    virtual void pureSlot() = 0; W_SLOT(pureSlot);
 };
 W_OBJECT_IMPL(AbstractClass)
 
 class ConcreateClass : public AbstractClass {
     W_OBJECT(ConcreateClass)
     int prop2;
-    W_PROPERTY(int, prop2 MEMBER prop2)
+    W_PROPERTY(int, prop2 MEMBER prop2);
 
 public:
-    void mySignal2() W_SIGNAL(mySignal2)
+    void mySignal2() W_SIGNAL(mySignal2);
     void pureSlot() override {}
 };
 W_OBJECT_IMPL(ConcreateClass)
@@ -344,27 +344,27 @@ struct TestAccess : QObject  {
     W_OBJECT(TestAccess)
 
 public:
-    void publicSlot(){} W_SLOT(publicSlot)
-    void publicMethod(){} W_INVOKABLE(publicMethod)
-    void forcePrivateSlot(){} W_SLOT(forcePrivateSlot, W_Access::Private)
-    void forcePrivateMethod(){} W_INVOKABLE(forcePrivateMethod, W_Access::Private)
+    void publicSlot(){} W_SLOT(publicSlot);
+    void publicMethod(){} W_INVOKABLE(publicMethod);
+    void forcePrivateSlot(){} W_SLOT(forcePrivateSlot, W_Access::Private{});
+    void forcePrivateMethod(){} W_INVOKABLE(forcePrivateMethod, W_Access::Private{});
 protected:
-    void protectedSlot(){} W_SLOT(protectedSlot)
-    void protectedMethod(){} W_INVOKABLE(protectedMethod)
+    void protectedSlot(){} W_SLOT(protectedSlot);
+    void protectedMethod(){} W_INVOKABLE(protectedMethod);
 private:
-    void privateSlot(){} W_SLOT(privateSlot)
-    void privateMethod(){} W_INVOKABLE(privateMethod)
-    void forcePublicSlot(){} W_SLOT(forcePublicSlot, W_Access::Public)
-    void forcePublicMethod(){} W_INVOKABLE(forcePublicMethod, W_Access::Public)
+    void privateSlot(){} W_SLOT(privateSlot);
+    void privateMethod(){} W_INVOKABLE(privateMethod);
+    void forcePublicSlot(){} W_SLOT(forcePublicSlot, W_Access::Public{});
+    void forcePublicMethod(){} W_INVOKABLE(forcePublicMethod, W_Access::Public{});
 };
 W_OBJECT_IMPL(TestAccess)
 
 struct TestAccess2 final {
     W_GADGET(TestAccess2)
 private:
-    void slot(int){} W_SLOT(slot, (int))
+    void slot(int){} W_SLOT(slot, (int));
 public:
-    void slot(double){} W_SLOT(slot, (double))
+    void slot(double){} W_SLOT(slot, (double));
 
 };
 W_GADGET_IMPL(TestAccess2)
@@ -407,8 +407,8 @@ struct TestFinalObject final : public QObject {
 public:
     int foo() { return 0;}
     void setFoo(int) { }
-    void fooChanged(int v) W_SIGNAL(fooChanged, v)
-    W_PROPERTY(int, foo READ foo WRITE setFoo NOTIFY fooChanged)
+    void fooChanged(int v) W_SIGNAL(fooChanged, v);
+    W_PROPERTY(int, foo READ foo WRITE setFoo NOTIFY fooChanged);
 };
 W_OBJECT_IMPL(TestFinalObject)
 
@@ -417,7 +417,7 @@ struct TestFinalGadget final {
 public:
     int foo() { return 0;}
     void setFoo(int) { }
-    W_PROPERTY(int, foo READ foo WRITE setFoo)
+    W_PROPERTY(int, foo READ foo WRITE setFoo);
 };
 W_GADGET_IMPL(TestFinalGadget)
 
@@ -444,14 +444,14 @@ class OverloadedAddressOperator : public QObject
 public:
    void* operator&() { return nullptr; }
 signals:
-   void self(OverloadedAddressOperator &s) W_SIGNAL(self, s)
+   void self(OverloadedAddressOperator &s) W_SIGNAL(self, s);
 public slots:
     void assertSelf(OverloadedAddressOperator &o)
     {
         QCOMPARE(std::addressof(o), this);
         testResult = (std::addressof(o) == this);
     }
-    W_SLOT(assertSelf)
+    W_SLOT(assertSelf);
 public:
     bool testResult = false;
 };

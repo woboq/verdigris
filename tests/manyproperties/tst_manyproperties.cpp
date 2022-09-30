@@ -26,7 +26,7 @@ class tst_ManyProperties : public QObject
 
 private slots:
     void manyProperties();
-    W_SLOT(manyProperties)
+    W_SLOT(manyProperties);
 };
 
 
@@ -36,73 +36,73 @@ class HasManyProperties : public QObject
 public:
 #define DeclareProperty(Type, Name) \
     Type m_##Name; \
-    void Name##Changed() W_SIGNAL(Name##Changed) \
+    void Name##Changed() W_SIGNAL(Name##Changed); \
     W_PROPERTY(Type, Name MEMBER m_##Name NOTIFY Name##Changed) \
 
 
-    DeclareProperty(QString, prop0)
-    DeclareProperty(QString, prop1)
-    DeclareProperty(QString, prop2)
-    DeclareProperty(QString, prop3)
-    DeclareProperty(QString, prop4)
-    DeclareProperty(QString, prop5)
-    DeclareProperty(QString, prop6)
-    DeclareProperty(QString, prop7)
-    DeclareProperty(QString, prop8)
-    DeclareProperty(QString, prop9)
-    DeclareProperty(QString, prop10)
-    DeclareProperty(QString, prop11)
-    DeclareProperty(QString, prop12)
-    DeclareProperty(QString, prop13)
-    DeclareProperty(QString, prop14)
-    DeclareProperty(QString, prop15)
-    DeclareProperty(QString, prop16)
-    DeclareProperty(QString, prop17)
-    DeclareProperty(QString, prop18)
-    DeclareProperty(QString, prop19)
-    DeclareProperty(QString, prop20)
-    DeclareProperty(QString, prop21)
-    DeclareProperty(QString, prop22)
-    DeclareProperty(QString, prop23)
-    DeclareProperty(QString, prop24)
-    DeclareProperty(QString, prop25)
-    DeclareProperty(QString, prop26)
-    DeclareProperty(QString, prop27)
-    DeclareProperty(QString, prop28)
-    DeclareProperty(QString, prop29)
-    DeclareProperty(QString, prop30)
-    DeclareProperty(QString, prop31)
-    DeclareProperty(QString, prop32)
-    DeclareProperty(QString, prop33)
-    DeclareProperty(QString, prop34)
-    DeclareProperty(QString, prop35)
-    DeclareProperty(QString, prop36)
-    DeclareProperty(QString, prop37)
-    DeclareProperty(QString, prop38)
-    DeclareProperty(QString, prop39)
-    DeclareProperty(QString, prop40)
-    DeclareProperty(QString, prop41)
-    DeclareProperty(QString, prop42)
-    DeclareProperty(QString, prop43)
-    DeclareProperty(QString, prop44)
-    DeclareProperty(QString, prop45)
-    DeclareProperty(QString, prop46)
-    DeclareProperty(QString, prop47)
-    DeclareProperty(QString, prop48)
-    DeclareProperty(QString, prop49)
-    DeclareProperty(QString, prop50)
-    DeclareProperty(QString, prop51)
-    DeclareProperty(QString, prop52)
-    DeclareProperty(QString, prop53)
-    DeclareProperty(QString, prop54)
-    DeclareProperty(QString, prop55)
-    DeclareProperty(QString, prop56)
-    DeclareProperty(QString, prop57)
-    DeclareProperty(QString, prop58)
-    DeclareProperty(QString, prop59)
-    DeclareProperty(QString, prop60)
+    DeclareProperty(QString, prop0);
+    DeclareProperty(QString, prop1);
+    DeclareProperty(QString, prop2);
+    DeclareProperty(QString, prop3);
+    DeclareProperty(QString, prop4);
+    DeclareProperty(QString, prop5);
+    DeclareProperty(QString, prop6);
+    DeclareProperty(QString, prop7);
+    DeclareProperty(QString, prop8);
+    DeclareProperty(QString, prop9);
+    DeclareProperty(QString, prop10);
+    DeclareProperty(QString, prop11);
+    DeclareProperty(QString, prop12);
+    DeclareProperty(QString, prop13);
+    DeclareProperty(QString, prop14);
+    DeclareProperty(QString, prop15);
+    DeclareProperty(QString, prop16);
+    DeclareProperty(QString, prop17);
+    DeclareProperty(QString, prop18);
+    DeclareProperty(QString, prop19);
+    DeclareProperty(QString, prop20);
+    DeclareProperty(QString, prop21);
+    DeclareProperty(QString, prop22);
+    DeclareProperty(QString, prop23);
+    DeclareProperty(QString, prop24);
+    DeclareProperty(QString, prop25);
+    DeclareProperty(QString, prop26);
+    DeclareProperty(QString, prop27);
+    DeclareProperty(QString, prop28);
+    DeclareProperty(QString, prop29);
+    DeclareProperty(QString, prop30);
+    DeclareProperty(QString, prop31);
+    DeclareProperty(QString, prop32);
+    DeclareProperty(QString, prop33);
+    DeclareProperty(QString, prop34);
+    DeclareProperty(QString, prop35);
+    DeclareProperty(QString, prop36);
+    DeclareProperty(QString, prop37);
+    DeclareProperty(QString, prop38);
+    DeclareProperty(QString, prop39);
+    DeclareProperty(QString, prop40);
+    DeclareProperty(QString, prop41);
+    DeclareProperty(QString, prop42);
+    DeclareProperty(QString, prop43);
+    DeclareProperty(QString, prop44);
+    DeclareProperty(QString, prop45);
+    DeclareProperty(QString, prop46);
+    DeclareProperty(QString, prop47);
+    DeclareProperty(QString, prop48);
+    DeclareProperty(QString, prop49);
+    DeclareProperty(QString, prop50);
+    DeclareProperty(QString, prop51);
+    DeclareProperty(QString, prop52);
+    DeclareProperty(QString, prop53);
+    DeclareProperty(QString, prop54);
+    DeclareProperty(QString, prop55);
+    DeclareProperty(QString, prop56);
+    DeclareProperty(QString, prop57);
+    DeclareProperty(QString, prop58);
+    DeclareProperty(QString, prop59);
+    DeclareProperty(QString, prop60);
 
-    DeclareProperty(int, intProp0)
+    DeclareProperty(int, intProp0);
 };
 
 

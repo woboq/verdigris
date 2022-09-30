@@ -84,16 +84,19 @@ private:
     // Register a property changed signal for all properties
     // Verdigris increments I starting with 0 until this template is invalid.
     // So you should limit the instantiation to the number of Properties.
-    template<size_t I, class = std::enable_if_t<(I < sizeof...(Properties))>>
+    template<size_t I> requires(I < sizeof...(Properties))
     struct PropertyChangedSignals {
         using Property = PropertyAt<I>;
         constexpr static auto signalName = getPropertyChangedName(Wrap<Property>{});
+        constexpr static auto getSignal() {
+            return &GenericPropertyHolder::propertyChanged<I>;
+        }
         // signal is the only thing used by the W_CPP_SIGNAL macro.
         constexpr static auto signal =
-            w_cpp::makeSignalBuilder(signalName, &GenericPropertyHolder::propertyChanged<I>).build();
+            w_cpp::makeSignalBuilder(signalName, &PropertyChangedSignals::getSignal).build();
     };
     // The W_CPP_SIGNAL macro registers our PropertyChangedSignals template to Verdigris
-    W_CPP_SIGNAL(PropertyChangedSignals)
+    W_CPP_SIGNAL(PropertyChangedSignals);
 
     // Next you should implement the getter and setter functions for all properties.
     // QML does not care about our C++ types so you can convert them directly to QVariant.
@@ -115,7 +118,7 @@ private:
 
     // Finally you have everything to register all your properties
     // Again Verdigris increments I starting with 0 until this template is no longer valid.
-    template<size_t I, class = std::enable_if_t<(I < sizeof...(Properties))>>
+    template<size_t I> requires(I < sizeof...(Properties))
     struct RegisterProperties {
         using Property = PropertyAt<I>;
         constexpr static auto name = getPropertyName(Wrap<Property>{});
@@ -126,7 +129,7 @@ private:
                 .setSetter(&GenericPropertyHolder::setPropertyValue<I>)
                 .setNotify(&GenericPropertyHolder::propertyChanged<I>);
     };
-    W_CPP_PROPERTY(RegisterProperties)
+    W_CPP_PROPERTY(RegisterProperties);
 };
 
 // Generate the QObject implementation for all instances of the template
@@ -147,10 +150,6 @@ constexpr auto w_explicitObjectName(PersonHolder*) {
 #include <QQmlContext>
 
 int main(int argc, char *argv[]) {
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-#endif
-
     QGuiApplication app{argc, argv};
 
     QQmlApplicationEngine engine{};

@@ -44,7 +44,7 @@ public /* slots */:
     /* If you're going to use the new connection syntax, no need to do anything else for slots.
        But if you want to use the other connection syntax, or QML, you need to register the slot
        just like so: */
-    W_SLOT(mySlot)
+    W_SLOT(mySlot);
     /* The W_SLOT has optional arguments that we will see later. It is already much simpler than
        the two CopperSpice macros: CS_SLOT_1 and CS_SLOT_2. Also, CopperSpice slots cannot be
        declared inline in the class definition. */
@@ -53,7 +53,7 @@ public /* signals */:
 
     // Now a signal:
     void mySignal(const QString &name)
-    W_SIGNAL(mySignal, name)
+    W_SIGNAL(mySignal, name);
     /* Note the absence of semi colon after the signal declaration */
 };
 
@@ -95,25 +95,25 @@ class SlotTutorial : public QObject {
 protected:
     // Declares a protected slot
     void protectedSlot() {}
-    W_SLOT(protectedSlot)
+    W_SLOT(protectedSlot);
 private:
     // and a private slot
     void privateSlot() {}
-    W_SLOT(privateSlot)
+    W_SLOT(privateSlot);
 
 public:
     // Overloaded function needs a parameter list as second argument of the macro
     // to disambiguate
     void overload() {}
-    W_SLOT(overload, ())
+    W_SLOT(overload, ());
 
     void overload(int) {}
-    W_SLOT(overload, (int))
+    W_SLOT(overload, (int));
 private:
     void overload(double) {}
-    W_SLOT(overload, (double))
+    W_SLOT(overload, (double));
     void overload(int, int) {}
-    W_SLOT(overload, (int, int))
+    W_SLOT(overload, (int, int));
     // Note: for custom type that are not const reference, one must use the normalized signature
 };
 
@@ -137,14 +137,14 @@ class SignalTutorial : public QObject {
 public:
     // Example:
     void sig1(int a , int b)
-    W_SIGNAL(sig1, a, b)
+    W_SIGNAL(sig1, a, b);
 
     // Or on the same line
-    void sig2(int a, int b) W_SIGNAL(sig2, a, b)
+    void sig2(int a, int b) W_SIGNAL(sig2, a, b);
 
     // For overloaded signals:
     void overload(int a, int b)
-    W_SIGNAL(overload, (int, int), a, b)
+    W_SIGNAL(overload, (int, int), a, b);
 };
 
 W_OBJECT_IMPL(SignalTutorial)
@@ -162,7 +162,7 @@ public:
     /** W_INVOKABLE is the same as W_SLOT.
      * It can take another flag (W_Scriptable) which corresponds to Q_SCRIPTABLE */
     void myInvokable() {}
-    W_INVOKABLE(myInvokable)
+    W_INVOKABLE(myInvokable);
 
 
     /** W_CONSTRUCTOR(<parameter types>)
@@ -171,12 +171,12 @@ public:
      */
 
     InvokableTutorial(int, int) {}
-    W_CONSTRUCTOR(int, int)
+    W_CONSTRUCTOR(int, int);
 
     InvokableTutorial(void*, void* =nullptr) {}
-    W_CONSTRUCTOR(void*, void*)
+    W_CONSTRUCTOR(void*, void*);
     // Because of the default argument we can also do that:  (only in this macro)
-    W_CONSTRUCTOR(void*)
+    W_CONSTRUCTOR(void*);
 };
 
 // For gadget there is also a different IMPL macro
@@ -207,24 +207,24 @@ public:
         emit valueChanged();
     }
     void valueChanged()
-    W_SIGNAL(valueChanged)
+    W_SIGNAL(valueChanged);
 
     // Just like in Qt only with one additional comma after the type
-    W_PROPERTY(QString, prop1 READ value WRITE setValue NOTIFY valueChanged)
+    W_PROPERTY(QString, prop1 READ value WRITE setValue NOTIFY valueChanged);
 
     // Is equivalent to:
     W_PROPERTY(QString, prop2, &PropertyTutorial::value, &PropertyTutorial::setValue,
-               W_Notify, &PropertyTutorial::valueChanged)
+               w_internal::Notify{}, &PropertyTutorial::valueChanged);
     // The setter and getter are matched by signature. add W_Notify before the notify signal
 
     // By member:
-    W_PROPERTY(QString, prop3 MEMBER m_value NOTIFY valueChanged)
+    W_PROPERTY(QString, prop3 MEMBER m_value NOTIFY valueChanged);
     //equivalent to
-    W_PROPERTY(QString, prop4, &PropertyTutorial::m_value, W_Notify, &PropertyTutorial::valueChanged)
+    W_PROPERTY(QString, prop4, &PropertyTutorial::m_value, w_internal::Notify{}, &PropertyTutorial::valueChanged);
 
     // Optionally, you can put parentheses around the type, useful if it contains a comma
     QMap<int, int> m_map;
-    W_PROPERTY((QMap<int,int>), map  MEMBER m_map)
+    W_PROPERTY((QMap<int,int>), map  MEMBER m_map);
 };
 
 W_OBJECT_IMPL(PropertyTutorial)
@@ -243,7 +243,7 @@ public:
       but now that's all we have */
     enum MyEnum { Blue, Red, Green, Yellow = 45, Violet = Blue + Green*3 };
 
-    W_ENUM(MyEnum, Blue, Red, Green, Yellow)
+    W_ENUM(MyEnum, Blue, Red, Green, Yellow);
 
     // CS_ENUM is a bit better, but i don't believe CopperSpice works with complex expressions
     // such as "Blue + Green*3".
@@ -286,17 +286,17 @@ class ArgTypes : public QObject {
     W_OBJECT(ArgTypes)
 public:
     void slot1(CustomType1, CustomType2) {}
-    W_SLOT(slot1) // OK, all arguments register with W_REGISTER_ARGTYPE
+    W_SLOT(slot1); // OK, all arguments register with W_REGISTER_ARGTYPE
 
     void slot2(CustomType1 *, CustomType2 *) {}
-    W_SLOT(slot2, (CustomType1*,CustomType2*)) // Need to use the overload syntax because
+    W_SLOT(slot2, (CustomType1*,CustomType2*)); // Need to use the overload syntax because
                                                // CustomType2* is not registered
 
     typedef int MyInt;
     typedef CustomType1 MyCustomType1;
 
     void slot3(ArgTypes::MyInt, ArgTypes::MyCustomType1) {}
-    W_SLOT(slot3, (ArgTypes::MyInt,ArgTypes::MyCustomType1)) // Need to use the overload syntax to use
+    W_SLOT(slot3, (ArgTypes::MyInt,ArgTypes::MyCustomType1)); // Need to use the overload syntax to use
                                                          // different type name (typedefs)
 
 };
@@ -315,10 +315,10 @@ class MyTemplate : public QObject {
 public:
     // Template class can have slots and signals that depends on the parameter:
     void slot(T t) { qDebug() << "templated slot" << t; }
-    W_SLOT(slot)
+    W_SLOT(slot);
 
     void signal(T t)
-    W_SIGNAL(signal, t)
+    W_SIGNAL(signal, t);
 };
 
 //The syntax of W_OBJECT_IMPL changes a bit: as a second parameter you need to specify the template
@@ -352,7 +352,7 @@ struct MyStruct {
         W_OBJECT(Nested)
     public:
         int foobar() const { return 0; }
-        W_INVOKABLE(foobar)
+        W_INVOKABLE(foobar);
     };
 };
 W_OBJECT_IMPL(MyStruct::Nested)

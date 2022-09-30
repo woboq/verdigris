@@ -14,6 +14,12 @@ Project {
     Product {
         name: "Verdigris"
 
+        Depends { name: "cpp" }
+        Depends { name: "Qt.core" }
+        Qt.core.enableMoc: false
+        cpp.cxxLanguageVersion: "c++20"
+        cpp.includePaths: ['src']
+
         files: [
             "src/wobjectcpp.h",
             "src/wobjectdefs.h",
@@ -23,7 +29,7 @@ Project {
         Export {
             Depends { name: "cpp" }
             Depends { name: "Qt.core" }
-            cpp.cxxLanguageVersion: "c++14"
+            cpp.cxxLanguageVersion: "c++20"
             cpp.includePaths: ['src']
 
             Properties {
@@ -49,7 +55,7 @@ Project {
                 condition: qbs.toolchain.contains('gcc')
                 cpp.cxxFlags: base.concat(
                     "--pedantic", // best C++ compatibility
-                    "-Wall", "-Wextra", "-Wno-noexcept-type", // enable more warnings
+                    "-Wall", "-Wextra", "-Wno-noexcept-type", "-Wno-address", // enable more warnings
                     "-ftemplate-backtrace-limit=0" // do not cut template backtraces
                 )
             }
@@ -59,7 +65,6 @@ Project {
     Product {
         name: "[Extra Files]"
         files: [
-            ".appveyor.yml",
             ".github/workflows/clang.yml",
             ".github/workflows/gcc.yml",
             ".github/workflows/windows.yml",

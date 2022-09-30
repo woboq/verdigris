@@ -10,5 +10,6 @@ Project {
         "manyproperties",
         "qt",
         "templates",
+        "inherit",
     ]
 }

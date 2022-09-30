@@ -46,7 +46,7 @@ public:
 
 protected slots:
     void received ();
-    W_SLOT(received)
+    W_SLOT(received);
 
 public:
     Sender *s;
@@ -62,7 +62,7 @@ public:
 
 protected slots:
     void received ();
-    W_SLOT(received)
+    W_SLOT(received);
 
 public:
     Sender *s;
@@ -77,11 +77,11 @@ public:
     virtual ~Sender () {}
 
     void fire ();
-    W_SLOT(fire)
+    W_SLOT(fire);
 
 signals:
     void fired ()
-    W_SIGNAL(fired)
+    W_SIGNAL(fired);
 
 public:
     Receiver *r;
