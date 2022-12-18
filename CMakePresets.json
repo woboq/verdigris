@@ -12,7 +12,7 @@
       "name": "msvc",
       "description": "Preferred settings for MSVC 2022",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "/permissive- /Zc:__cplusplus /Zc:externConstexpr /Zc:inline /Zc:preprocessor /Zc:throwingNew /diagnostics:caret"
+        "CMAKE_CXX_FLAGS": "/DWIN32 /D_WINDOWS /EHsc /permissive- /Zc:__cplusplus /Zc:externConstexpr /Zc:inline /Zc:preprocessor /Zc:throwingNew /diagnostics:caret"
       }
     },
     {

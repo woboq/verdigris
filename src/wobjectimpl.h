@@ -99,15 +99,13 @@ template<class State> struct ClassInfoGenerator {
 
 /// auto-detect the access specifiers
 template<class T, class State, size_t I>
-concept IsPublic = requires(T** tpp) {
-    T::w_accessHelper(index<I>, State{}, tpp);
-};
+concept IsPublic = requires(T** tpp) { T::w_accessHelper(index<I>, State{}, tpp); };
 
 template<class T, class State, size_t I> struct Derived : T {
     static constexpr bool w_accessOracle = requires(T * *tpp) { T::w_accessHelper(index<I>, State{}, tpp); };
 };
 template<class T, class State, size_t I>
-concept IsProtected = !std::is_final_v<T> && Derived<T, State, I>::w_accessOracle;
+concept IsProtected = (!std::is_final_v<T> && Derived<T, State, I>::w_accessOracle);
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 2, 0)
 template<typename Func> inline constexpr bool is_const_member_method = false;
@@ -167,7 +165,7 @@ private:
 
 /// compute if type T is a builtin QMetaType
 template<class T>
-concept BuiltinMetaTypeId = bool{QMetaTypeId2<T>::IsBuiltIn};
+concept BuiltinMetaTypeId = static_cast<bool>(QMetaTypeId2<T>::IsBuiltIn);
 
 /// Helper to generate the type information of type 'T':
 /// If T is a builtin QMetaType, its meta type id need to be added in the state.
@@ -431,9 +429,7 @@ template<class MetaData, size_t initStringOffset> struct DataBuilder {
 };
 
 template<class TP>
-concept HasExplicitName = requires(StringView result) {
-    result = StringView{w_explicitObjectName(TP{})};
-};
+concept HasExplicitName = requires(StringView result) { result = StringView{w_explicitObjectName(TP{})}; };
 
 /// fold ObjectInfo into State
 template<class T, class Result, class Builder> consteval auto generateDataPass() -> Result {
@@ -556,9 +552,7 @@ template<class T> static constexpr auto metaData = buildMetaData<T>();
 
 /// Returns the QMetaObject* of the base type
 template<typename T>
-concept WithParentMetaObject = requires(const QMetaObject* result) {
-    result = &T::W_BaseType::staticMetaObject;
-};
+concept WithParentMetaObject = requires(const QMetaObject* result) { result = &T::W_BaseType::staticMetaObject; };
 template<typename T> static consteval const QMetaObject* parentMetaObject() {
     if constexpr (WithParentMetaObject<T>) {
         return &T::W_BaseType::staticMetaObject;
@@ -611,7 +605,8 @@ struct FunctorCall<
 };
 #endif
 
-template<size_t N, class TPP> using InterfacePtr = decltype(w_state(index<N>, InterfaceStateTag{}, TPP{}));
+template<size_t N, class TPP>
+using InterfacePtr = typename decltype(w_state(index<N>, InterfaceStateTag{}, TPP{}))::Pointer;
 
 struct FriendHelper {
     template<typename T> static consteval QMetaObject createMetaObject() {
@@ -786,12 +781,8 @@ struct FriendHelper {
     }
 
     template<typename T, class O>
-    requires(
-        std::is_same_v<T, O> ||
-        (std::is_same_v<QObject, O> &&
-         std::is_base_of_v<
-             QObject,
-             T>)) static void qt_static_metacall_impl(O* _o, QMetaObject::Call _c, int _id, void** _a) {
+        requires(std::is_same_v<T, O> || (std::is_same_v<QObject, O> && std::is_base_of_v<QObject, T>))
+    static void qt_static_metacall_impl(O* _o, QMetaObject::Call _c, int _id, void** _a) {
         Q_UNUSED(_id)
         Q_UNUSED(_o)
         Q_UNUSED(_a)

@@ -4,6 +4,7 @@ target_sources(verdigris INTERFACE
   "wobjectcpp.h"
   "wobjectdefs.h"
   "wobjectimpl.h"
+  "wqmlelement.h"
 )
 target_compile_features(verdigris INTERFACE
   cxx_std_20

@@ -7,6 +7,7 @@ Project {
         "tutorial",
         "tests",
         "benchmarks",
+        "tools",
     ]
 
     AutotestRunner {}
@@ -24,6 +25,7 @@ Project {
             "src/wobjectcpp.h",
             "src/wobjectdefs.h",
             "src/wobjectimpl.h",
+            "src/wqmlelement.h",
         ]
 
         Export {
