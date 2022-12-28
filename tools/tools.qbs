@@ -1,5 +1,5 @@
 Project {
     references: [
-        "metatypes_json",
+        "metatypes_extractor",
     ]
 }

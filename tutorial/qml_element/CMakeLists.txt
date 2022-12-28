@@ -22,9 +22,9 @@ function(extract_metatypesjson target obj_target)
     OUTPUT ${output_file}
     COMMAND
       ${tool_wrapper}
-      $<TARGET_FILE:metatypesjson> --out=${output_file} ${input_files}
-    DEPENDS metatypesjson ${input_files}
-    COMMENT "Extracting obj meta types"
+      $<TARGET_FILE:metatypes_extractor> --out=${output_file} ${input_files}
+    DEPENDS metatypes_extractor ${input_files}
+    COMMENT "Extracting metatypes"
   )
   add_custom_target("${target}_metatypesjson"
     DEPENDS ${output_file}
@@ -40,19 +40,19 @@ function(extract_metatypesjson target obj_target)
 endfunction()
 # ----
 
-add_library(qml_tutorial_obj OBJECT
+add_library(qml_element_obj OBJECT
   "MyObject.h" "MyObject.cpp"
 )
-target_link_libraries(qml_tutorial_obj
+target_link_libraries(qml_element_obj
   PUBLIC verdigris
   PUBLIC Qt6::Quick
 )
 
-add_executable(qml_tutorial
+add_executable(qml_elemment_tutorial
   "main.cpp"
 )
-extract_metatypesjson(qml_tutorial qml_tutorial_obj)
-qt6_add_qml_module(qml_tutorial
+extract_metatypesjson(qml_elemment_tutorial qml_element_obj)
+qt6_add_qml_module(qml_elemment_tutorial
   URI QmlTutorial
   VERSION 1.0
   QML_FILES main.qml

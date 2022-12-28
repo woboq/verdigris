@@ -1,2 +1,2 @@
 
-add_subdirectory(metatypes_json)
+add_subdirectory(metatypes_extractor)

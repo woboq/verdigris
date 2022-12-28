@@ -6,7 +6,6 @@ Project {
     references: [
         "features",
         "cpp_api",
-        // QML Element does not work with Qbs (PR welcome)
-        // "qml_element",
+        "qml_element",
     ]
 }
