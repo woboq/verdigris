@@ -3,6 +3,7 @@ add_executable(metatypesjson
   "BufferSpan.h"
   "NtSection.h"
   "metatypes_json.cpp"
+  "ElfSection.h"
 )
 target_compile_features(metatypesjson
   PRIVATE cxx_std_20

@@ -14,5 +14,5 @@ target_link_libraries(qobject PRIVATE
 target_compile_definitions(qobject PRIVATE
   QT_DISABLE_DEPRECATED_BEFORE=0
   QT_NO_DEBUG
-  W_SIGNALBUG=$<TARGET_FILE:signalbug>
+  W_SIGNALBUG="$<TARGET_FILE:signalbug>"
 )

@@ -1,14 +1,16 @@
 #pragma once
 #include <cinttypes>
+#include <cstddef>
 
 struct BufferSpan {
-    using T = const uint8_t;
-    T* data{};
+    using Elem = uint8_t;
+    using Ptr = const Elem*;
+    Ptr data{};
     size_t count{};
 
-    auto begin() const -> T* { return data; }
-    auto end() const -> T* { return data + count; }
-    auto operator[](size_t idx) const -> T { return data[idx]; }
+    auto begin() const -> Ptr { return data; }
+    auto end() const -> Ptr { return data + count; }
+    auto operator[](size_t idx) const -> Elem { return data[idx]; }
 
     auto seek(size_t offset) const -> BufferSpan {
         if (offset >= count) return {};
@@ -24,7 +26,7 @@ struct BufferSpan {
             if (data[i] != other[i]) return false;
         return true;
     }
-    template<class T> auto le_cast() -> T {
+    template<class T> auto le_cast() const -> T {
         static constexpr auto size = sizeof(T);
         auto result = T{};
         if (count < size) return result;
@@ -39,10 +41,28 @@ struct BufferSpan {
                 (static_cast<uint32_t>(data[3]) << 24u) + (static_cast<uint32_t>(data[2]) << 16u) +
                 (static_cast<uint32_t>(data[1]) << 8u) + data[0]);
         }
+        else if constexpr (size == 8) {
+            result = static_cast<T>(
+                (static_cast<uint64_t>(data[7]) << 56u) + (static_cast<uint64_t>(data[6]) << 48u) +
+                (static_cast<uint64_t>(data[5]) << 40u) + (static_cast<uint64_t>(data[4]) << 32u) +
+                (static_cast<uint64_t>(data[3]) << 24u) + (static_cast<uint64_t>(data[2]) << 16u) +
+                (static_cast<uint64_t>(data[1]) << 8u) + data[0]);
+        }
         else {
-            static_assert(size != -1, "unhandled");
+            static_assert(size == -1, "unhandled");
         }
         return result;
+    }
+    auto first_string() const -> BufferSpan {
+        auto len = 0u;
+        for (; len < count; ++len) {
+            if (data[len] == 0) break;
+        }
+        return truncate_to(len);
+    }
+    auto truncate_tail(size_t len) const -> BufferSpan {
+        if (len >= count) return {};
+        return {data + count - len, len};
     }
     void each_string(auto callback) const {
         auto b = 0u;

@@ -1,4 +1,5 @@
 #include "NtSection.h"
+#include "ElfSection.h"
 
 #include <QCoreApplication>
 #include <QCommandLineParser>
@@ -50,8 +51,13 @@ int collectQmlTypes(const QString& outputFilePath, const QStringList& binaryFile
         const auto binaryData = binaryFile.readAll();
         const auto binarySpan = spanContainer(binaryData);
 
-        const bool isPeSuccess = extract_pe_section(binarySpan, qmlTypesSpan, sectionCallback);
-        isPeSuccess || extract_coff_section(binarySpan, qmlTypesSpan, sectionCallback);
+        const bool isSuccess = extract_pe_section(binarySpan, qmlTypesSpan, sectionCallback) ||
+            extract_elf_section(binarySpan, qmlTypesSpan, sectionCallback) ||
+            extract_coff_section(binarySpan, qmlTypesSpan, sectionCallback);
+        if (!isSuccess) {
+            // fprintf(stderr, "Error finding qmltypes section in %s\n", qPrintable(binaryFilePath));
+            // return EXIT_FAILURE;
+        }
     }
 
     auto jsonArray = QJsonArray{};

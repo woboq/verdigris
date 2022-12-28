@@ -285,7 +285,7 @@ struct QmlFriendHelper {
     template<typename T, size_t... Indices> static constexpr auto createClassInfos(std::index_sequence<Indices...>) {
         using TPP = T**;
         auto result = JsonValue::makeArray();
-        constexpr auto createEntry = [&]<size_t Idx>(Index<Idx>) {
+        auto createEntry = [&]<size_t Idx>(Index<Idx>) {
             constexpr auto data = w_state(index<Idx>, ClassInfoStateTag{}, TPP{});
             auto json = JsonValue::makeObject();
             json.addKeyValue(viewLiteral("name"), JsonValue{data.first});
@@ -293,7 +293,7 @@ struct QmlFriendHelper {
             result.append(std::move(json));
         };
         (createEntry(index<Indices>), ...);
-        return std::move(result);
+        return result;
     }
 
     template<size_t N> static constexpr auto createEnumValues(const StringViewArray<N>& names) {
@@ -301,13 +301,13 @@ struct QmlFriendHelper {
         for (auto i = size_t{}; i < N; i++) {
             result.append(names[i]);
         }
-        return std::move(result);
+        return result;
     }
 
     template<typename T, size_t... Indices> static constexpr auto createEnums(std::index_sequence<Indices...>) {
         using TPP = T**;
         auto result = JsonValue::makeArray();
-        constexpr auto createEntry = [&]<size_t Idx>(Index<Idx>) {
+        auto createEntry = [&]<size_t Idx>(Index<Idx>) {
             constexpr auto data = w_state(index<Idx>, EnumStateTag{}, TPP{});
             auto json = JsonValue::makeObject();
             json.addKeyValue(viewLiteral("name"), JsonValue{data.name});
@@ -320,7 +320,7 @@ struct QmlFriendHelper {
             result.append(std::move(json));
         };
         (createEntry(index<Indices>), ...);
-        return std::move(result);
+        return result;
     }
 
     template<typename T> static constexpr auto createSuperClasses() {
@@ -340,7 +340,7 @@ struct QmlFriendHelper {
                 result.append(std::move(json));
             }
         }
-        return std::move(result);
+        return result;
     }
 
     template<typename T, typename TypeStr = int> static constexpr auto viewTypeName(TypeStr v = {}) {
@@ -372,14 +372,14 @@ struct QmlFriendHelper {
         if (name.size() != 0) {
             json.addKeyValue(viewLiteral("name"), name);
         }
-        return std::move(json);
-    };
+        return json;
+    }
     template<class... Args, class TypeNames, size_t NameCount, size_t... Is>
     static constexpr auto createArguments(
         const TypeNames& typeNames, const StringViewArray<NameCount>& paramNames, const index_sequence<Is...>&) {
         auto result = JsonValue::makeArray();
         (result.append(createArgument<Args>(stringFetch<Is>(typeNames), paramNames[Is])), ...);
-        return std::move(result);
+        return result;
     }
 
     static constexpr auto viewAccess(int flags) -> JsonValue {
@@ -398,15 +398,13 @@ struct QmlFriendHelper {
     template<typename T, typename StateTag, size_t... Indices>
     static constexpr auto createFunctions(std::index_sequence<Indices...>) {
         using TPP = T**;
-        using ObjI = ObjectInfo<T>;
-        constexpr size_t L = ObjI::counter;
         auto result = JsonValue::makeArray();
-        constexpr auto createEntry = [&]<class Method, size_t I>(const Method& method, Index<I>) {
+        auto createEntry = [&]<class Method, size_t I>(const Method& method, Index<I>) {
             using FP = QtPrivate::FunctionPointer<typename Method::Func>;
             auto json = JsonValue::makeObject();
             json.addKeyValue(viewLiteral("name"), JsonValue{method.name});
             // json.addKeyValue(viewLiteral("tag"), ??);
-            json.addKeyValue(viewLiteral("returnType"), viewTypeName<FP::ReturnType>());
+            json.addKeyValue(viewLiteral("returnType"), viewTypeName<typename FP::ReturnType>());
             using ArgsPtr = typename FP::Arguments*;
             [&json, &method]<class... Args>(QtPrivate::List<Args...>*) {
                 json.addKeyValue(
@@ -426,15 +424,13 @@ struct QmlFriendHelper {
             result.append(std::move(json));
         };
         (createEntry(w_state(index<Indices>, StateTag{}, TPP{}), index<Indices>), ...);
-        return std::move(result);
+        return result;
     }
 
     template<typename T, size_t... Indices> static constexpr auto createConstructor(std::index_sequence<Indices...>) {
         using TPP = T**;
-        using ObjI = ObjectInfo<T>;
-        constexpr size_t L = ObjI::counter;
         auto result = JsonValue::makeArray();
-        constexpr auto createEntry = [&]<class... Args>(const MetaConstructorInfo<Args...>& method) {
+        auto createEntry = [&]<class... Args>(const MetaConstructorInfo<Args...>& method) {
             auto json = JsonValue::makeObject();
             json.addKeyValue(viewLiteral("name"), method.name);
             // json.addKeyValue(viewLiteral("tag"), ??);
@@ -448,15 +444,13 @@ struct QmlFriendHelper {
             result.append(std::move(json));
         };
         (createEntry(w_state(index<Indices>, ConstructorStateTag{}, TPP{})), ...);
-        return std::move(result);
+        return result;
     }
 
     template<typename T, size_t... Indices> static constexpr auto createProperties(std::index_sequence<Indices...>) {
         using TPP = T**;
-        using ObjI = ObjectInfo<T>;
-        constexpr size_t L = ObjI::counter;
         auto result = JsonValue::makeArray();
-        constexpr auto createEntry = [&]<class Prop, size_t I>(const Prop& prop, Index<I>) {
+        auto createEntry = [&]<class Prop, size_t I>(const Prop& prop, Index<I>) {
             auto json = JsonValue::makeObject();
             json.addKeyValue(viewLiteral("name"), prop.name);
             json.addKeyValue(viewLiteral("type"), viewTypeName<typename Prop::PropertyType>(prop.typeStr));
@@ -482,14 +476,14 @@ struct QmlFriendHelper {
             result.append(std::move(json));
         };
         (createEntry(w_state(index<Indices>, PropertyStateTag{}, TPP{}), index<Indices>), ...);
-        return std::move(result);
+        return result;
     }
 
     template<typename T, size_t... Indices> static constexpr auto createInterfaces(std::index_sequence<Indices...>) {
         using TPP = T**;
 
         auto result = JsonValue::makeArray();
-        constexpr auto createEntry = [&]<class A>(const Interface<A>& iface) {
+        auto createEntry = [&]<class A>(const Interface<A>& iface) {
             auto json = JsonValue::makeObject();
             auto* b = qobject_interface_iid<A*>();
             auto* e = b;
@@ -501,7 +495,7 @@ struct QmlFriendHelper {
             result.append(std::move(outerJson));
         };
         (createEntry(w_state(index<Indices>, InterfaceStateTag{}, TPP{})), ...);
-        return std::move(result);
+        return result;
     }
 
 #ifdef QML_ELEMENT_BASE_PATH
@@ -578,7 +572,7 @@ struct QmlFriendHelper {
         auto classesArray = JsonValue::makeArray();
         classesArray.append(std::move(jsonClass));
         json.addKeyValue(viewLiteral("classes"), std::move(classesArray));
-        return std::move(json);
+        return json;
     }
 
     template<typename T> static constexpr auto createQmlTypes() {
