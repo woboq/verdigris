@@ -55,7 +55,7 @@ template<size_t N> constexpr auto viewLiteral(const char (&d)[N]) -> StringView 
 template<size_t N = 0> struct StringViewArray {
     StringView data[(N > 0 ? N : 1)]{};
 
-    constexpr auto operator[](size_t i) const { return data[i]; }
+    constexpr auto operator[](size_t i) const { return i < N ? data[i] : StringView{}; }
 };
 
 template<size_t SN> constexpr auto countParsedLiterals(const char (&s)[SN]) {
@@ -347,94 +347,142 @@ struct MetaPropertyInfo {
     StringView name;
     StringView typeStr;
     Getter getter = {};
+    StringView getterStr{};
     Setter setter = {};
+    StringView setterStr{};
     Member member = {};
+    StringView memberStr{};
     Notify notify = {};
+    StringView notifyStr{};
     Reset reset = {};
+    StringView resetStr{};
     Bindable bindable = {};
+    StringView bindableStr{};
     uint flags = defaultPropertyFlags();
 
     template<typename S>
-    constexpr auto setGetter(const S& s) const -> MetaPropertyInfo<Type, S, Setter, Member, Notify, Reset, Bindable> {
+    constexpr auto setGetter(const S& s, const StringView& sv = {}) const
+        -> MetaPropertyInfo<Type, S, Setter, Member, Notify, Reset, Bindable> {
         return {
             .name = name,
             .typeStr = typeStr,
             .getter = s,
+            .getterStr = sv,
             .setter = setter,
+            .setterStr = setterStr,
             .member = member,
+            .memberStr = memberStr,
             .notify = notify,
+            .notifyStr = notifyStr,
             .reset = reset,
+            .resetStr = resetStr,
             .bindable = bindable,
+            .bindableStr = bindableStr,
             .flags = flags | PropertyFlags::Readable,
         };
     }
     template<typename S>
-    constexpr auto setSetter(const S& s) const -> MetaPropertyInfo<Type, Getter, S, Member, Notify, Reset, Bindable> {
+    constexpr auto setSetter(const S& s, const StringView& sv = {}) const
+        -> MetaPropertyInfo<Type, Getter, S, Member, Notify, Reset, Bindable> {
         return {
             .name = name,
             .typeStr = typeStr,
             .getter = getter,
+            .getterStr = getterStr,
             .setter = s,
+            .setterStr = sv,
             .member = member,
+            .memberStr = memberStr,
             .notify = notify,
+            .notifyStr = notifyStr,
             .reset = reset,
+            .resetStr = resetStr,
             .bindable = bindable,
+            .bindableStr = bindableStr,
             .flags = flags | PropertyFlags::Writable,
         };
     }
     template<typename S>
-    constexpr auto setMember(const S& s) const -> MetaPropertyInfo<Type, Getter, Setter, S, Notify, Reset, Bindable> {
+    constexpr auto setMember(const S& s, const StringView& sv = {}) const
+        -> MetaPropertyInfo<Type, Getter, Setter, S, Notify, Reset, Bindable> {
         return {
             .name = name,
             .typeStr = typeStr,
             .getter = getter,
+            .getterStr = getterStr,
             .setter = setter,
+            .setterStr = setterStr,
             .member = s,
+            .memberStr = sv,
             .notify = notify,
+            .notifyStr = notifyStr,
             .reset = reset,
+            .resetStr = resetStr,
             .bindable = bindable,
+            .bindableStr = bindableStr,
             .flags = flags | PropertyFlags::Writable | PropertyFlags::Readable,
         };
     }
     template<typename S>
-    constexpr auto setNotify(const S& s) const -> MetaPropertyInfo<Type, Getter, Setter, Member, S, Reset, Bindable> {
+    constexpr auto setNotify(const S& s, const StringView& sv = {}) const
+        -> MetaPropertyInfo<Type, Getter, Setter, Member, S, Reset, Bindable> {
         return {
             .name = name,
             .typeStr = typeStr,
             .getter = getter,
+            .getterStr = getterStr,
             .setter = setter,
+            .setterStr = setterStr,
             .member = member,
+            .memberStr = memberStr,
             .notify = s,
+            .notifyStr = sv,
             .reset = reset,
+            .resetStr = resetStr,
             .bindable = bindable,
+            .bindableStr = bindableStr,
             .flags = flags | PropertyFlags::Notify,
         };
     }
     template<typename S>
-    constexpr auto setReset(const S& s) const -> MetaPropertyInfo<Type, Getter, Setter, Member, Notify, S, Bindable> {
+    constexpr auto setReset(const S& s, const StringView& sv = {}) const
+        -> MetaPropertyInfo<Type, Getter, Setter, Member, Notify, S, Bindable> {
         return {
             .name = name,
             .typeStr = typeStr,
             .getter = getter,
+            .getterStr = getterStr,
             .setter = setter,
+            .setterStr = setterStr,
             .member = member,
+            .memberStr = memberStr,
             .notify = notify,
+            .notifyStr = notifyStr,
             .reset = s,
+            .resetStr = sv,
             .bindable = bindable,
+            .bindableStr = bindableStr,
             .flags = flags | PropertyFlags::Resettable,
         };
     }
     template<typename S>
-    constexpr auto setBindable(const S& s) const -> MetaPropertyInfo<Type, Getter, Setter, Member, Notify, Reset, S> {
+    constexpr auto setBindable(const S& s, const StringView& sv = {}) const
+        -> MetaPropertyInfo<Type, Getter, Setter, Member, Notify, Reset, S> {
         return {
             .name = name,
             .typeStr = typeStr,
             .getter = getter,
+            .getterStr = getterStr,
             .setter = setter,
+            .setterStr = setterStr,
             .member = member,
+            .memberStr = memberStr,
             .notify = notify,
+            .notifyStr = notifyStr,
             .reset = reset,
+            .resetStr = resetStr,
             .bindable = s,
+            .bindableStr = sv,
             .flags = flags | PropertyFlags::Bindable,
         };
     }
@@ -454,77 +502,83 @@ struct MetaPropertyInfo {
 
 /// Parse a property and fill a MetaPropertyInfo (called from W_PROPERTY macro)
 // base case
-template<typename PropInfo> constexpr auto parseProperty(const PropInfo& p) -> PropInfo { return p; }
+template<size_t I, typename PropInfo, size_t N>
+constexpr auto parseProperty(const PropInfo& p, const StringViewArray<N>&) -> PropInfo {
+    return p;
+}
 // setter
-template<typename PropInfo, typename Obj, typename Arg, typename Ret, typename... Tail>
-constexpr auto parseProperty(const PropInfo& p, Ret (Obj::*s)(Arg), Tail... t) {
-    return parseProperty(p.setSetter(s), t...);
+template<size_t I, typename PropInfo, size_t N, typename Obj, typename Arg, typename Ret, typename... Tail>
+constexpr auto parseProperty(const PropInfo& p, const StringViewArray<N>& svs, Ret (Obj::*s)(Arg), Tail... t) {
+    return parseProperty<I + 1>(p.setSetter(s, svs[I]), svs, t...);
 }
 #if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510
-template<typename PropInfo, typename Obj, typename Arg, typename Ret, typename... Tail>
-constexpr auto parseProperty(const PropInfo& p, Ret (Obj::*s)(Arg) noexcept, Tail... t) {
-    return parseProperty(p.setSetter(s), t...);
+template<size_t I, typename PropInfo, size_t N, typename Obj, typename Arg, typename Ret, typename... Tail>
+constexpr auto parseProperty(const PropInfo& p, const StringViewArray<N>& svs, Ret (Obj::*s)(Arg) noexcept, Tail... t) {
+    return parseProperty<I + 1>(p.setSetter(s, svs[I]), svs, t...);
 }
 #endif
 // getter
-template<typename PropInfo, typename Obj, typename Ret, typename... Tail>
-constexpr auto parseProperty(const PropInfo& p, Ret (Obj::*s)(), Tail... t) {
-    return parseProperty(p.setGetter(s), t...);
+template<size_t I, typename PropInfo, size_t N, typename Obj, typename Ret, typename... Tail>
+constexpr auto parseProperty(const PropInfo& p, const StringViewArray<N>& svs, Ret (Obj::*s)(), Tail... t) {
+    return parseProperty<I + 1>(p.setGetter(s, svs[I]), svs, t...);
 }
-template<typename PropInfo, typename Obj, typename Ret, typename... Tail>
-constexpr auto parseProperty(const PropInfo& p, Ret (Obj::*s)() const, Tail... t) {
-    return parseProperty(p.setGetter(s), t...);
+template<size_t I, typename PropInfo, size_t N, typename Obj, typename Ret, typename... Tail>
+constexpr auto parseProperty(const PropInfo& p, const StringViewArray<N>& svs, Ret (Obj::*s)() const, Tail... t) {
+    return parseProperty<I + 1>(p.setGetter(s, svs[I]), svs, t...);
 }
 #if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510
-template<typename PropInfo, typename Obj, typename Ret, typename... Tail>
-constexpr auto parseProperty(const PropInfo& p, Ret (Obj::*s)() noexcept, Tail... t) {
-    return parseProperty(p.setGetter(s), t...);
+template<size_t I, typename PropInfo, size_t N, typename Obj, typename Ret, typename... Tail>
+constexpr auto parseProperty(const PropInfo& p, const StringViewArray<N>& svs, Ret (Obj::*s)() noexcept, Tail... t) {
+    return parseProperty<I + 1>(p.setGetter(s, svs[I]), svs, t...);
 }
-template<typename PropInfo, typename Obj, typename Ret, typename... Tail>
-constexpr auto parseProperty(const PropInfo& p, Ret (Obj::*s)() const noexcept, Tail... t) {
-    return parseProperty(p.setGetter(s), t...);
+template<size_t I, typename PropInfo, size_t N, typename Obj, typename Ret, typename... Tail>
+constexpr auto parseProperty(
+    const PropInfo& p, const StringViewArray<N>& svs, Ret (Obj::*s)() const noexcept, Tail... t) {
+    return parseProperty<I + 1>(p.setGetter(s, svs[I]), svs, t...);
 }
 #endif
 // member
-template<typename PropInfo, typename Obj, typename Ret, typename... Tail>
-constexpr auto parseProperty(const PropInfo& p, Ret Obj::*s, Tail... t) {
-    return parseProperty(p.setMember(s), t...);
+template<size_t I, typename PropInfo, size_t N, typename Obj, typename Ret, typename... Tail>
+constexpr auto parseProperty(const PropInfo& p, const StringViewArray<N>& svs, Ret Obj::*s, Tail... t) {
+    return parseProperty<I + 1>(p.setMember(s, svs[I]), svs, t...);
 }
 // notify
-template<typename PropInfo, typename F, typename... Tail>
-constexpr auto parseProperty(const PropInfo& p, Notify, F f, Tail... t) {
-    return parseProperty(p.setNotify(f), t...);
+template<size_t I, typename PropInfo, size_t N, typename F, typename... Tail>
+constexpr auto parseProperty(const PropInfo& p, const StringViewArray<N>& svs, Notify, F f, Tail... t) {
+    return parseProperty<I + 2>(p.setNotify(f, svs[I + 1]), svs, t...);
 }
 // reset
-template<typename PropInfo, typename Obj, typename Ret, typename... Tail>
-constexpr auto parseProperty(const PropInfo& p, Reset, Ret (Obj::*s)(), Tail... t) {
-    return parseProperty(p.setReset(s), t...);
+template<size_t I, typename PropInfo, size_t N, typename Obj, typename Ret, typename... Tail>
+constexpr auto parseProperty(const PropInfo& p, const StringViewArray<N>& svs, Reset, Ret (Obj::*s)(), Tail... t) {
+    return parseProperty<I + 2>(p.setReset(s, svs[I + 1]), svs, t...);
 }
 #if defined(__cpp_noexcept_function_type) && __cpp_noexcept_function_type >= 201510
-template<typename PropInfo, typename Obj, typename Ret, typename... Tail>
-constexpr auto parseProperty(const PropInfo& p, Reset, Ret (Obj::*s)() noexcept, Tail... t) {
-    return parseProperty(p.setReset(s), t...);
+template<size_t I, typename PropInfo, size_t N, typename Obj, typename Ret, typename... Tail>
+constexpr auto parseProperty(
+    const PropInfo& p, const StringViewArray<N>& svs, Reset, Ret (Obj::*s)() noexcept, Tail... t) {
+    return parseProperty<I + 2>(p.setReset(s, svs[I + 1]), svs, t...);
 }
 #endif
 // bindable
-template<typename PropInfo, typename S, typename... Tail>
-constexpr auto parseProperty(const PropInfo& p, Tagged<Bindable, S> s, Tail... t) {
-    return parseProperty(p.setBindable(s.value), t...);
+template<size_t I, typename PropInfo, size_t N, typename S, typename... Tail>
+constexpr auto parseProperty(const PropInfo& p, const StringViewArray<N>& svs, Tagged<Bindable, S> s, Tail... t) {
+    return parseProperty<I + 1>(p.setBindable(s.value, svs[I]), svs, t...);
 }
 // property flag
-template<typename PropInfo, typename... Tail>
-constexpr auto parseProperty(const PropInfo& p, PropertyFlags flag, Tail... t) {
-    return parseProperty(p.setFlag(static_cast<uint>(flag)), t...);
+template<size_t I, typename PropInfo, size_t N, typename... Tail>
+constexpr auto parseProperty(const PropInfo& p, const StringViewArray<N>& svs, PropertyFlags flag, Tail... t) {
+    return parseProperty<I + 1>(p.setFlag(static_cast<uint>(flag)), svs, t...);
 }
-template<typename PropInfo, PropertyFlags Flag, typename... Tail>
-constexpr auto parseProperty(const PropInfo& p, SetPropertyFlag<Flag>, bool value, Tail... t) {
-    return parseProperty(p.setFlag(static_cast<uint>(Flag), value), t...);
+template<size_t I, typename PropInfo, size_t N, PropertyFlags Flag, typename... Tail>
+constexpr auto parseProperty(
+    const PropInfo& p, const StringViewArray<N>& svs, SetPropertyFlag<Flag>, bool value, Tail... t) {
+    return parseProperty<I + 2>(p.setFlag(static_cast<uint>(Flag), value), svs, t...);
 }
 
-template<typename T, typename... Args>
-constexpr auto makeMetaPropertyInfo(StringView name, StringView type, Args... args) {
+template<typename T, typename... Args, size_t N>
+constexpr auto makeMetaPropertyInfo(StringView name, StringView type, StringViewArray<N> defineStrs, Args... args) {
     auto propInfo = MetaPropertyInfo<T>{.name = name, .typeStr = type};
-    return parseProperty(propInfo, args...);
+    return parseProperty<0>(propInfo, defineStrs, args...);
 }
 
 template<typename T, typename = void> struct EnumIsScoped {
@@ -629,6 +683,11 @@ template<typename T> T& getParentObjectHelper(void* (T::*)(const char*));
 // helper class that can access the private member of any class with W_OBJECT
 struct FriendHelper;
 
+template<typename T> struct Interface {
+    using Pointer = T*;
+    StringView name;
+};
+
 } // namespace w_internal
 
 #if defined(Q_CC_MSVC) && !defined(Q_CC_CLANG)
@@ -717,9 +776,9 @@ namespace w_internal {
 /// All overloads are found using ADL in the QObject T
 template<size_t L, typename State, typename TPP, size_t N>
 concept HasState = requires {
-    L >= 0;
-    w_state(index<N>, State{}, TPP{});
-};
+                       L >= 0;
+                       w_state(index<N>, State{}, TPP{});
+                   };
 
 template<size_t L, typename State, typename TPP, size_t N, size_t M, size_t X = (N + M) / 2>
 consteval size_t stateCountBetween() {
@@ -967,6 +1026,7 @@ public:                                                                         
         w_internal::makeMetaPropertyInfo<W_MACRO_REMOVEPAREN(TYPE)>(                                                   \
             w_internal::viewLiteral(#NAME),                                                                            \
             w_internal::viewLiteral(W_MACRO_STRIGNIFY(W_MACRO_REMOVEPAREN(TYPE))),                                     \
+            W_PARAM_TOSTRING_REMOVE_SCOPE(__VA_ARGS__),                                                                \
             __VA_ARGS__))
 
 #define W_WRITE , &W_ThisType::
@@ -1062,7 +1122,7 @@ public:                                                                         
             w_internal::viewLiteral(A), w_internal::viewLiteral(B)})
 
 /// Same as Q_INTERFACE
-#define W_INTERFACE(A) W_STATE_APPEND(InterfaceState, static_cast<A*>(nullptr))
+#define W_INTERFACE(A) W_STATE_APPEND(InterfaceState, w_internal::Interface<A>{w_internal::viewLiteral(#A)})
 
 /// Same as Q_DECLARE_FLAGS
 #define W_DECLARE_FLAGS(Flags, Enum)                                                                                   \

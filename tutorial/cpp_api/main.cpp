@@ -165,7 +165,7 @@ int main(int argc, char *argv[]) {
     context->setContextProperty("person", &person);
 
     // now you can use it like any other QObject with properties from QML
-    engine.load(QStringLiteral("qrc:/cpp_tutorial.qml"));
+    engine.load(QStringLiteral("qrc:/main.qml"));
     return app.exec();
 }
 

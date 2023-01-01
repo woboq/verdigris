@@ -1,0 +1,38 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "description": "Base for concrete configure presets",
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "msvc",
+      "description": "Preferred settings for MSVC 2022",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "/DWIN32 /D_WINDOWS /EHsc /permissive- /Zc:__cplusplus /Zc:externConstexpr /Zc:inline /Zc:preprocessor /Zc:throwingNew /diagnostics:caret"
+      }
+    },
+    {
+      "name": "clang",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "--pedantic -Wall -Wextra -ftemplate-backtrace-limit=0 -Wno-gnu-zero-variadic-macro-arguments"
+      }
+    },
+    {
+      "name": "clang-libcpp",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "--stdlib=libc++ --pedantic -Wall -Wextra -ftemplate-backtrace-limit=0 -Wno-gnu-zero-variadic-macro-arguments",
+        "CMAKE_EXE_LINKER_FLAGS": "--stdlib=libc++"
+      }
+    },
+    {
+      "name": "gcc",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "--pedantic -Wall -Wextra -Wno-noexcept-type -Wno-address -ftemplate-backtrace-limit=0"
+      }
+    }
+  ]
+}

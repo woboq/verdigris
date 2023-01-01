@@ -3,11 +3,16 @@ import qbs
 Project {
     name: "Verdigris"
 
+    // use `qbs build project.objlibrary_support:true` if qbs is patched (needed for W_QML_ELEMENT support)
+    property bool objlibrary_support: false
+
     references: [
         "tutorial",
         "tests",
         "benchmarks",
+        "tools",
     ]
+    qbsSearchPaths: "qbs/"
 
     AutotestRunner {}
 
@@ -24,6 +29,7 @@ Project {
             "src/wobjectcpp.h",
             "src/wobjectdefs.h",
             "src/wobjectimpl.h",
+            "src/wqmlelement.h",
         ]
 
         Export {
@@ -71,6 +77,8 @@ Project {
             "ChangeLog",
             "LICENSE.LGPLv3",
             "README.md",
+            "qbs/modules/wqmlelement/metatypes/metatypes.qbs",
+            "qbs/modules/wqmlelement/objlibrary/objlibrary.qbs",
         ]
     }
 }
