@@ -199,7 +199,7 @@ constexpr bool hasNotifySignal() {
 template<class State>
 struct ClassInfoGenerator {
     State& s;
-    constexpr ClassInfoGenerator(State& s) : s(s) {}
+    constexpr ClassInfoGenerator(State& _s) : s(_s) {}
 
     template<class ClassInfo, class Index>
     constexpr void operator() (const ClassInfo& ci, Index) {
@@ -226,7 +226,7 @@ struct MethodGenerator {
     State& s;
     int parameterIndex;
     MethodGenerator(const MethodGenerator&) = delete;
-    constexpr MethodGenerator(State& s, int pi) : s(s), parameterIndex(pi) {}
+    constexpr MethodGenerator(State& _s, int pi) : s(_s), parameterIndex(pi) {}
 
     template<class Method, class Index>
     constexpr void operator() (const Method& method, Index) {
@@ -349,7 +349,7 @@ template<class State, class T>
 #endif
 struct PropertyGenerator {
     State& s;
-    constexpr PropertyGenerator(State& s) : s(s) {}
+    constexpr PropertyGenerator(State& _s) : s(_s) {}
 
     template<class Prop, size_t Idx>
     constexpr void operator() (const Prop& prop, Index<Idx>) {
@@ -398,7 +398,7 @@ struct PropertyGenerator {
 template<class State, class T>
 struct PropertyMetaTypeGenerator {
     State& s;
-    constexpr PropertyMetaTypeGenerator(State& s) : s(s) {}
+    constexpr PropertyMetaTypeGenerator(State& _s) : s(_s) {}
 
     template<class Prop, class I>
     constexpr void operator() (const Prop&, I) {
@@ -423,7 +423,7 @@ template<class State, size_t L, class T>
 struct NotifySignalGenerator<State, L, T, true> {
 #endif
     State& s;
-    constexpr NotifySignalGenerator(State& s) : s(s) {}
+    constexpr NotifySignalGenerator(State& _s) : s(_s) {}
 
 #if __cplusplus > 201700L
     template<class Prop, size_t Idx>
@@ -472,7 +472,7 @@ struct EnumGenerator {
     State& s;
     int dataIndex{};
     EnumGenerator(const EnumGenerator&) = delete;
-    constexpr EnumGenerator(State& s, int di) : s(s), dataIndex(di) {}
+    constexpr EnumGenerator(State& _s, int di) : s(_s), dataIndex(di) {}
 
     template<class Enum, class Index>
     constexpr void operator() (const Enum& e, Index) {
@@ -491,7 +491,7 @@ struct EnumGenerator {
 template<class State>
 struct EnumValuesGenerator {
     State& s;
-    constexpr EnumValuesGenerator(State& s) : s(s) {}
+    constexpr EnumValuesGenerator(State& _s) : s(_s) {}
 
     template<class Enum, class Index>
     constexpr void operator() (const Enum& e, Index) {
@@ -559,7 +559,7 @@ constexpr void handleArgNames(State& ss, const StringViewArray<NameCount>& param
 template<class State>
 struct MethodParametersGenerator {
     State& s;
-    constexpr MethodParametersGenerator(State& s) : s(s) {}
+    constexpr MethodParametersGenerator(State& _s) : s(_s) {}
     template<class Method, class Index>
     constexpr void operator() (const Method& method, Index) {
         generateSingleMethodParameter(method.func, method);
@@ -616,7 +616,7 @@ private:
 template<class State>
 struct ConstructorParametersGenerator {
     State& s;
-    constexpr ConstructorParametersGenerator(State& s) : s(s) {}
+    constexpr ConstructorParametersGenerator(State& _s) : s(_s) {}
 
     template<typename... Args, class Index>
     constexpr void operator() (const MetaConstructorInfo<Args...>& info, Index) {
