@@ -87,7 +87,7 @@ jobs:
       matrix:
         include:
           - host_system: windows-2022
-            cl_version: "14.33"
+            cl_version: "14.34"
             qt_version: "6.3.0"
             qt_arch: win64_msvc2019_64
 
