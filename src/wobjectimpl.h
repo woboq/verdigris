@@ -1374,6 +1374,8 @@ QT_WARNING_POP
 /// `W_OBJECT_IMPL((MyTemplate2<A,B>), template<typename A, typename B>)`
 #define W_OBJECT_IMPL(...) \
     W_OBJECT_IMPL_COMMON(W_MACRO_EMPTY, __VA_ARGS__) \
+    QT_WARNING_PUSH \
+    Q_OBJECT_NO_OVERRIDE_WARNING \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) void W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
     { w_internal::FriendHelper::qt_static_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(_o, _c, _id, _a); } \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) const QMetaObject *W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::metaObject() const \
@@ -1381,7 +1383,8 @@ QT_WARNING_POP
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) void *W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_metacast(const char *_clname) \
     { return w_internal::FriendHelper::qt_metacast_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(this, _clname); } \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) int W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_metacall(QMetaObject::Call _c, int _id, void** _a) \
-    { return w_internal::FriendHelper::qt_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(this, _c, _id, _a); }
+    { return w_internal::FriendHelper::qt_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(this, _c, _id, _a); } \
+    QT_WARNING_POP
 
 
 /// \macro W_GADGET_IMPL(TYPE [, TEMPLATE_STUFF])
@@ -1402,6 +1405,8 @@ QT_WARNING_POP
 /// (Requires support for c++17 inline variables)
 #define W_OBJECT_IMPL_INLINE(...) \
     W_OBJECT_IMPL_COMMON(inline, __VA_ARGS__) \
+    QT_WARNING_PUSH \
+    Q_OBJECT_NO_OVERRIDE_WARNING \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) inline void W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void** _a) \
     { w_internal::FriendHelper::qt_static_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(_o, _c, _id, _a); } \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) inline const QMetaObject *W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::metaObject() const \
@@ -1409,7 +1414,8 @@ QT_WARNING_POP
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) inline void *W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_metacast(const char *_clname) \
     { return w_internal::FriendHelper::qt_metacast_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(this, _clname); } \
     W_MACRO_TEMPLATE_STUFF(__VA_ARGS__) inline int W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)::qt_metacall(QMetaObject::Call _c, int _id, void** _a) \
-    { return w_internal::FriendHelper::qt_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(this, _c, _id, _a); }
+    { return w_internal::FriendHelper::qt_metacall_impl<W_MACRO_FIRST_REMOVEPAREN(__VA_ARGS__)>(this, _c, _id, _a); } \
+    QT_WARNING_POP
 
 
 /// \macro W_GADGET_IMPL_INLINE(TYPE [, TEMPLATE_STUFF])
