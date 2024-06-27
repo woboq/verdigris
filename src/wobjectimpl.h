@@ -1026,7 +1026,7 @@ inline auto propReset(F f, O *o) W_RETURN(((o->*f)(),0))
 template <typename... T>
 inline void propReset(T...) {}
 
-#if QT_VERSION >= QT_VERSION_CHECK(6,3,0)
+#if QT_VERSION >= QT_VERSION_CHECK(6,3,0) && QT_VERSION < QT_VERSION_CHECK(6, 8, 0)
 // note: Qt 6.3 introduced a check here that allows only QObjects - but we need it for Gadgets as well
 template <typename, typename, typename, typename> struct FunctorCall;
 template <size_t... II, typename... SignalArgs, typename R, typename Function>
@@ -1062,6 +1062,58 @@ struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<SignalArgs...>, R
     {
         (o->*f)((*reinterpret_cast<typename QtPrivate::RemoveRef<SignalArgs>::Type *>(arg[II+1]))...), QtPrivate::ApplyReturnValue<R>(arg[0]);
     }
+};
+#elif QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+template <typename, typename, typename, typename> struct FunctorCall;
+template <size_t... II, typename... SignalArgs, typename R, typename Function>
+struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<SignalArgs...>, R, Function> : QtPrivate::FunctorCallBase {
+  static void call(Function f, void **arg)
+  {
+    using namespace QtPrivate;
+    call_internal<R>(arg, [&] {
+      return f((*reinterpret_cast<typename RemoveRef<SignalArgs>::Type *>(arg[II+1]))...);
+    });
+  }
+};
+template <size_t... II, typename... SignalArgs, typename R, typename... SlotArgs, typename SlotRet, class Obj>
+struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<SignalArgs...>, R, SlotRet (Obj::*)(SlotArgs...)> : QtPrivate::FunctorCallBase {
+  static void call(SlotRet (Obj::*f)(SlotArgs...), Obj *o, void **arg)
+  {
+    using namespace QtPrivate;
+    call_internal<R>(arg, [&] {
+      return (o->*f)((*reinterpret_cast<typename RemoveRef<SignalArgs>::Type *>(arg[II+1]))...);
+    });
+  }
+};
+template <size_t... II, typename... SignalArgs, typename R, typename... SlotArgs, typename SlotRet, class Obj>
+struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<SignalArgs...>, R, SlotRet (Obj::*)(SlotArgs...) const> : QtPrivate::FunctorCallBase {
+  static void call(SlotRet (Obj::*f)(SlotArgs...) const, Obj *o, void **arg)
+  {
+    using namespace QtPrivate;
+    call_internal<R>(arg, [&] {
+      return (o->*f)((*reinterpret_cast<typename RemoveRef<SignalArgs>::Type *>(arg[II+1]))...);
+    });
+  }
+};
+template <size_t... II, typename... SignalArgs, typename R, typename... SlotArgs, typename SlotRet, class Obj>
+struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<SignalArgs...>, R, SlotRet (Obj::*)(SlotArgs...) noexcept> : QtPrivate::FunctorCallBase {
+  static void call(SlotRet (Obj::*f)(SlotArgs...) noexcept, Obj *o, void **arg)
+  {
+    using namespace QtPrivate;
+    call_internal<R>(arg, [&]() noexcept {
+      return (o->*f)((*reinterpret_cast<typename RemoveRef<SignalArgs>::Type *>(arg[II+1]))...);
+    });
+  }
+};
+template <size_t... II, typename... SignalArgs, typename R, typename... SlotArgs, typename SlotRet, class Obj>
+struct FunctorCall<std::index_sequence<II...>, QtPrivate::List<SignalArgs...>, R, SlotRet (Obj::*)(SlotArgs...) const noexcept> : QtPrivate::FunctorCallBase {
+  static void call(SlotRet (Obj::*f)(SlotArgs...) const noexcept, Obj *o, void **arg)
+  {
+    using namespace QtPrivate;
+    call_internal<R>(arg, [&]() noexcept {
+      return (o->*f)((*reinterpret_cast<typename RemoveRef<SignalArgs>::Type *>(arg[II+1]))...);
+    });
+  }
 };
 #endif
 
