@@ -10,7 +10,6 @@ jobs:
       matrix:
         include:
         - std_cpp: C++17
-        - std_cpp: C++14
 
     runs-on: "macos-10.15"
     env:
@@ -24,7 +23,7 @@ jobs:
           qmake --version
 
       - name: Git Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - run: qmake -r "CONFIG+=${{ matrix.std_cpp }}"
       - run: make -j
@@ -44,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Build & Test
         run: >-
@@ -61,15 +60,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - host_system: ubuntu-20.04
-            clang_version: 12
-            qt_version: 6.3.0
+          - host_system: ubuntu-24.04
+            clang_version: 13
+            qt_version: 6.7.0
             qt_arch: gcc_64
             std_cpp: C++20
 
+
           - host_system: ubuntu-20.04
             clang_version: 12
-            qt_version: 6.2.2
+            qt_version: 6.3.0
             qt_arch: gcc_64
             std_cpp: C++20
 
@@ -79,31 +79,19 @@ jobs:
             qt_arch: gcc_64
             std_cpp: C++17
 
-          - host_system: ubuntu-20.04
-            clang_version: 10
-            qt_version: 5.15.2
-            qt_arch: gcc_64
-            std_cpp: C++17
-
-          - host_system: ubuntu-18.04
-            clang_version: 9
-            qt_version: 5.12.3
-            qt_arch: gcc_64
-            std_cpp: C++14
-
     runs-on: "${{ matrix.host_system }}"
     env:
       QMAKESPEC: linux-clang
     steps:
       - name: Cache Qt
         id: cache-qt
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: ../Qt
           key: QtCache-${{ matrix.qt_version }}-${{ matrix.qt_arch }}
 
       - name: Install Qt
-        uses: jurplel/install-qt-action@v2
+        uses: jurplel/install-qt-action@v4
         with:
           version: "${{ matrix.qt_version }}"
           arch: "${{ matrix.qt_arch }}"
@@ -121,7 +109,7 @@ jobs:
           clang++ --version
 
       - name: Git Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - run: qmake -r "CONFIG+=${{ matrix.std_cpp }}"
       - run: make -j

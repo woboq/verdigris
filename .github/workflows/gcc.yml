@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Build & Test
         run: >-
@@ -39,38 +39,24 @@ jobs:
             std_cpp: C++17
             experimental: false
 
-          - host_system: ubuntu-20.04
-            gcc_version: 11
-            qt_version: 6.2.2
+          - host_system: ubuntu-24.04
+            gcc_version: 13
+            qt_version: 6.7.0
             qt_arch: gcc_64
-            std_cpp: C++17
-            experimental: false
-
-          - host_system: ubuntu-20.04
-            gcc_version: 10
-            qt_version: 6.0.0
-            qt_arch: gcc_64
-            std_cpp: C++17
-            experimental: false
-
-          - host_system: ubuntu-20.04
-            gcc_version: 9
-            qt_version: 5.15.2
-            qt_arch: gcc_64
-            std_cpp: C++17
+            std_cpp: C++20
             experimental: false
 
     runs-on: "${{ matrix.host_system }}"
     steps:
       - name: Cache Qt
         id: cache-qt
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: ../Qt
           key: QtCache-${{ matrix.qt_version }}-${{ matrix.qt_arch }}
 
       - name: Install Qt
-        uses: jurplel/install-qt-action@v2
+        uses: jurplel/install-qt-action@v4
         with:
           version: "${{ matrix.qt_version }}"
           arch: "${{ matrix.qt_arch }}"
@@ -87,7 +73,7 @@ jobs:
           g++ --version
 
       - name: Git Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - run: qmake -r "CONFIG+=${{ matrix.std_cpp }}"
       - run: make -j
