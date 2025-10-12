@@ -8,15 +8,12 @@ Blog post presenting the project: https://woboq.com/blog/verdigris-qt-without-mo
 
 Blog post with some implementation details: https://woboq.com/blog/verdigris-implementation-tricks.html (2018)
 
-Browse code online: https://code.woboq.org/woboq/verdigris
-
-Github Actions: [![Clang Tests](https://github.com/woboq/verdigris/actions/workflows/clang.yml/badge.svg?branch=master)](https://github.com/woboq/verdigris/actions/workflows/clang.yml) [![Gcc Tests](https://github.com/woboq/verdigris/actions/workflows/gcc.yml/badge.svg?branch=master)](https://github.com/woboq/verdigris/actions/workflows/gcc.yml) [![Windows Tests](https://github.com/woboq/verdigris/actions/workflows/windows.yml/badge.svg?branch=master)](https://github.com/woboq/verdigris/actions/workflows/windows.yml)
-Appveyor:
-[![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/povubj5thvlsu6sy/branch/master?svg=true)](https://ci.appveyor.com/project/ogoffart/verdigris)
+> [!IMPORTANT]
+> This project is no longer actively maintained. The author has moved on to [other things](https://slint.dev).
 
 ## Documentation
 
-For an introduction, see the [tutorial.cpp](https://code.woboq.org/woboq/verdigris/tutorial/tutorial.cpp.html).
+For an introduction, see the [tutorial.cpp](https://github.com/woboq/verdigris/blob/master/tutorial/tutorial.cpp).
 See also a more detailed documetation of the macros in the source code.
 
 ## Status
