@@ -28,6 +28,11 @@
 #include <QtCore/qmetatype.h>
 #include <utility>
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wc2y-extensions"
+#endif
+
 #define W_VERSION 0x010200
 
 namespace w_internal {
@@ -1033,4 +1038,8 @@ W_REGISTER_ARGTYPE(const char*)
 #define W_FLAG(...)
 #define W_ENUM(...)
 #define W_DECLARE_FLAGS(...)
+#endif
+
+#ifdef __clang__
+#pragma clang diagnostic pop
 #endif
